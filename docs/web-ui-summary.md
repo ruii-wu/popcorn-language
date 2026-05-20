@@ -1,21 +1,21 @@
 # Popcorn Language · Web UI 功能与用户旅程总结
 
-> 基于 `context.txt.txt` 项目背景 + 当前 web 原型代码（`web-app.jsx` / `web-scenario.jsx` / `web-onboarding.jsx` / `web-shared.jsx`）整理。所有数据均为前端 mock，未接 Ollama / 数据库。
+> 基于 `docs/context.md` 项目背景 + 当前 web 原型代码（`prototypes/web/src/app.jsx` / `prototypes/web/src/scenario.jsx` / `prototypes/web/src/onboarding.jsx` / `prototypes/web/src/shared.jsx`）整理。所有数据均为前端 mock，未接 Ollama / 数据库。
 
 ---
 
 ## 一、总体结构
 
-当前 web 原型由三个独立 HTML demo 页面 + 一份共享组件库组成，对应 context.txt 第七节列出的三个 UI prompt：
+当前 web 原型由三个独立 HTML demo 页面 + 一份共享组件库组成，对应 context.md 第七节列出的三个 UI prompt：
 
 | Demo 入口 | JSX 文件 | 对应 prompt | 主要承载内容 |
 |---|---|---|---|
-| `Web - Main App.html` | `web-app.jsx` | Prompt 1 · 主应用 Shell | 日常聊天主界面（与 Lily 闲聊） |
-| `Web - Scenario.html` | `web-scenario.jsx` | Prompt 2 · 嵌入式 Scenario | A/B/C/D 四态展示同一聊天的氛围流动 |
-| `Web - Onboarding and Journey.html` | `web-onboarding.jsx` | Prompt 3 · Onboarding + Journey | 3 步 onboarding + Your Journey 仪表盘 |
-| `design canvas.html` | `design-canvas.jsx` | — | 设计稿合集（已存在，不在本次摘要内） |
+| `prototypes/web/main-app.html` | `prototypes/web/src/app.jsx` | Prompt 1 · 主应用 Shell | 日常聊天主界面（与 Lily 闲聊） |
+| `prototypes/web/scenario.html` | `prototypes/web/src/scenario.jsx` | Prompt 2 · 嵌入式 Scenario | A/B/C/D 四态展示同一聊天的氛围流动 |
+| `prototypes/web/onboarding-journey.html` | `prototypes/web/src/onboarding.jsx` | Prompt 3 · Onboarding + Journey | 3 步 onboarding + Your Journey 仪表盘 |
+| `prototypes/web/design-canvas.html` | `prototypes/web/src/design-canvas.jsx` | — | 设计稿合集（已存在，不在本次摘要内） |
 
-共享 `web-shared.jsx` 暴露：`WebI`（图标集）、`NPCS_WEB`（Lily / Mr. Chen / Emma 三个 NPC mock）、`RELATIONSHIP_LABEL`、`WebAvatar`、`WebRelationshipDots`、`WebDock`、`WebNavRail`、`WebConversationsRail`。
+共享 `prototypes/web/src/shared.jsx` 暴露：`WebI`（图标集）、`NPCS_WEB`（Lily / Mr. Chen / Emma 三个 NPC mock）、`RELATIONSHIP_LABEL`、`WebAvatar`、`WebRelationshipDots`、`WebDock`、`WebNavRail`、`WebConversationsRail`。
 
 三屏统一布局：**3-pane app shell** = 左侧 nav/Conversations rail + 中间 main pane + 右侧 context panel；右下角悬浮 `WebDock` 用于在三个 demo 间跳转。
 
@@ -25,7 +25,7 @@
 
 ### 1. NPC 系统（mock 数据层）
 
-三个 persona 写死在 `web-shared.jsx`：
+三个 persona 写死在 `prototypes/web/src/shared.jsx`：
 
 - **Lily** — Brooklyn 咖啡师 ☕，Friend 关系（2/3 点），"Usually replies quickly"，头像泡泡有 sparkle 提示有新消息
 - **Mr. Chen** — 双语前辈 陈，Acquaintance 关系（1/3 点），消息含中英双语预览
@@ -33,7 +33,7 @@
 
 关系等级以三档点状指示器（`WebRelationshipDots`）+ 标签呈现：Acquaintance / Friend / Close friend。
 
-### 2. 主聊天界面（`web-app.jsx`）
+### 2. 主聊天界面（`prototypes/web/src/app.jsx`）
 
 完整渲染了与 Lily 的一段 mock 对话（`LILY_THREAD_WEB`），覆盖：
 
@@ -44,9 +44,9 @@
 - **Composer**：建议短语 chips（"Tell me more" / "Why?" / "什么意思?" / "Recommend me one"）+ 多行输入框 + Send 按钮；脚注显示 "Grammar correction · ON" 与 "local model"
 - **右侧 Persona Panel**：大头像 + persona 描述 + 关系概览（"chatted 8 times over 3 weeks"）+ "What Lily knows about you"（GRE / 猫 / 燕麦奶不加糖 / 住在 Murray's 附近）+ AI 生成的 Memory 卡（"Coffee Order Expert"）+ 使用语种标记（EN · 偶有中文）
 
-### 3. 嵌入式 Scenario 系统（`web-scenario.jsx`）
+### 3. 嵌入式 Scenario 系统（`prototypes/web/src/scenario.jsx`）
 
-context.txt 决策 3+4 的核心交互——**"NPC 主动引导 + 同界面氛围切换"**——以 4 个可切换 state 演示：
+context.md 决策 3+4 的核心交互——**"NPC 主动引导 + 同界面氛围切换"**——以 4 个可切换 state 演示：
 
 | State | 标签 | 视觉变化 | 关键 UI |
 |---|---|---|---|
@@ -61,7 +61,7 @@ context.txt 决策 3+4 的核心交互——**"NPC 主动引导 + 同界面氛�
 - **C**：Linda 视角内心独白 + 测试维度（沉稳 / 自我评估 / 礼貌缓和）+ 实时状态 + 三个选项的预期影响
 - **D**：变化总结（关系 Friend → Close friend、+1 scenario、+1 memory），新生成 memory 卡 "Polite Disagree-er"，以及推荐的下一个 scenario "Salary Negotiation"
 
-### 4. Onboarding 流程（`web-onboarding.jsx`，3 步）
+### 4. Onboarding 流程（`prototypes/web/src/onboarding.jsx`，3 步）
 
 全屏式（非 app shell），顶部蓝绿色径向渐变 ambient wash，步骤指示点。
 
@@ -69,7 +69,7 @@ context.txt 决策 3+4 的核心交互——**"NPC 主动引导 + 同界面氛�
 - **Step 1 · Profile**：三个问题——身份（Student / Software engineer / …）、学习目的（Work / Travel / Study abroad / Daily life，单选）、兴趣（10 个 tag 中选 3-5 个，含 Coffee / Cats / Tech 等）；附 AI 解释说明 NPC 将基于这些 personalize（"选 Cats，Emma 一周内就会问你要猫图"）
 - **Step 2 · Meet Lily**：大头像 + 在线徽章 + persona 介绍（Brooklyn / 24 / 咖啡师）+ 4 个 trait pill + AI 提醒（"她会基于话题主动邀请 scenario，你可拒绝"）+ 首条 preview message；按钮 "Start chatting" 进入主应用
 
-### 5. Your Journey 仪表盘（`web-onboarding.jsx` · `JourneyDashboard`）
+### 5. Your Journey 仪表盘（`prototypes/web/src/onboarding.jsx` · `JourneyDashboard`）
 
 宽屏 dashboard 形态，使用左侧 `WebNavRail`（含 7-day streak strip + Chats/Journey/Settings 链接 + 用户名 footer）。
 
@@ -99,7 +99,7 @@ context.txt 决策 3+4 的核心交互——**"NPC 主动引导 + 同界面氛�
 用户在主应用 shell 内：
 - 在左侧 rail 切换 NPC（Lily / Mr. Chen / Emma）
 - 与 NPC 自由聊天，输入中英混合均可
-- 出错时收到 `CorrectionCard` 内嵌反馈，含中文语法解释（context.txt 中"中→英为主"的语向选择落地点）
+- 出错时收到 `CorrectionCard` 内嵌反馈，含中文语法解释（context.md 中"中→英为主"的语向选择落地点）
 - 右侧 panel 持续展示 NPC "记得"的关于用户的事，建立持续记忆的可见感
 
 ### Stage 3 · Scenario 由 NPC 主动引出（决策 3 · B3 路径的可视化）
@@ -133,7 +133,7 @@ context.txt 决策 3+4 的核心交互——**"NPC 主动引导 + 同界面氛�
 
 ---
 
-## 四、UI 已落地 vs context.txt 中尚未实现
+## 四、UI 已落地 vs context.md 中尚未实现
 
 ### ✅ UI 上已呈现（mock 程度）
 - 3 NPC 角色、persona、双语聊天框架
@@ -161,7 +161,7 @@ context.txt 决策 3+4 的核心交互——**"NPC 主动引导 + 同界面氛�
 
 ## 五、设计语言要点（贯穿三屏）
 
-- **Warm-neutral palette + 暖珊瑚强调色**——刻意避开 Duolingo 美学（context.txt 第七节明示）
+- **Warm-neutral palette + 暖珊瑚强调色**——刻意避开 Duolingo 美学（context.md 第七节明示）
 - **"Atmospheric mode shifting"**——Scenario 不是新页面，是同一聊天的氛围升温（背景色 / 边框 / HUD 渐入）
 - **Sparkle + Plum 紫**专属标记 AI 生成内容（Memory 卡、persona 旁的 sparkle、AI · observed eyebrow）
 - **Mono 小字 + Serif 大字**双轨：mono 用于元信息/标签/时间戳，serif 衬线体用于标题与数字 KPI

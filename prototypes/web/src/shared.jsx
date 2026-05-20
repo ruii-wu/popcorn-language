@@ -110,9 +110,9 @@ function WebRelationshipDots({ value, size = 5 }) {
 // Cross-file dock — bottom-right so it doesn't collide with state tabs
 function WebDock({ current }) {
   const items = [
-  { label: '01 Main App', href: 'Web - Main App.html' },
-  { label: '02 Scenario', href: 'Web - Scenario.html' },
-  { label: '03 Onboarding & Journey', href: 'Web - Onboarding and Journey.html' }];
+  { label: '01 Main App', href: 'main-app.html' },
+  { label: '02 Scenario', href: 'scenario.html' },
+  { label: '03 Onboarding & Journey', href: 'onboarding-journey.html' }];
 
   return (
     <div className="fixed bottom-3 right-3 z-50 flex items-center gap-1 p-1 rounded-full"
@@ -132,7 +132,7 @@ function WebDock({ current }) {
         </a>
       )}
       <span className="w-px h-4 mx-0.5" style={{ background: 'oklch(0.38 0.02 55)' }} />
-      <a href="design canvas.html"
+      <a href="design-canvas.html"
       className="px-3 py-1.5 rounded-full text-[10.5px] font-mono uppercase tracking-wider transition no-underline"
       style={{ color: 'oklch(0.78 0.02 60)' }}>
         ↗ Canvas
@@ -144,8 +144,8 @@ function WebDock({ current }) {
 // Left nav rail — shared between web app and journey screens
 function WebNavRail({ activeTop = 'chats' }) {
   const items = [
-  { id: 'chats', label: 'Chats', icon: WebI.msgs, href: 'Web - Main App.html' },
-  { id: 'journey', label: 'Your Journey', icon: WebI.book, href: 'Web - Onboarding and Journey.html' },
+  { id: 'chats', label: 'Chats', icon: WebI.msgs, href: 'main-app.html' },
+  { id: 'journey', label: 'Your Journey', icon: WebI.book, href: 'onboarding-journey.html' },
   { id: 'settings', label: 'Settings', icon: WebI.settings, href: '#' }];
 
   return (
@@ -286,7 +286,7 @@ function WebConversationsRail({ activeId, onSelect, intense }) {
       {/* Nav buttons */}
       <div className="px-4 py-3 flex items-center gap-2"
       style={{ borderTop: intense ? '1px solid var(--hairline-c)' : '1px solid var(--hairline)' }}>
-        <a href="Web - Onboarding and Journey.html"
+        <a href="onboarding-journey.html"
         className="flex-1 text-[11px] py-2 px-2.5 rounded-lg flex items-center gap-1.5 transition no-underline"
         style={{ color: 'var(--ink-2)', border: '1px solid var(--hairline)' }}>
           <span className="w-3.5 h-3.5">{WebI.book}</span> Journey
