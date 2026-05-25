@@ -1,5 +1,6 @@
 import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
+import { listFacts } from '@/server/memory/recall';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
       persona: n.shortBio,
       languageProfile: JSON.parse(n.languageProfile),
       relationship: rel?.stage ?? 'acquaintance',
-      knownFacts: [], // W3: Memory.recall()
+      knownFacts: await listFacts(prisma, userId, 8),
       chatStats: { messages, conversationCount: rel?.conversationCount ?? 0 },
     });
   });
