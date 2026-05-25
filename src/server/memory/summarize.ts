@@ -11,12 +11,17 @@ const SummarySchema = z.object({ summary: z.string().min(1) });
 export interface SummarizeDeps {
   prisma: PrismaClient;
   ollama: Pick<OllamaClient, 'chatJson' | 'embed'>;
+  userId: string;
   threadId: string;
 }
 
 // Summarizes the next un-summarized window of a thread when it grows past KEEP_RECENT + SUMMARY_EVERY.
 // Deterministic: the number of summaries that should exist is floor((total - KEEP_RECENT) / SUMMARY_EVERY).
 export async function maybeSummarizeThread(deps: SummarizeDeps): Promise<string | null> {
+  // Defense in depth: only ever summarize a thread the caller owns (every memory query is userId-scoped).
+  const owned = await deps.prisma.thread.findFirst({ where: { id: deps.threadId, userId: deps.userId }, select: { id: true } });
+  if (!owned) return null;
+
   const total = await deps.prisma.message.count({ where: { threadId: deps.threadId } });
   const due = Math.floor((total - KEEP_RECENT) / SUMMARY_EVERY);
   if (due < 1) return null;

@@ -29,7 +29,7 @@ export async function runPostTurnMemory(deps: PostTurnDeps): Promise<void> {
   }
 
   try {
-    await maybeSummarizeThread({ prisma: deps.prisma, ollama: deps.ollama, threadId: deps.threadId });
+    await maybeSummarizeThread({ prisma: deps.prisma, ollama: deps.ollama, userId: deps.userId, threadId: deps.threadId });
   } catch (e) {
     console.error('[memory] summarize failed', e);
   }

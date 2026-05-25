@@ -27,7 +27,7 @@ describe('maybeSummarizeThread', () => {
     const thread = await prisma.thread.create({ data: { userId: user.id, npcId: 'lily' } });
     await seedMessages(thread.id, user.id, 8); // < SUMMARY_EVERY (10)
     const ollama = { chatJson: vi.fn(), embed: vi.fn() };
-    const result = await maybeSummarizeThread({ prisma, ollama, threadId: thread.id });
+    const result = await maybeSummarizeThread({ prisma, ollama, userId: user.id, threadId: thread.id });
     expect(result).toBeNull();
     expect(ollama.chatJson).not.toHaveBeenCalled();
     expect(await prisma.conversationSummary.count({ where: { threadId: thread.id } })).toBe(0);
@@ -43,15 +43,25 @@ describe('maybeSummarizeThread', () => {
       chatJson: vi.fn().mockResolvedValue({ summary: 'they talked about m0..m9' }),
       embed: vi.fn().mockResolvedValue([0.5, 0.5]),
     };
-    const first = await maybeSummarizeThread({ prisma, ollama, threadId: thread.id });
+    const first = await maybeSummarizeThread({ prisma, ollama, userId: user.id, threadId: thread.id });
     expect(first).toBe('they talked about m0..m9');
     const rows = await prisma.conversationSummary.findMany({ where: { threadId: thread.id } });
     expect(rows).toHaveLength(1);
     expect(rows[0].embedding).toBe(JSON.stringify([0.5, 0.5]));
 
     // second call: existing(1) >= due(1) → no-op
-    const second = await maybeSummarizeThread({ prisma, ollama, threadId: thread.id });
+    const second = await maybeSummarizeThread({ prisma, ollama, userId: user.id, threadId: thread.id });
     expect(second).toBeNull();
     expect(await prisma.conversationSummary.count({ where: { threadId: thread.id } })).toBe(1);
+  });
+
+  it('returns null for a thread the caller does not own, even when a window is due', async () => {
+    const owner = await prisma.user.findFirstOrThrow({ where: { username: U } });
+    const thread = await prisma.thread.findFirstOrThrow({ where: { userId: owner.id, npcId: 'lily' } });
+    await prisma.conversationSummary.deleteMany({ where: { threadId: thread.id } }); // a window would be due again
+    const ollama = { chatJson: vi.fn(), embed: vi.fn() };
+    const result = await maybeSummarizeThread({ prisma, ollama, userId: 'someone-else', threadId: thread.id });
+    expect(result).toBeNull();
+    expect(ollama.chatJson).not.toHaveBeenCalled();
   });
 });
