@@ -97,4 +97,16 @@ export class OllamaClient {
     }
     throw new OllamaError(`chatJson failed after ${maxRetries} attempts: ${String(lastErr)}`);
   }
+
+  async embed(text: string, opts: { model?: string } = {}): Promise<number[]> {
+    const res = await this.fetchImpl(`${this.baseUrl}/api/embeddings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: opts.model ?? this.embedModel, prompt: text }),
+    });
+    if (!res.ok) throw new OllamaError(`embed HTTP ${res.status}`);
+    const data = (await res.json()) as { embedding?: number[] };
+    if (!Array.isArray(data.embedding)) throw new OllamaError('embed: no embedding in response');
+    return data.embedding;
+  }
 }
