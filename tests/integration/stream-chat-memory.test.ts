@@ -43,7 +43,7 @@ describe('streamChat memory integration', () => {
       // factExtract chatJson (stream:false, format:json) → return no new facts
       return { ok: true, status: 200, json: async () => ({ message: { content: JSON.stringify({ facts: [] }) } }) } as unknown as Response;
     });
-    const ollama = new OllamaClient({ fetchImpl });
+    const ollama = new OllamaClient({ fetchImpl: fetchImpl as unknown as typeof fetch });
 
     const events: SseEvent[] = [];
     for await (const e of streamChat({ prisma, ollama, userId: user.id, npcId: 'lily', text: 'what do you remember?' })) {
