@@ -1,0 +1,105 @@
+import type { PrismaClient } from '@prisma/client';
+import type { OllamaClient, ChatMessage } from '@/server/llm/ollama';
+import type { SseEvent } from '@/server/sse/events';
+import { buildSystemPrompt } from '@/server/prompt/builder';
+import { detectLang } from '@/server/text/langDetect';
+
+const RECENT_BUFFER = 10;
+
+export interface StreamChatDeps {
+  prisma: PrismaClient;
+  ollama: OllamaClient;
+  userId: string;
+  npcId: string;
+  text: string;
+  lang?: string;
+}
+
+export async function* streamChat(deps: StreamChatDeps): AsyncGenerator<SseEvent> {
+  const { prisma, ollama, userId, npcId, text } = deps;
+
+  const npc = await prisma.npc.findUnique({ where: { id: npcId } });
+  if (!npc) {
+    yield { event: 'error', data: { code: 'NPC_NOT_FOUND', message: npcId } };
+    yield { event: 'done', data: {} };
+    return;
+  }
+
+  const thread = await prisma.thread.upsert({
+    where: { userId_npcId: { userId, npcId } },
+    create: { userId, npcId },
+    update: {},
+  });
+  const rel = await prisma.relationship.upsert({
+    where: { userId_npcId: { userId, npcId } },
+    create: { userId, npcId },
+    update: {},
+  });
+
+  const lang = deps.lang ?? detectLang(text);
+  const userMsg = await prisma.message.create({
+    data: { threadId: thread.id, userId, role: 'user', text, langDetect: lang },
+  });
+  yield { event: 'user_message_saved', data: { messageId: userMsg.id, createdAt: userMsg.createdAt } };
+  yield { event: 'typing_start', data: { npcId } };
+
+  const [profile, user, recent] = await Promise.all([
+    prisma.userProfile.findUnique({ where: { userId } }),
+    prisma.user.findUnique({ where: { id: userId } }),
+    prisma.message.findMany({ where: { threadId: thread.id }, orderBy: { createdAt: 'desc' }, take: RECENT_BUFFER }),
+  ]);
+  const history = recent.reverse();
+
+  const systemPrompt = buildSystemPrompt({
+    npc: {
+      name: npc.name,
+      personaPrompt: npc.personaPrompt,
+      languageProfile: JSON.parse(npc.languageProfile),
+    },
+    userProfile: profile
+      ? { role: profile.role, goal: profile.goal, interests: JSON.parse(profile.interests) }
+      : undefined,
+    relationshipStage: rel.stage as 'acquaintance' | 'friend' | 'close',
+    userLanguage: user?.language ?? 'zh-CN',
+    mode: 'casual',
+  });
+
+  const messages: ChatMessage[] = [
+    { role: 'system', content: systemPrompt },
+    ...history.map((m): ChatMessage => ({ role: m.userId ? 'user' : 'assistant', content: m.text })),
+  ];
+
+  let full = '';
+  try {
+    for await (const tok of ollama.chat(messages)) {
+      full += tok;
+      yield { event: 'token', data: { delta: tok } };
+    }
+  } catch (e) {
+    yield { event: 'error', data: { code: 'LLM_UNAVAILABLE', message: String(e) } };
+    yield { event: 'typing_end', data: { npcId } };
+    yield { event: 'done', data: {} };
+    return;
+  }
+
+  const npcMsg = await prisma.message.create({
+    data: { threadId: thread.id, userId: null, role: 'npc', text: full },
+  });
+  yield { event: 'typing_end', data: { npcId } };
+  yield { event: 'message_complete', data: { messageId: npcMsg.id, fullText: full } };
+
+  await prisma.thread.update({ where: { id: thread.id }, data: { lastMsgAt: npcMsg.createdAt } });
+  await prisma.relationship.update({
+    where: { id: rel.id },
+    data: {
+      conversationCount: { increment: 1 },
+      relationshipPoints: { increment: 1 },
+      lastInteractionAt: new Date(),
+    },
+  });
+  await prisma.activityEvent.create({
+    data: { userId, type: 'message_sent', payload: JSON.stringify({ npcId }) },
+  });
+
+  yield { event: 'done', data: {} };
+}
