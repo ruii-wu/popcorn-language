@@ -3,6 +3,8 @@ import type { OllamaClient, ChatMessage } from '@/server/llm/ollama';
 import type { SseEvent } from '@/server/sse/events';
 import { buildSystemPrompt } from '@/server/prompt/builder';
 import { detectLang } from '@/server/text/langDetect';
+import { recallForPrompt } from '@/server/memory/recall';
+import { runPostTurnMemory } from '@/server/memory/postTurn';
 
 const RECENT_BUFFER = 10;
 
@@ -45,10 +47,11 @@ export async function* streamChat(deps: StreamChatDeps): AsyncGenerator<SseEvent
   yield { event: 'user_message_saved', data: { messageId: userMsg.id, createdAt: userMsg.createdAt } };
   yield { event: 'typing_start', data: { npcId } };
 
-  const [profile, user, recent] = await Promise.all([
+  const [profile, user, recent, recalled] = await Promise.all([
     prisma.userProfile.findUnique({ where: { userId } }),
     prisma.user.findUnique({ where: { id: userId } }),
     prisma.message.findMany({ where: { threadId: thread.id }, orderBy: { createdAt: 'desc' }, take: RECENT_BUFFER }),
+    recallForPrompt({ prisma, ollama, userId, npcId, queryText: text }),
   ]);
   const history = recent.reverse();
 
@@ -63,6 +66,8 @@ export async function* streamChat(deps: StreamChatDeps): AsyncGenerator<SseEvent
       : undefined,
     relationshipStage: rel.stage as 'acquaintance' | 'friend' | 'close',
     userLanguage: user?.language ?? 'zh-CN',
+    facts: recalled.facts,
+    recentSummary: recalled.summary,
     mode: 'casual',
   });
 
@@ -102,6 +107,8 @@ export async function* streamChat(deps: StreamChatDeps): AsyncGenerator<SseEvent
   await prisma.activityEvent.create({
     data: { userId, type: 'message_sent', payload: JSON.stringify({ npcId }) },
   });
+
+  await runPostTurnMemory({ prisma, ollama, userId, threadId: thread.id, userText: text, userMsgId: userMsg.id });
 
   yield { event: 'done', data: {} };
 }
