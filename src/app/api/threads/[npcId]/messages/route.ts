@@ -13,14 +13,15 @@ export async function GET(req: Request, { params }: { params: { npcId: string } 
   return withUser(req, async (userId) => {
     const url = new URL(req.url);
     const before = url.searchParams.get('before');
-    const limit = Math.min(Number(url.searchParams.get('limit') ?? 50) || 50, 100);
+    const limit = Math.min(Math.max(1, Number(url.searchParams.get('limit') ?? 50) || 50), 100);
 
     const thread = await prisma.thread.findUnique({ where: { userId_npcId: { userId, npcId: params.npcId } } });
     if (!thread) return json({ messages: [], hasMore: false });
 
     let beforeCreatedAt: Date | undefined;
     if (before) {
-      const b = await prisma.message.findUnique({ where: { id: before } });
+      // scope the cursor to this thread: a foreign id must not steer pagination
+      const b = await prisma.message.findFirst({ where: { id: before, threadId: thread.id } });
       beforeCreatedAt = b?.createdAt;
     }
 

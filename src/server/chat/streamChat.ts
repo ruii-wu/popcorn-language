@@ -40,6 +40,8 @@ export async function* streamChat(deps: StreamChatDeps): AsyncGenerator<SseEvent
   const userMsg = await prisma.message.create({
     data: { threadId: thread.id, userId, role: 'user', text, langDetect: lang },
   });
+  // bump lastMsgAt now so the thread reflects the user's turn even if the LLM call fails below
+  await prisma.thread.update({ where: { id: thread.id }, data: { lastMsgAt: userMsg.createdAt } });
   yield { event: 'user_message_saved', data: { messageId: userMsg.id, createdAt: userMsg.createdAt } };
   yield { event: 'typing_start', data: { npcId } };
 

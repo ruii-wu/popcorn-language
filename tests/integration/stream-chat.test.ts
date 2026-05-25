@@ -77,4 +77,20 @@ describe('streamChat', () => {
     expect(names).toContain('error');
     expect(names[names.length - 1]).toBe('done');
   });
+
+  it('updates thread.lastMsgAt even when the LLM fails on the first turn', async () => {
+    const U2 = U + '_err';
+    await prisma.user.deleteMany({ where: { username: U2 } });
+    const user = await prisma.user.create({ data: { username: U2, password: 'pw' } });
+    const ollama = new OllamaClient({ fetchImpl: vi.fn().mockRejectedValue(new Error('down')) });
+
+    const events: SseEvent[] = [];
+    for await (const e of streamChat({ prisma, ollama, userId: user.id, npcId: 'lily', text: 'hi' })) {
+      events.push(e);
+    }
+
+    const thread = await prisma.thread.findUnique({ where: { userId_npcId: { userId: user.id, npcId: 'lily' } } });
+    expect(thread?.lastMsgAt).not.toBeNull();
+    await prisma.user.delete({ where: { id: user.id } });
+  });
 });

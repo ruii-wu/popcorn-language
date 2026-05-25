@@ -42,6 +42,17 @@ describe('thread history', () => {
     expect(page2.hasMore).toBe(false);
   });
 
+  it('ignores a before cursor that belongs to a different thread', async () => {
+    const user = await prisma.user.findFirstOrThrow({ where: { username: U } });
+    const otherThread = await prisma.thread.create({ data: { userId: user.id, npcId: 'emma' } });
+    const foreign = await prisma.message.create({
+      data: { threadId: otherThread.id, userId: null, role: 'npc', text: 'foreign', createdAt: new Date(Date.now() - 100000) },
+    });
+    const data = await (await history(get(user.id, `?before=${foreign.id}`), { params: { npcId: 'lily' } })).json();
+    // foreign cursor is scoped out, so all 5 lily messages return (the bug would steer to an empty page)
+    expect(data.messages.map((m: { text: string }) => m.text)).toEqual(['m0', 'm1', 'm2', 'm3', 'm4']);
+  });
+
   it('DELETE clears the thread messages', async () => {
     const user = await prisma.user.findFirstOrThrow({ where: { username: U } });
     expect((await (await clearThread(del(user.id), { params: { npcId: 'lily' } })).json()).ok).toBe(true);
