@@ -39,4 +39,33 @@ export class OllamaClient {
       return { reachable: false, model: this.chatModel, modelInstalled: false, latencyMs: Date.now() - started };
     }
   }
+
+  async *chat(
+    messages: ChatMessage[],
+    opts: { model?: string; options?: Record<string, unknown> } = {},
+  ): AsyncGenerator<string> {
+    const res = await this.fetchImpl(`${this.baseUrl}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: opts.model ?? this.chatModel, messages, stream: true, options: opts.options }),
+    });
+    if (!res.ok || !res.body) throw new OllamaError(`chat failed: HTTP ${res.status}`);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let nl: number;
+      while ((nl = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, nl).trim();
+        buf = buf.slice(nl + 1);
+        if (!line) continue;
+        const obj = JSON.parse(line) as { message?: { content?: string }; done?: boolean };
+        if (obj.message?.content) yield obj.message.content;
+        if (obj.done) return;
+      }
+    }
+  }
 }
