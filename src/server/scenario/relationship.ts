@@ -1,5 +1,8 @@
 // src/server/scenario/relationship.ts
 import type { PrismaClient } from '@prisma/client';
+import { stageForPoints } from '@/server/relationship/stage';
+
+export { stageForPoints };
 
 const GRADE_POINTS: Record<string, number> = {
   'A+': 15, A: 12, 'A-': 10, 'B+': 9, B: 8, 'B-': 6, C: 3, '—': 0,
@@ -9,15 +12,8 @@ export function gradePoints(grade: string): number {
   return GRADE_POINTS[grade] ?? 0;
 }
 
-export function stageForPoints(points: number): { stage: string; stageValue: number } {
-  if (points >= 70) return { stage: 'close', stageValue: 3 };
-  if (points >= 30) return { stage: 'friend', stageValue: 2 };
-  return { stage: 'acquaintance', stageValue: 1 };
-}
-
 // Applies a completed scenario's grade to the relationship: add points, recompute stage,
 // record a RelationshipEvent on a stage-up. Returns the stage change for the SSE payload, or null.
-// (W4 owns only the scenario-outcome recompute; general per-message progression is W5.)
 export async function applyScenarioOutcome(
   prisma: PrismaClient,
   userId: string,
