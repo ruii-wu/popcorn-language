@@ -4,7 +4,7 @@ import type { OllamaClient } from '@/server/llm/ollama';
 import { canTransition } from './transitions';
 import { initState, type ScenarioState } from './state';
 import { buildScenarioMessages } from './prompt';
-import { ScenarioTurnSchema } from './schemas';
+import { ScenarioTurnSchema, type ScenarioTurnJson } from './schemas';
 import { resolveRole } from './role';
 import { mapSessionDetail, type SessionDetail } from './sessionView';
 
@@ -51,9 +51,10 @@ export async function acceptScenario(deps: AcceptDeps): Promise<AcceptResult> {
     opening: true,
   });
 
-  let turn;
+  let turn: ScenarioTurnJson;
   try {
-    turn = await ollama.chatJson(messages, ScenarioTurnSchema, { options: { temperature: 0.7 } });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    turn = await ollama.chatJson(messages, ScenarioTurnSchema as any, { options: { temperature: 0.7 } });
   } catch (e) {
     console.error('[scenario] opening generation failed, using fallback', e);
     turn = {
