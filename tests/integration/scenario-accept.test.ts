@@ -53,6 +53,16 @@ describe('acceptScenario', () => {
     expect(accepted).toBe(1);
   });
 
+  it('still activates with a fallback opening when the LLM fails', async () => {
+    const { user, session } = await invitedSession();
+    const ollama = { chatJson: vi.fn().mockRejectedValue(new Error('LLM down')), embed: vi.fn() };
+    const result = await acceptScenario({ prisma, ollama, userId: user.id, sessionId: session.id });
+    expect(result.openingMessage.text.length).toBeGreaterThan(0);
+    expect((await prisma.scenarioSession.findUniqueOrThrow({ where: { id: session.id } })).status).toBe('active');
+    const turn0 = await prisma.scenarioTurn.findUniqueOrThrow({ where: { sessionId_turnIndex: { sessionId: session.id, turnIndex: 0 } } });
+    expect(turn0.npcMessageId).not.toBeNull();
+  });
+
   it('rejects a foreign session (isolation) and a non-invited session', async () => {
     const { session } = await invitedSession();
     const ollama = { chatJson: vi.fn(), embed: vi.fn() };

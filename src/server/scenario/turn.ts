@@ -3,7 +3,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { OllamaClient } from '@/server/llm/ollama';
 import type { SseEvent } from '@/server/sse/events';
 import type { ZodType } from 'zod';
-import { applyDelta, type ScenarioState, type Stress } from './state';
+import { applyDelta, type ScenarioState } from './state';
 import { buildScenarioMessages } from './prompt';
 import { ScenarioTurnSchema, type ScenarioTurnJson } from './schemas';
 import { resolveRole } from './role';
@@ -22,7 +22,7 @@ export interface TurnDeps {
 function fallbackTurn(state: ScenarioState): ScenarioTurnJson {
   return {
     npcReply: '(One moment — let me follow up on that.) Could you say a bit more?',
-    stateDelta: { impression: 0, stress: state.stress as Stress },
+    stateDelta: { impression: 0, stress: state.stress },
     isFinalTurn: false,
     suggestedChoicesNext: [
       { id: 'fb1', text: 'Sure — let me explain.', tone: 'Reflective', desc: '' },
@@ -111,7 +111,12 @@ export async function* runScenarioTurn(deps: TurnDeps): AsyncGenerator<SseEvent>
   if (!isFinal) {
     yield { event: 'choices', data: { choices: turn.suggestedChoicesNext } };
   } else {
-    yield* runScenarioEnd({ prisma, ollama, session, state: stateAfter });
+    try {
+      yield* runScenarioEnd({ prisma, ollama, session, state: stateAfter });
+    } catch (e) {
+      console.error('[scenario] end flow failed', e);
+      yield { event: 'error', data: { code: 'END_FAILED', message: String(e) } };
+    }
   }
 
   yield { event: 'done', data: {} };
