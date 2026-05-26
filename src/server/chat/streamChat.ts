@@ -7,6 +7,7 @@ import { recallForPrompt } from '@/server/memory/recall';
 import { runPostTurnMemory } from '@/server/memory/postTurn';
 import { maybeOfferScenario } from '@/server/scenario/offer';
 import { applyMessageProgression } from '@/server/relationship/progression';
+import { correctGrammar } from '@/server/correction/grammar';
 
 const RECENT_BUFFER = 10;
 
@@ -102,6 +103,21 @@ export async function* streamChat(deps: StreamChatDeps): AsyncGenerator<SseEvent
     data: { userId, type: 'message_sent', payload: JSON.stringify({ npcId }) },
   });
   await applyMessageProgression(prisma, userId, npcId);
+
+  // Grammar correction — gated by settings (default on), guarded. Targets the user's message.
+  try {
+    const settings = await prisma.userSettings.findUnique({ where: { userId } });
+    if (settings?.grammarCorrection !== false) {
+      const correction = await correctGrammar({ ollama, userText: text, npcPrev: full });
+      if (correction) {
+        const payload = { fixed: correction.fixed, noteZh: correction.noteZh, tag: correction.tag };
+        await prisma.message.update({ where: { id: userMsg.id }, data: { correction: JSON.stringify(payload) } });
+        yield { event: 'correction', data: { targetMessageId: userMsg.id, correction: payload } };
+      }
+    }
+  } catch (e) {
+    console.error('[correction] failed', e);
+  }
 
   await runPostTurnMemory({ prisma, ollama, userId, threadId: thread.id, userText: text, userMsgId: userMsg.id });
 
