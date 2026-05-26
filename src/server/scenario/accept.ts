@@ -1,6 +1,7 @@
 // src/server/scenario/accept.ts
 import type { PrismaClient } from '@prisma/client';
 import type { OllamaClient } from '@/server/llm/ollama';
+import type { ZodType } from 'zod';
 import { canTransition } from './transitions';
 import { initState, type ScenarioState } from './state';
 import { buildScenarioMessages } from './prompt';
@@ -53,8 +54,7 @@ export async function acceptScenario(deps: AcceptDeps): Promise<AcceptResult> {
 
   let turn: ScenarioTurnJson;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    turn = await ollama.chatJson(messages, ScenarioTurnSchema as any, { options: { temperature: 0.7 } });
+    turn = await ollama.chatJson(messages, ScenarioTurnSchema as unknown as ZodType<ScenarioTurnJson>, { options: { temperature: 0.7 } });
   } catch (e) {
     console.error('[scenario] opening generation failed, using fallback', e);
     turn = {

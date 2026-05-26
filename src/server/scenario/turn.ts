@@ -2,6 +2,7 @@
 import type { PrismaClient } from '@prisma/client';
 import type { OllamaClient } from '@/server/llm/ollama';
 import type { SseEvent } from '@/server/sse/events';
+import type { ZodType } from 'zod';
 import { applyDelta, type ScenarioState, type Stress } from './state';
 import { buildScenarioMessages } from './prompt';
 import { ScenarioTurnSchema, type ScenarioTurnJson } from './schemas';
@@ -77,8 +78,7 @@ export async function* runScenarioTurn(deps: TurnDeps): AsyncGenerator<SseEvent>
 
   let turn: ScenarioTurnJson;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    turn = await ollama.chatJson(messages, ScenarioTurnSchema as any, { options: { temperature: 0.7 } });
+    turn = await ollama.chatJson(messages, ScenarioTurnSchema as unknown as ZodType<ScenarioTurnJson>, { options: { temperature: 0.7 } });
   } catch (e) {
     console.error('[scenario] turn generation failed, using fallback', e);
     turn = fallbackTurn(state);
