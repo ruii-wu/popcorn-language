@@ -5,6 +5,7 @@ import { buildSystemPrompt } from '@/server/prompt/builder';
 import { detectLang } from '@/server/text/langDetect';
 import { recallForPrompt } from '@/server/memory/recall';
 import { runPostTurnMemory } from '@/server/memory/postTurn';
+import { maybeOfferScenario } from '@/server/scenario/offer';
 
 const RECENT_BUFFER = 10;
 
@@ -109,6 +110,14 @@ export async function* streamChat(deps: StreamChatDeps): AsyncGenerator<SseEvent
   });
 
   await runPostTurnMemory({ prisma, ollama, userId, threadId: thread.id, userText: text, userMsgId: userMsg.id });
+
+  // B3 trigger: offer a scenario when the relationship + topic line up. Guarded — never breaks the chat turn.
+  try {
+    const offer = await maybeOfferScenario({ prisma, userId, npcId, threadId: thread.id, text });
+    if (offer) yield { event: 'scenario_offer', data: offer };
+  } catch (e) {
+    console.error('[scenario] offer failed', e);
+  }
 
   yield { event: 'done', data: {} };
 }
