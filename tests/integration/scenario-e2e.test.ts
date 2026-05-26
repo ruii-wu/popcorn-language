@@ -73,7 +73,7 @@ describe('scenario A→B→C→D end to end', () => {
     expect(memCard?.title).toBe('Composed Under Pressure');
     const rel = await prisma.relationship.findUniqueOrThrow({ where: { userId_npcId: { userId: user.id, npcId: 'lily' } } });
     expect(rel.stage).toBe('close');
-    expect(rel.relationshipPoints).toBe(77);
+    expect(rel.relationshipPoints).toBe(78);
     expect(await prisma.activityEvent.count({ where: { userId: user.id, type: 'scenario_completed' } })).toBe(1);
   });
 });

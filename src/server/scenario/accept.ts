@@ -22,7 +22,6 @@ export interface AcceptDeps {
 
 export interface AcceptResult {
   session: SessionDetail['session'];
-  sessionDetail: SessionDetail;
   openingMessage: { id: string; text: string };
   choices: unknown[];
   state: ScenarioState;
@@ -93,7 +92,6 @@ export async function acceptScenario(deps: AcceptDeps): Promise<AcceptResult> {
   const detail = mapSessionDetail(fresh, []);
   return {
     session: detail.session,
-    sessionDetail: detail,
     openingMessage: { id: npcMsg.id, text: turn.npcReply },
     choices: turn.suggestedChoicesNext,
     state,
