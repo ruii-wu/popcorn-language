@@ -8,6 +8,7 @@ import { runPostTurnMemory } from '@/server/memory/postTurn';
 import { maybeOfferScenario } from '@/server/scenario/offer';
 import { applyMessageProgression } from '@/server/relationship/progression';
 import { correctGrammar } from '@/server/correction/grammar';
+import { runAchievementTick } from '@/server/achievements/engine';
 
 const RECENT_BUFFER = 10;
 
@@ -118,6 +119,9 @@ export async function* streamChat(deps: StreamChatDeps): AsyncGenerator<SseEvent
   } catch (e) {
     console.error('[correction] failed', e);
   }
+
+  // Achievement engine tick (guarded internally; returns [] on any failure).
+  await runAchievementTick(prisma, userId);
 
   await runPostTurnMemory({ prisma, ollama, userId, threadId: thread.id, userText: text, userMsgId: userMsg.id });
 

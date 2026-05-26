@@ -61,6 +61,9 @@ describe('streamChat', () => {
     expect(rel?.relationshipPoints).toBe(1);
     const act = await prisma.activityEvent.count({ where: { userId: user.id, type: 'message_sent' } });
     expect(act).toBe(1);
+
+    // W5: the achievement tick runs after a chat turn
+    expect(await prisma.userAchievement.count({ where: { userId: user.id, achievementId: 'first_chat' } })).toBe(1);
   });
 
   it('emits an error event (not a throw) when the model is unreachable', async () => {
