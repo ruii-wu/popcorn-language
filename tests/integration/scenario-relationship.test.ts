@@ -47,4 +47,18 @@ describe('scenario relationship outcome', () => {
     const change = await applyScenarioOutcome(prisma, user.id, 'lily', 'C', 'Mock Interview');
     expect(change).toBeNull();
   });
+
+  it('never downgrades a stage that outranks its points (monotonic)', async () => {
+    const U2 = U + '_mono';
+    await prisma.user.deleteMany({ where: { username: U2 } });
+    const user = await prisma.user.create({ data: { username: U2, password: 'pw' } });
+    // friend stage but only 5 points; a '—' (0-point) outcome must NOT recompute it to acquaintance.
+    await prisma.relationship.create({ data: { userId: user.id, npcId: 'lily', stage: 'friend', stageValue: 2, relationshipPoints: 5 } });
+    const change = await applyScenarioOutcome(prisma, user.id, 'lily', '—', 'Mock Interview');
+    expect(change).toBeNull();
+    const rel = await prisma.relationship.findUniqueOrThrow({ where: { userId_npcId: { userId: user.id, npcId: 'lily' } } });
+    expect(rel.stage).toBe('friend');
+    expect(rel.stageValue).toBe(2);
+    await prisma.user.delete({ where: { id: user.id } });
+  });
 });

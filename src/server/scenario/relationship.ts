@@ -28,15 +28,18 @@ export async function applyScenarioOutcome(
   });
 
   const points = rel.relationshipPoints + gradePoints(grade);
-  const next = stageForPoints(points);
-  const changed = next.stageValue > rel.stageValue;
+  const computed = stageForPoints(points);
+  // Stage is monotonic — a scenario outcome can only raise it, never lower it (reverse decay is P1).
+  const changed = computed.stageValue > rel.stageValue;
+  const stage = changed ? computed.stage : rel.stage;
+  const stageValue = changed ? computed.stageValue : rel.stageValue;
 
   await prisma.relationship.update({
     where: { id: rel.id },
     data: {
       relationshipPoints: points,
-      stage: next.stage,
-      stageValue: next.stageValue,
+      stage,
+      stageValue,
       scenarioCount: { increment: 1 },
       lastInteractionAt: new Date(),
     },
@@ -45,7 +48,7 @@ export async function applyScenarioOutcome(
   if (!changed) return null;
 
   await prisma.relationshipEvent.create({
-    data: { relationshipId: rel.id, fromStage: rel.stage, toStage: next.stage, reason: `scenario_completed:${scenarioTitle}` },
+    data: { relationshipId: rel.id, fromStage: rel.stage, toStage: computed.stage, reason: `scenario_completed:${scenarioTitle}` },
   });
-  return { from: rel.stage, to: next.stage };
+  return { from: rel.stage, to: computed.stage };
 }
