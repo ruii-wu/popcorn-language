@@ -7,7 +7,13 @@ export const CorrectionSchema = z.object({
   noteZh: z.string().default(''),
   tag: z.string().default(''),
 });
-export type Correction = z.infer<typeof CorrectionSchema>;
+
+export interface Correction {
+  hasIssue: boolean;
+  fixed: string;
+  noteZh: string;
+  tag: string;
+}
 
 const SYSTEM_PROMPT =
   'You are an English writing coach for a Chinese-speaking learner. ' +
@@ -33,7 +39,13 @@ export async function correctGrammar(deps: CorrectionDeps): Promise<Correction |
     { role: 'user', content: (deps.npcPrev ? `NPC said: ${deps.npcPrev}\n\n` : '') + `Learner said: ${deps.userText}` },
   ];
   try {
-    const out = await deps.ollama.chatJson(messages, CorrectionSchema);
+    const raw = await deps.ollama.chatJson(messages, CorrectionSchema);
+    const out: Correction = {
+      hasIssue: raw.hasIssue,
+      fixed: raw.fixed ?? '',
+      noteZh: raw.noteZh ?? '',
+      tag: raw.tag ?? '',
+    };
     if (!out.hasIssue || !out.fixed.trim()) return null;
     return out;
   } catch (e) {
