@@ -60,4 +60,17 @@ describe('applyMessageProgression', () => {
     const r = await sendOnce(user.id, 'chen');
     expect(r.pointsAwarded).toBe(1);
   });
+
+  it('never downgrades a stage that outranks its points (monotonic — no reverse decay)', async () => {
+    const user = await prisma.user.create({ data: { username: U, password: 'pw' } });
+    // friend stage but only 0 points (e.g. set by a scenario fixture); a +1 chat point must NOT
+    // recompute it down to acquaintance.
+    await prisma.relationship.create({ data: { userId: user.id, npcId: 'lily', stage: 'friend', stageValue: 2, relationshipPoints: 0 } });
+    const r = await sendOnce(user.id, 'lily');
+    expect(r.stageChange).toBeNull();
+    const rel = await prisma.relationship.findUniqueOrThrow({ where: { userId_npcId: { userId: user.id, npcId: 'lily' } } });
+    expect(rel.stage).toBe('friend');
+    expect(rel.stageValue).toBe(2);
+    expect(rel.relationshipPoints).toBe(1);
+  });
 });

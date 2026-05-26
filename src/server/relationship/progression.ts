@@ -43,15 +43,19 @@ export async function applyMessageProgression(
 
   const pointsAwarded = countForNpc <= DAILY_POINT_CAP ? MESSAGE_POINT : 0;
   const points = rel.relationshipPoints + pointsAwarded;
-  const next = stageForPoints(points);
-  const changed = next.stageValue > rel.stageValue;
+  const computed = stageForPoints(points);
+  // Stage is monotonic: chatting can only raise it, never lower it. Reverse decay is P1 (spec §七 M5),
+  // so a relationship whose stage outranks its points (e.g. set by a scenario fixture) is left intact.
+  const changed = computed.stageValue > rel.stageValue;
+  const stage = changed ? computed.stage : rel.stage;
+  const stageValue = changed ? computed.stageValue : rel.stageValue;
 
   await prisma.relationship.update({
     where: { id: rel.id },
     data: {
       relationshipPoints: points,
-      stage: next.stage,
-      stageValue: next.stageValue,
+      stage,
+      stageValue,
       conversationCount: { increment: 1 },
       lastInteractionAt: now,
     },
@@ -60,10 +64,10 @@ export async function applyMessageProgression(
   if (!changed) return { pointsAwarded, relationshipPoints: points, stageChange: null };
 
   await prisma.relationshipEvent.create({
-    data: { relationshipId: rel.id, fromStage: rel.stage, toStage: next.stage, reason: 'msg_count_threshold' },
+    data: { relationshipId: rel.id, fromStage: rel.stage, toStage: computed.stage, reason: 'msg_count_threshold' },
   });
   await prisma.activityEvent.create({
-    data: { userId, type: 'relationship_up', payload: JSON.stringify({ npcId, from: rel.stage, to: next.stage }) },
+    data: { userId, type: 'relationship_up', payload: JSON.stringify({ npcId, from: rel.stage, to: computed.stage }) },
   });
-  return { pointsAwarded, relationshipPoints: points, stageChange: { from: rel.stage, to: next.stage } };
+  return { pointsAwarded, relationshipPoints: points, stageChange: { from: rel.stage, to: computed.stage } };
 }
