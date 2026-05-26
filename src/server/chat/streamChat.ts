@@ -6,6 +6,7 @@ import { detectLang } from '@/server/text/langDetect';
 import { recallForPrompt } from '@/server/memory/recall';
 import { runPostTurnMemory } from '@/server/memory/postTurn';
 import { maybeOfferScenario } from '@/server/scenario/offer';
+import { applyMessageProgression } from '@/server/relationship/progression';
 
 const RECENT_BUFFER = 10;
 
@@ -97,17 +98,10 @@ export async function* streamChat(deps: StreamChatDeps): AsyncGenerator<SseEvent
   yield { event: 'message_complete', data: { messageId: npcMsg.id, fullText: full } };
 
   await prisma.thread.update({ where: { id: thread.id }, data: { lastMsgAt: npcMsg.createdAt } });
-  await prisma.relationship.update({
-    where: { id: rel.id },
-    data: {
-      conversationCount: { increment: 1 },
-      relationshipPoints: { increment: 1 },
-      lastInteractionAt: new Date(),
-    },
-  });
   await prisma.activityEvent.create({
     data: { userId, type: 'message_sent', payload: JSON.stringify({ npcId }) },
   });
+  await applyMessageProgression(prisma, userId, npcId);
 
   await runPostTurnMemory({ prisma, ollama, userId, threadId: thread.id, userText: text, userMsgId: userMsg.id });
 

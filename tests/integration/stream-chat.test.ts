@@ -93,4 +93,23 @@ describe('streamChat', () => {
     expect(thread?.lastMsgAt).not.toBeNull();
     await prisma.user.delete({ where: { id: user.id } });
   });
+
+  it('levels up the relationship from a casual chat when points cross a threshold', async () => {
+    const U3 = U + '_levelup';
+    await prisma.user.deleteMany({ where: { username: U3 } });
+    const user = await prisma.user.create({ data: { username: U3, password: 'pw' } });
+    await prisma.relationship.create({ data: { userId: user.id, npcId: 'lily', stage: 'acquaintance', stageValue: 1, relationshipPoints: 29 } });
+
+    const fetchImpl = vi.fn().mockResolvedValue(
+      ndjsonResponse([JSON.stringify({ message: { content: 'hey!' }, done: true })]),
+    );
+    const ollama = new OllamaClient({ fetchImpl });
+    for await (const _e of streamChat({ prisma, ollama, userId: user.id, npcId: 'lily', text: 'good morning' })) void _e;
+
+    const rel = await prisma.relationship.findUniqueOrThrow({ where: { userId_npcId: { userId: user.id, npcId: 'lily' } } });
+    expect(rel.relationshipPoints).toBe(30);
+    expect(rel.stage).toBe('friend');
+    expect(await prisma.relationshipEvent.count({ where: { relationshipId: rel.id, toStage: 'friend' } })).toBe(1);
+    await prisma.user.delete({ where: { id: user.id } });
+  });
 });
