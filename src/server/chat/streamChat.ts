@@ -97,27 +97,33 @@ export async function* streamChat(deps: StreamChatDeps): AsyncGenerator<SseEvent
   yield { event: 'message_complete', data: { messageId: npcMsg.id, fullText: full } };
 
   await prisma.thread.update({ where: { id: thread.id }, data: { lastMsgAt: npcMsg.createdAt } });
+
+  await runPostTurnMemory({ prisma, ollama, userId, threadId: thread.id, userText: text, userMsgId: userMsg.id });
+
+  // B3 trigger: offer a scenario when the relationship + topic line up. Guarded — never breaks the chat turn.
+  // When a scenario is offered the relationship +1 is skipped — the scenario outcome provides the relationship reward instead.
+  let scenarioOffered = false;
+  try {
+    const offer = await maybeOfferScenario({ prisma, userId, npcId, threadId: thread.id, text });
+    if (offer) {
+      scenarioOffered = true;
+      yield { event: 'scenario_offer', data: offer };
+    }
+  } catch (e) {
+    console.error('[scenario] offer failed', e);
+  }
+
   await prisma.relationship.update({
     where: { id: rel.id },
     data: {
       conversationCount: { increment: 1 },
-      relationshipPoints: { increment: 1 },
+      ...(scenarioOffered ? {} : { relationshipPoints: { increment: 1 } }),
       lastInteractionAt: new Date(),
     },
   });
   await prisma.activityEvent.create({
     data: { userId, type: 'message_sent', payload: JSON.stringify({ npcId }) },
   });
-
-  await runPostTurnMemory({ prisma, ollama, userId, threadId: thread.id, userText: text, userMsgId: userMsg.id });
-
-  // B3 trigger: offer a scenario when the relationship + topic line up. Guarded — never breaks the chat turn.
-  try {
-    const offer = await maybeOfferScenario({ prisma, userId, npcId, threadId: thread.id, text });
-    if (offer) yield { event: 'scenario_offer', data: offer };
-  } catch (e) {
-    console.error('[scenario] offer failed', e);
-  }
 
   yield { event: 'done', data: {} };
 }

@@ -21,7 +21,8 @@ export interface AcceptDeps {
 }
 
 export interface AcceptResult {
-  session: SessionDetail;
+  session: SessionDetail['session'];
+  sessionDetail: SessionDetail;
   openingMessage: { id: string; text: string };
   choices: unknown[];
   state: ScenarioState;
@@ -89,8 +90,10 @@ export async function acceptScenario(deps: AcceptDeps): Promise<AcceptResult> {
   const fresh = await prisma.scenarioSession.findUniqueOrThrow({
     where: { id: session.id }, include: { template: true, summary: true },
   });
+  const detail = mapSessionDetail(fresh, []);
   return {
-    session: mapSessionDetail(fresh, []),
+    session: detail.session,
+    sessionDetail: detail,
     openingMessage: { id: npcMsg.id, text: turn.npcReply },
     choices: turn.suggestedChoicesNext,
     state,
