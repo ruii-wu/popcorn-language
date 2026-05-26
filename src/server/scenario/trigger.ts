@@ -47,7 +47,12 @@ export async function judgeScenarioTrigger(
       where: { userId, npcId, templateId: t.id, status: 'declined' },
     });
     if (declined) continue; // don't nag after a decline (re-offer tuning deferred)
-    const keywords = JSON.parse(t.topicKeywords) as string[];
+    let keywords: string[];
+    try {
+      keywords = JSON.parse(t.topicKeywords) as string[];
+    } catch {
+      continue; // skip a template with a corrupt topicKeywords value
+    }
     const matched = keywords.find((k) => lower.includes(k.toLowerCase()));
     if (!matched) continue;
     return { template: t, rationale: { topicMatch: matched, turnCount: userTurns, stage: rel?.stage ?? 'acquaintance' } };

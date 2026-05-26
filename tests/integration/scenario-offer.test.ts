@@ -31,11 +31,15 @@ describe('maybeOfferScenario', () => {
     expect(inv?.text).toContain('Mock Interview');
   });
 
-  it('returns null when nothing matches', async () => {
-    const user = await prisma.user.findFirstOrThrow({ where: { username: U } });
-    const thread = await prisma.thread.findFirstOrThrow({ where: { userId: user.id, npcId: 'lily' } });
-    // an open session now exists from the previous test → blocked
-    const offer = await maybeOfferScenario({ prisma, userId: user.id, npcId: 'lily', threadId: thread.id, text: 'interview' });
+  it('returns null when an open session already blocks a new offer', async () => {
+    await prisma.user.deleteMany({ where: { username: U } });
+    const user = await prisma.user.create({ data: { username: U, password: 'pw' } });
+    const thread = await prisma.thread.create({ data: { userId: user.id, npcId: 'lily' } });
+    await prisma.relationship.create({ data: { userId: user.id, npcId: 'lily', stage: 'friend', stageValue: 2 } });
+    for (let i = 0; i < 4; i++) await prisma.message.create({ data: { threadId: thread.id, userId: user.id, role: 'user', text: `m${i}` } });
+    await prisma.scenarioSession.create({ data: { userId: user.id, npcId: 'lily', threadId: thread.id, templateId: 'mock_interview', status: 'invited' } });
+
+    const offer = await maybeOfferScenario({ prisma, userId: user.id, npcId: 'lily', threadId: thread.id, text: 'interview please' });
     expect(offer).toBeNull();
   });
 });

@@ -16,7 +16,13 @@ interface TemplateLike {
 }
 
 export function buildInvitationDraft(template: TemplateLike, rationale: TriggerRationale): InvitationDraft {
-  const tags = (JSON.parse(template.registerTags) as string[]).join(', ');
+  let tagList: string[] = [];
+  try {
+    tagList = JSON.parse(template.registerTags) as string[];
+  } catch {
+    tagList = [];
+  }
+  const tags = tagList.join(', ');
   return {
     title: template.title,
     detail: `A short roleplay to practise: ${tags || 'real-world register'}.`,
