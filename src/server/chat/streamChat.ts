@@ -6,6 +6,9 @@ import { detectLang } from '@/server/text/langDetect';
 import { recallForPrompt } from '@/server/memory/recall';
 import { runPostTurnMemory } from '@/server/memory/postTurn';
 import { maybeOfferScenario } from '@/server/scenario/offer';
+import { applyMessageProgression } from '@/server/relationship/progression';
+import { correctGrammar } from '@/server/correction/grammar';
+import { runAchievementTick } from '@/server/achievements/engine';
 
 const RECENT_BUFFER = 10;
 
@@ -97,17 +100,28 @@ export async function* streamChat(deps: StreamChatDeps): AsyncGenerator<SseEvent
   yield { event: 'message_complete', data: { messageId: npcMsg.id, fullText: full } };
 
   await prisma.thread.update({ where: { id: thread.id }, data: { lastMsgAt: npcMsg.createdAt } });
-  await prisma.relationship.update({
-    where: { id: rel.id },
-    data: {
-      conversationCount: { increment: 1 },
-      relationshipPoints: { increment: 1 },
-      lastInteractionAt: new Date(),
-    },
-  });
   await prisma.activityEvent.create({
     data: { userId, type: 'message_sent', payload: JSON.stringify({ npcId }) },
   });
+  await applyMessageProgression(prisma, userId, npcId);
+
+  // Grammar correction — gated by settings (default on), guarded. Targets the user's message.
+  try {
+    const settings = await prisma.userSettings.findUnique({ where: { userId } });
+    if (settings?.grammarCorrection !== false) {
+      const correction = await correctGrammar({ ollama, userText: text, npcPrev: full });
+      if (correction) {
+        const payload = { fixed: correction.fixed, noteZh: correction.noteZh, tag: correction.tag };
+        await prisma.message.update({ where: { id: userMsg.id }, data: { correction: JSON.stringify(payload) } });
+        yield { event: 'correction', data: { targetMessageId: userMsg.id, correction: payload } };
+      }
+    }
+  } catch (e) {
+    console.error('[correction] failed', e);
+  }
+
+  // Achievement engine tick (guarded internally; returns [] on any failure).
+  await runAchievementTick(prisma, userId);
 
   await runPostTurnMemory({ prisma, ollama, userId, threadId: thread.id, userText: text, userMsgId: userMsg.id });
 

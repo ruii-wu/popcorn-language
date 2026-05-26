@@ -61,6 +61,9 @@ describe('streamChat', () => {
     expect(rel?.relationshipPoints).toBe(1);
     const act = await prisma.activityEvent.count({ where: { userId: user.id, type: 'message_sent' } });
     expect(act).toBe(1);
+
+    // W5: the achievement tick runs after a chat turn
+    expect(await prisma.userAchievement.count({ where: { userId: user.id, achievementId: 'first_chat' } })).toBe(1);
   });
 
   it('emits an error event (not a throw) when the model is unreachable', async () => {
@@ -91,6 +94,25 @@ describe('streamChat', () => {
 
     const thread = await prisma.thread.findUnique({ where: { userId_npcId: { userId: user.id, npcId: 'lily' } } });
     expect(thread?.lastMsgAt).not.toBeNull();
+    await prisma.user.delete({ where: { id: user.id } });
+  });
+
+  it('levels up the relationship from a casual chat when points cross a threshold', async () => {
+    const U3 = U + '_levelup';
+    await prisma.user.deleteMany({ where: { username: U3 } });
+    const user = await prisma.user.create({ data: { username: U3, password: 'pw' } });
+    await prisma.relationship.create({ data: { userId: user.id, npcId: 'lily', stage: 'acquaintance', stageValue: 1, relationshipPoints: 29 } });
+
+    const fetchImpl = vi.fn().mockResolvedValue(
+      ndjsonResponse([JSON.stringify({ message: { content: 'hey!' }, done: true })]),
+    );
+    const ollama = new OllamaClient({ fetchImpl });
+    for await (const _e of streamChat({ prisma, ollama, userId: user.id, npcId: 'lily', text: 'good morning' })) void _e;
+
+    const rel = await prisma.relationship.findUniqueOrThrow({ where: { userId_npcId: { userId: user.id, npcId: 'lily' } } });
+    expect(rel.relationshipPoints).toBe(30);
+    expect(rel.stage).toBe('friend');
+    expect(await prisma.relationshipEvent.count({ where: { relationshipId: rel.id, toStage: 'friend' } })).toBe(1);
     await prisma.user.delete({ where: { id: user.id } });
   });
 });

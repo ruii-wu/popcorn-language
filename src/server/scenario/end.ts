@@ -6,6 +6,7 @@ import type { ScenarioState } from './state';
 import { ScenarioSummarySchema, type ScenarioSummaryJson } from './schemas';
 import { applyScenarioOutcome } from './relationship';
 import { generateMemoryCard } from '@/server/memory/memoryCard';
+import { runAchievementTick } from '@/server/achievements/engine';
 
 const GRADES = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C', '—'];
 
@@ -78,6 +79,7 @@ export async function* runScenarioEnd(deps: EndDeps): AsyncGenerator<SseEvent> {
     data: { userId: session.userId, type: 'scenario_completed', payload: JSON.stringify({ sessionId: session.id, grade }) },
   });
   await prisma.scenarioSession.update({ where: { id: session.id }, data: { status: 'completed', endedAt: new Date() } });
+  await runAchievementTick(prisma, session.userId);
 
   yield {
     event: 'scenario_end',
