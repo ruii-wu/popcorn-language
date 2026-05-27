@@ -8,7 +8,7 @@ export interface RelationshipCard {
   stageValue: number;
   sub: string;
   note: string | null;
-  last: Date | null;
+  last: string | null;
 }
 
 const SUB_LABEL: Record<string, string> = {
@@ -38,7 +38,7 @@ export async function buildRelationshipCards(prisma: PrismaClient, userId: strin
       stageValue: rel?.stageValue ?? 1,
       sub: SUB_LABEL[stage] ?? 'Acquaintance',
       note: ev ? `${ev.fromStage} → ${ev.toStage}` : null,
-      last: rel?.lastInteractionAt ?? null,
+      last: rel?.lastInteractionAt?.toISOString() ?? null,
     };
   });
 }
