@@ -27,6 +27,34 @@ export class OllamaClient {
     this.fetchImpl = opts.fetchImpl ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
   }
 
+  async listModels(): Promise<{ name: string; sizeGB: number; loaded: boolean }[]> {
+    try {
+      const res = await this.fetchImpl(`${this.baseUrl}/api/tags`, { method: 'GET' });
+      if (!res.ok) return [];
+      const data = (await res.json()) as { models?: { name: string; size?: number }[] };
+      const installed = Array.isArray(data.models) ? data.models : [];
+
+      let loaded = new Set<string>();
+      try {
+        const ps = await this.fetchImpl(`${this.baseUrl}/api/ps`, { method: 'GET' });
+        if (ps.ok) {
+          const pd = (await ps.json()) as { models?: { name: string }[] };
+          loaded = new Set((pd.models ?? []).map((m) => m.name));
+        }
+      } catch {
+        /* /api/ps is optional — leave loaded empty on failure */
+      }
+
+      return installed.map((m) => ({
+        name: m.name,
+        sizeGB: typeof m.size === 'number' ? Math.round((m.size / 1e9) * 10) / 10 : 0,
+        loaded: loaded.has(m.name),
+      }));
+    } catch {
+      return [];
+    }
+  }
+
   async health(): Promise<HealthInfo> {
     const started = Date.now();
     try {
