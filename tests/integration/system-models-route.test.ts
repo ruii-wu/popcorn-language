@@ -6,7 +6,7 @@ import { SESSION_COOKIE } from '@/server/auth/session';
 const withUid = (uid: string) => new Request('http://x/', { headers: { cookie: `${SESSION_COOKIE}=${uid}` } });
 const ok = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); });
 
 describe('GET /api/system/models', () => {
   it('401s without a cookie', async () => {
