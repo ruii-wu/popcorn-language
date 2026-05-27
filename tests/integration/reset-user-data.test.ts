@@ -53,6 +53,8 @@ describe('resetUserData', () => {
     expect(await prisma.relationship.count({ where: { userId: b.id } })).toBe(1);
     expect(await prisma.message.count({ where: { userId: b.id } })).toBe(1);
     expect(await prisma.memory.count({ where: { userId: b.id } })).toBe(1);
+    expect(await prisma.memoryFact.count({ where: { userId: b.id } })).toBe(1);
+    expect(await prisma.userAchievement.count({ where: { userId: b.id } })).toBe(1);
     expect(await prisma.activityEvent.count({ where: { userId: b.id } })).toBe(1);
   });
 });
