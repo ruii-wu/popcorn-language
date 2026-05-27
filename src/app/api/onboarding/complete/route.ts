@@ -15,6 +15,11 @@ export async function POST(req: Request): Promise<Response> {
       create: { userId, npcId: LILY },
       update: {},
     });
+    await prisma.userSettings.upsert({
+      where: { userId },
+      create: { userId },
+      update: {},
+    });
     const thread = await prisma.thread.upsert({
       where: { userId_npcId: { userId, npcId: LILY } },
       create: { userId, npcId: LILY },

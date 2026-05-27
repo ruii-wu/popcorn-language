@@ -35,4 +35,18 @@ describe('onboarding complete', () => {
     const count = await prisma.message.count({ where: { thread: { userId: user.id, npcId: 'lily' } } });
     expect(count).toBe(1);
   });
+
+  it('provisions a UserSettings row so the Settings page has persisted state', async () => {
+    const U2 = '__w6_onboarding_settings__';
+    await prisma.user.deleteMany({ where: { username: U2 } });
+    const user = await prisma.user.create({ data: { username: U2, password: 'pw' } });
+    expect(await prisma.userSettings.count({ where: { userId: user.id } })).toBe(0);
+
+    await POST(post(user.id));
+
+    const settings = await prisma.userSettings.findUnique({ where: { userId: user.id } });
+    expect(settings).not.toBeNull();
+    expect(settings?.memoryStrategy).toBe('hybrid');
+    await prisma.user.deleteMany({ where: { username: U2 } });
+  });
 });
