@@ -22,6 +22,11 @@ describe('settings route', () => {
     expect((await GET(new Request('http://x/'))).status).toBe(401);
   });
 
+  it('PUT 401s without a cookie', async () => {
+    const res = await PUT(new Request('http://x/', { method: 'PUT', body: '{}' }));
+    expect(res.status).toBe(401);
+  });
+
   it('GET returns defaults for a fresh user', async () => {
     const user = await prisma.user.create({ data: { username: U, password: 'pw' } });
     const res = await GET(get(user.id));

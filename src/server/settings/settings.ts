@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS: SettingsView = {
   memoryStrategy: 'hybrid',
 };
 
+// An empty patch {} is valid (no-op upsert) and returns the current effective settings.
 // Zod patch for PUT /api/settings — every field optional (partial update).
 export const SettingsPatch = z.object({
   grammarCorrection: z.boolean().optional(),
