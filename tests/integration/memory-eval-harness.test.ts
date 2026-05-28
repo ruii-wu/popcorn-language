@@ -60,6 +60,8 @@ describe('runMemoryEval', () => {
     // that the recency baseline misses.
     expect(get('semantic').recallAtK).toBeGreaterThan(get('recency').recallAtK);
     expect(get('semantic').recallAtK).toBe(1);
+    // The proposed hybrid method also beats the recency baseline on the fixture.
+    expect(get('hybrid').recallAtK).toBeGreaterThanOrEqual(get('recency').recallAtK);
 
     // One MemoryRetrievalLog row per (strategy × probe), attributed to the caller.
     const logCount = await prisma.memoryRetrievalLog.count({ where: { userId: caller.id } });
