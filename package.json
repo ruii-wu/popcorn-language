@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3100",
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
@@ -11,7 +11,9 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:generate": "prisma generate",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "report:ablation": "vitest run tests/integration/ablation-report",
+    "db:seed:demo": "tsx prisma/seed-demo.ts"
   },
   "prisma": { "seed": "tsx prisma/seed.ts" },
   "dependencies": {
