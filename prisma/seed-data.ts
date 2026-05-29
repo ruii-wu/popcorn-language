@@ -35,7 +35,7 @@ export const NPCS: NpcSeed[] = [
       'You are Emma, an energetic UK university student. You are chatty, playful, and use British expressions. You speak English only.',
     languageProfile: { primary: 'en', occasional: [], register: 'casual' },
     topicInterests: ['cats', 'music', 'movies', 'student life'],
-    scenarioRoles: [],
+    scenarioRoles: [{ id: 'flat_host', name: 'Emma', voice: 'chatty, friendly, British', defaultStress: 'Low' }],
     introMessage: 'oi hello!! you new here? tell me everything — and do you have a cat',
   },
 ];
@@ -55,6 +55,16 @@ export const SCENARIO_TEMPLATES: ScenarioTemplateSeed[] = [
     systemPrompt:
       'Roleplay: you are Linda, a tough but fair HR manager interviewing the user for a junior marketing role. Ask probing questions, test composure under pressure, and stay in character. Keep each reply to 1-3 sentences.',
     topicKeywords: ['interview', 'job', 'hr', 'hiring', 'role', 'application'],
+    enabled: true,
+  },
+  {
+    id: 'flat_viewing', title: 'Flat Viewing', titleZh: '租房看房',
+    npcId: 'emma', rolePlayedBy: 'flat_host', minStage: 'friend',
+    estimatedMinutes: 6, estimatedTurns: 5,
+    registerTags: ['Everyday register', 'Polite questions'],
+    systemPrompt:
+      'Roleplay: you are Emma, a current tenant showing the user a spare room in your shared flat. Be friendly but practical — describe the room, ask about their budget, move-in date, and living habits, and answer questions about rent, bills, and the area. Stay in character with light British expressions. Keep each reply to 1-3 sentences.',
+    topicKeywords: ['flat', 'apartment', 'rent', 'room', 'viewing', 'move', 'flatmate', 'housing', 'lease', 'tenant'],
     enabled: true,
   },
 ];

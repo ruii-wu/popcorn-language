@@ -7,7 +7,7 @@ async function main() {
   for (const n of NPCS) {
     await prisma.npc.upsert({
       where: { id: n.id },
-      update: {},
+      update: { scenarioRoles: JSON.stringify(n.scenarioRoles) },
       create: {
         id: n.id, name: n.name, avatarGlyph: n.avatarGlyph, avatarBg: n.avatarBg, avatarInk: n.avatarInk,
         shortBio: n.shortBio, personaPrompt: n.personaPrompt, introMessage: n.introMessage,

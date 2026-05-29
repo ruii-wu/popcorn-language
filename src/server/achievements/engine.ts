@@ -50,7 +50,7 @@ export async function buildAchievementContext(prisma: PrismaClient, userId: stri
 export async function runAchievementTick(prisma: PrismaClient, userId: string): Promise<string[]> {
   try {
     const [defs, unlocked] = await Promise.all([
-      prisma.achievementDef.findMany({ where: { enabled: true } }),
+      prisma.achievementDef.findMany({ where: { enabled: true, isDynamic: false } }),
       prisma.userAchievement.findMany({ where: { userId }, select: { achievementId: true } }),
     ]);
     const have = new Set(unlocked.map((u) => u.achievementId));
