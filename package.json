@@ -12,7 +12,8 @@
     "db:seed": "prisma db seed",
     "db:generate": "prisma generate",
     "typecheck": "tsc --noEmit",
-    "report:ablation": "vitest run tests/integration/ablation-report"
+    "report:ablation": "vitest run tests/integration/ablation-report",
+    "db:seed:demo": "tsx prisma/seed-demo.ts"
   },
   "prisma": { "seed": "tsx prisma/seed.ts" },
   "dependencies": {
