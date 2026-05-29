@@ -1,15 +1,17 @@
 # Popcorn Language
 
-NUS Master of Computing capstone — a **local-LLM-powered, bilingual (中→EN) language-learning platform** with persistent AI NPCs and embedded scenario gameplay. Built on Next.js 14 + TypeScript + Prisma/SQLite + Ollama. See [`docs/context.md`](docs/context.md) for project background.
+NUS Master of Computing capstone — a **local-LLM-powered, bilingual (中→EN) language-learning platform** with persistent AI NPCs and embedded scenario gameplay. Built on Next.js 14 + TypeScript + Prisma/SQLite + Ollama. See [`docs/context.md`](docs/context.md) for background.
 
-> **Project status:** **W1 (foundation) complete.** The app boots, the database is schema'd and seeded, the Ollama client + PromptBuilder + minimal session-auth + a health endpoint are in place. Chat streaming, the memory engine, scenarios, relationships, achievements, and the Journey dashboard are upcoming phases — see [the roadmap](#roadmap--design-docs).
+> ⚠️ **Local demo only.** Authentication is intentionally minimal (see [A note on auth](#a-note-on-auth)). **Never deploy this beyond localhost.**
+
+> **Project status: backend complete (W1–W8).** Chat (SSE streaming), the pluggable memory engine + ablation harness, scenario gameplay, grammar correction, relationships/progression, achievements (static + dynamic), the Journey dashboard, Settings, and system/reset are all implemented and tested. 220+ Vitest cases pass; `typecheck` is clean. The UI is the static prototype in `prototypes/web/` (the Next.js app is API-only).
 
 ---
 
 ## Prerequisites
 
 - **Node.js 20+** (`node -v`). Tested on Node 24.
-- **Ollama** — *optional* for development. The app boots and all tests pass without it. To enable live AI responses, install [Ollama](https://ollama.com) and pull the models:
+- **Ollama** — *optional* for development. The app boots and all tests pass without it. For live AI:
   ```
   ollama pull qwen2.5:7b-instruct
   ollama pull nomic-embed-text
@@ -21,23 +23,21 @@ NUS Master of Computing capstone — a **local-LLM-powered, bilingual (中→EN)
 npm install
 Copy-Item .env.example .env        # macOS/Linux: cp .env.example .env
 npm run db:migrate                 # creates the SQLite schema (prisma/dev.db)
-npm run db:seed                    # seeds 3 NPCs, 1 scenario, 6 achievements
+npm run db:seed                    # base seed: 3 NPCs, 2 scenarios, 6 achievements
+npm run db:seed:demo               # optional: a rich `demo`/`demo` user for demos
 ```
 
 ## Run
 
 ```powershell
-npm run dev                        # http://localhost:3000
+npm run dev                        # http://localhost:3100
 ```
 
-Health check — confirms the server is up and reports Ollama status:
-
+Health check:
 ```
-GET http://localhost:3000/api/system/health
-→ { "server": "up", "uptimeMs": 6,
-    "ollama": { "reachable": false, "model": "qwen2.5:7b-instruct", "modelInstalled": false, "latencyMs": 6 } }
+GET http://localhost:3100/api/system/health
+→ { "server":"up", "uptimeMs":6, "ollama": { "reachable":false, "model":"qwen2.5:7b-instruct", "modelInstalled":false, "latencyMs":6 } }
 ```
-
 `"reachable": false` is expected when Ollama isn't running — it does not block development.
 
 ## Test & typecheck
@@ -45,9 +45,40 @@ GET http://localhost:3000/api/system/health
 ```powershell
 npm run test          # vitest: unit (no DB/Ollama) + integration (SQLite, mocked Ollama)
 npm run typecheck     # tsc --noEmit
+npm run report:ablation   # regenerate docs/reports/memory-ablation.md (deterministic)
 ```
 
-Unit tests mock Ollama and need no database; integration tests use the migrated SQLite file. No test calls a live model.
+No test calls a live model.
+
+## Demo
+
+```powershell
+npm run db:seed && npm run db:seed:demo
+npm run dev
+```
+Log in as **`demo` / `demo`** — a learner pre-populated with three relationships (Lily = close, Chen = friend, Emma = acquaintance), memory facts + a memory card, one completed graded scenario, unlocked achievements, and a multi-day streak. `db:seed:demo` is additive and idempotent.
+
+## API surface (34 routes)
+
+All business routes require the `pop_uid` session cookie (via `withUser`) and are scoped by `userId`. Errors use a uniform `{ error: { code, message } }` envelope.
+
+| Group | Routes |
+|---|---|
+| **Auth** | `POST /api/auth/register` · `POST /api/auth/login` · `POST /api/auth/logout` · `GET /api/auth/me` |
+| **Profile / Onboarding** | `GET·PUT /api/profile` · `POST /api/onboarding/complete` |
+| **NPCs** | `GET /api/npcs` · `GET /api/npcs/:id` |
+| **Threads / Messages** | `GET·POST /api/threads/:npcId/messages` (POST = **SSE**) · `DELETE /api/threads/:npcId` · `POST /api/threads/:npcId/messages/:msgId/correction` |
+| **Scenarios** | `GET /api/scenarios/catalog` · `GET /api/scenarios/sessions` · `GET /api/scenarios/sessions/:id` · `POST …/{accept,decline,pause,resume,abort}` · `POST …/{choose,freetype}` (**SSE**) |
+| **Memories** | `GET /api/memories` · `GET /api/memories/recent` · `DELETE /api/memories/:id` |
+| **Journey** | `GET /api/journey/{summary,relationships,streak}` |
+| **Achievements** | `GET /api/achievements` · `POST /api/achievements/generate` (dynamic, LLM) |
+| **Settings / System** | `GET·PUT /api/settings` · `GET /api/system/health` · `GET /api/system/models` · `POST /api/system/reset` |
+| **Dev (research)** | `POST /api/dev/memory-eval` (404 in production) |
+
+### SSE events
+
+`POST /api/threads/:npcId/messages` and the scenario `choose`/`freetype` routes stream:
+`user_message_saved · typing_start/end · token · message_complete · correction · suggestions_update · scenario_offer · state_update · choices · scenario_end · error · done`.
 
 ## Environment variables (`.env`)
 
@@ -61,40 +92,39 @@ Unit tests mock Ollama and need no database; integration tests use the migrated 
 ## Project structure
 
 ```
-app/api/.../route.ts        # Next.js App Router handlers (REST + SSE)
-  system/health/route.ts    #   GET /api/system/health
+src/app/api/.../route.ts    # Next.js App Router handlers (REST + SSE), 34 routes
 src/server/
-  auth/                     # minimal session cookie + requireUser()
+  auth/                     # minimal session cookie (pop_uid) + requireUser / withUser
   llm/ollama.ts             # Ollama client: health / chat (stream) / chatJson (+Zod retry) / embed
   prompt/                   # PromptBuilder (persona + memory + bilingual + scenario modes)
+  memory/                   # MemoryStrategy (recency/summary/semantic/hybrid) + eval harness
+  scenario/                 # orchestrator: trigger judge / accept / per-turn loop / end flow
+  relationship/ correction/ achievements/   # Modules 5 / 6 / 7 (+ dynamic achievements)
+  http/respond.ts           # json / errorJson / withUser
   db/client.ts              # Prisma client singleton
 prisma/
-  schema.prisma             # 17-model schema (users, NPCs, threads, scenarios, memory, achievements)
-  migrations/               # versioned SQL migrations
-  seed.ts / seed-data.ts    # 3 NPCs, mock_interview scenario, 6 achievements
-tests/
-  unit/                     # pure-logic tests (no DB/Ollama)
-  integration/              # SQLite-backed tests
-docs/                       # background, design specs, and implementation plans
+  schema.prisma             # 19-model schema
+  seed.ts / seed-data.ts    # base seed (3 NPCs, 2 scenarios, 6 achievements)
+  seedDemo.ts / seed-demo.ts # rich demo user (npm run db:seed:demo)
+tests/ unit/ integration/   # pure-logic + SQLite-backed tests (mocked Ollama)
+docs/                       # background, specs, plans, and reports (figures)
 prototypes/web/             # static HTML/JSX UI prototype (no build step)
 ```
 
-## Roadmap & design docs
+## Roadmap, design & report docs
 
 - **Design spec (v2):** [`docs/superpowers/specs/2026-05-25-backend-roadmap-design.md`](docs/superpowers/specs/2026-05-25-backend-roadmap-design.md)
 - **Master plan (W1–W9):** [`docs/superpowers/plans/2026-05-25-backend-overall-plan.md`](docs/superpowers/plans/2026-05-25-backend-overall-plan.md)
-- **W1 detailed plan:** [`docs/superpowers/plans/2026-05-25-backend-w1-foundation.md`](docs/superpowers/plans/2026-05-25-backend-w1-foundation.md)
+- **Per-phase plans:** `docs/superpowers/plans/2026-05-*-backend-w{1..9}-*.md`
+- **Report figures:** [`docs/reports/memory-ablation.md`](docs/reports/memory-ablation.md) · [`docs/reports/architecture.md`](docs/reports/architecture.md)
 
 ## Web prototype (static demo)
 
-The original UI prototype is a no-build static demo, independent of the Next.js app:
-
 ```powershell
-./scripts/start.ps1                # serves prototypes/web/ at http://localhost:8080
+./scripts/start.ps1                # serves prototypes/web/ at http://localhost:8080 (requires Python 3)
 ```
-
-Requires Python 3 in PATH. The three demo screens (main app · scenario · onboarding/journey) cross-link via the bottom-right dock.
+The three demo screens (main app · scenario · onboarding/journey) cross-link via the bottom-right dock.
 
 ## A note on auth
 
-Authentication is **intentionally minimal** for this local capstone demo: plaintext password compared by a single DB query, with the session stored in an httpOnly cookie. This is **not secure and must never be deployed beyond localhost.** Auth is not a contribution of this project; the engineering focus is local-LLM engagement and memory architecture.
+Authentication is **intentionally minimal** for this local capstone demo: a plaintext password compared by a single DB query, with the user id stored in an httpOnly cookie (`pop_uid`). There is no bcrypt, Auth.js, or CSRF protection. This is **not secure and must never be deployed beyond localhost.** Auth is not a contribution of this project; the engineering focus is local-LLM engagement and memory architecture.

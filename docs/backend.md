@@ -1,5 +1,11 @@
 # Popcorn Language · Backend 设计文档
 
+> ⚠️ **Historical v1 design (superseded).** This is the original prototype-derived design doc.
+> Several endpoints sketched here (`/api/session/init`, `/suggestions`, `/typing`) were never
+> built, and the auth model evolved. The **source of truth** for what shipped is the v2 spec
+> [`docs/superpowers/specs/2026-05-25-backend-roadmap-design.md`](superpowers/specs/2026-05-25-backend-roadmap-design.md)
+> and the API surface table in the [README](../README.md). Kept for provenance.
+
 > 基于当前 web 原型（`prototypes/web/src/*.jsx`）和项目背景（`docs/context.md`），列出让前端 UI 真正"工作起来"所需的完整后端：核心 API 接口、后端功能模块、数据库 schema。
 >
 > **范围**：覆盖 MVP P0 全部 UI（Onboarding 3 步 → Main Chat → Embedded Scenario A/B/C/D → Journey Dashboard）。P1 拓展（Cross-NPC Memory Network、AI-Generated Achievements 等）单独标注。
