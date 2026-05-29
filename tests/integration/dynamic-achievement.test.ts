@@ -51,8 +51,8 @@ describe('generateDynamicAchievement', () => {
   it('returns null when the generated title duplicates one the user already has', async () => {
     const user = await prisma.user.findFirstOrThrow({ where: { username: U } });
     const before = await prisma.userAchievement.count({ where: { userId: user.id } });
-    // 'First Chat' is a seeded static title; case-insensitive duplicate must be skipped.
-    const ollama = { chatJson: vi.fn().mockResolvedValue({ title: 'first chat', description: 'dup', icon: '⭐' }) };
+    // The user already earned 'Cat Whisperer' in the first case; a case-insensitive duplicate must be skipped.
+    const ollama = { chatJson: vi.fn().mockResolvedValue({ title: 'cat whisperer', description: 'dup', icon: '⭐' }) };
     expect(await generateDynamicAchievement(prisma, ollama, user.id)).toBeNull();
     expect(await prisma.userAchievement.count({ where: { userId: user.id } })).toBe(before);
   });
