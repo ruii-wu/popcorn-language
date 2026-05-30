@@ -1,5 +1,9 @@
 # Popcorn Language · Web UI 功能与用户旅程总结
 
+> **历史文档（W10 已变更）：** 本文描述的是接入后端之前的 **mock 原型**。该原型已从
+> `prototypes/web/` 迁移到 `public/app/`，并接通真实 API（同源服务于后端 `/app`，`src/api.js`
+> 调用 `/api/*`）。下文的文件路径请将 `prototypes/web/` 读作 `public/app/`；“前端 mock”一节描述的是原始状态。
+>
 > 基于 `docs/context.md` 项目背景 + 当前 web 原型代码（`prototypes/web/src/app.jsx` / `prototypes/web/src/scenario.jsx` / `prototypes/web/src/onboarding.jsx` / `prototypes/web/src/shared.jsx`）整理。所有数据均为前端 mock，未接 Ollama / 数据库。
 
 ---
