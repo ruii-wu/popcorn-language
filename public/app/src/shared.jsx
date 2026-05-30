@@ -217,7 +217,7 @@ function WebNavRail({ activeTop = 'chats' }) {
 }
 
 // Conversations sub-rail (used in chat views)
-function WebConversationsRail({ activeId, onSelect, intense }) {
+function WebConversationsRail({ npcs = [], activeId, onSelect, intense }) {
   return (
     <div className="pane-nav h-full flex flex-col chat-bg"
     style={{ background: intense ? 'var(--bg-warm-c)' : 'var(--bg-warm)',
@@ -256,7 +256,7 @@ function WebConversationsRail({ activeId, onSelect, intense }) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 pb-3">
-        {NPCS_WEB.map((npc) =>
+        {npcs.map((npc) =>
         <button key={npc.id} onClick={() => onSelect && onSelect(npc.id)}
         className="w-full flex items-start gap-2.5 px-2.5 py-2.5 rounded-lg transition text-left mb-0.5"
         style={{
