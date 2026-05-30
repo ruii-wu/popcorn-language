@@ -1,57 +1,14 @@
-// Popcorn Language — Web Scenario (Emergent Mode)
-// 4 states (A/B/C/D) of the same chat with Lily, in the web 3-pane shell.
+// Popcorn Language — Web Scenario (Live Session Player)
+// Wired to the backend session lifecycle: invited → active → completed.
 
 const { useState, useEffect, useRef } = React;
 
-// ---------- Threads ----------
-
-const THREAD_A_WEB = [
-  { from: 'npc',  text: "hey ☕ what'd you have for breakfast?", time: '08:41' },
-  { from: 'user', text: "Just coffee. Today my stomach is nervous.", time: '08:42',
-    correction: { fixed: "My stomach is nervous today.", noteZh: "时间状语 today 通常放句首或句尾，放句中显得生硬。", tag: 'Style · Word order' } },
-  { from: 'npc',  text: "oh no — are you ok?", time: '08:42' },
-  { from: 'user', text: "I have a job interview tomorrow. First one in English.", time: '08:43' },
-  { from: 'npc',  text: "ohhh that's huge. what's the role??", time: '08:43' },
-  { from: 'user', text: "Junior marketing at a small agency in Manhattan.", time: '08:44' },
-  { from: 'npc',  text: "ok ok i love that. you'll do great — you've gotten so much better at this btw, i noticed 🥹", time: '08:45', isLatest: true },
-];
-
-const THREAD_B_WEB = [
-  ...THREAD_A_WEB.slice(0, -1),
-  { from: 'npc', text: "ok ok i love that. you'll do great — you've gotten so much better at this btw, i noticed 🥹", time: '08:45' },
-  { from: 'npc-invitation', time: '08:46', isLatest: true,
-    text: "actually — hold on. you got a sec?",
-    detail: "i used to work in HR before this coffee gig (long story). want me to do a quick mock interview with you right now? i'll play a tough HR manager, you just answer like you would tomorrow. low stakes, just us 😊",
-    note: "Lily is suggesting a practice scenario based on what you two have been talking about.",
-  },
-];
-
-const LINDA_MESSAGES = [
-  { from: 'npc-c', text: "Thanks for coming in. Let's start with the obvious — walk me through your last project.", time: '08:48' },
-  { from: 'user',  text: "Last quarter I led the redesign of our customer onboarding flow. It reduced first-week drop-off by about 14 percent.", time: '08:50' },
-  { from: 'npc-c', text: "Impressive number. And tell me about a weakness of yours — and I don't want the rehearsed answer about being a perfectionist.", time: '08:51', isLatest: true },
-];
-
-const THREAD_D_WEB = [
-  { from: 'system', text: "Mock interview ended · 8 minutes · 6 exchanges" },
-  { from: 'summary' },
-  { from: 'npc', text: "phew you did SO well i'm proud of you 🥹", time: '08:56' },
-  { from: 'npc', text: "want to grab a real coffee now? or are you off to study? ☕", time: '08:57', isLatest: true },
-];
-
-const CHOICES = [
-  { text: "Honestly, I tend to over-prepare. I'll spend extra hours on something even when the brief calls for something rougher.",
-    tone: 'Diplomatic', desc: 'acknowledges, reframes as growth' },
-  { text: "I don't really see myself as having weaknesses — I focus on what I'm strong at.",
-    tone: 'Confident', desc: 'dodges the question — risky' },
-  { text: "Could I think about that for a second? It's a fair question and I'd rather give you a real answer than a rehearsed one.",
-    tone: 'Reflective', desc: 'asks for pause, signals authenticity' },
-];
-
 // ---------- Chat header ----------
 
-function ScenChatHeader({ intense }) {
+function ScenChatHeader({ intense, session, hudState }) {
   const npc = NPCS_WEB[0]; // Lily
+  const turnsLeft = hudState ? hudState.turnsLeft : 0;
+  const titleLabel = session ? session.scenarioTitle : '';
   return (
     <header className="px-6 py-3.5 flex items-center justify-between chat-bg"
             style={{
@@ -63,7 +20,7 @@ function ScenChatHeader({ intense }) {
         <div className="leading-tight">
           <div className="flex items-center gap-1.5">
             <span className="text-[15px] font-medium">
-              {intense ? <>Lily <span className="font-mono text-[11px]" style={{ color: 'var(--muted)' }}>as</span> Linda</> : 'Lily'}
+              {intense ? <>Lily <span className="font-mono text-[11px]" style={{ color: 'var(--muted)' }}>as</span> NPC</> : 'Lily'}
             </span>
             <span style={{ color: 'var(--plum)' }}>
               <svg viewBox="0 0 24 24" className="w-3 h-3 ai-dot" fill="currentColor">
@@ -73,13 +30,15 @@ function ScenChatHeader({ intense }) {
             {intense && (
               <span className="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded ml-1"
                     style={{ background: 'oklch(0.92 0.05 150)', color: 'var(--accent-ink)' }}>
-                Roleplay · HR Manager
+                Roleplay · {titleLabel}
               </span>
             )}
           </div>
           <div className="text-[11px] mt-0.5"
                style={{ color: intense ? 'var(--coral-ink)' : 'var(--muted)' }}>
-            {intense ? 'Active scenario · Round 1 · 5 of 6 turns left' : npc.status}
+            {intense
+              ? ('Active scenario · ' + turnsLeft + ' turn' + (turnsLeft === 1 ? '' : 's') + ' left')
+              : npc.status}
           </div>
         </div>
       </div>
@@ -109,22 +68,22 @@ function ScenChatHeader({ intense }) {
 
 // ---------- Scenario HUD ----------
 
-function ScenarioHUD() {
+function ScenarioHUD({ session, hudState }) {
+  const title = session ? session.scenarioTitle : '';
+  const impression = hudState ? hudState.impression : 5;
+  const stress = hudState ? hudState.stress : 'Medium';
   return (
     <div className="px-6 py-2.5 flex items-center justify-between gap-3 fade-up"
          style={{ background: 'var(--surface-2c)', borderBottom: '1px solid var(--hairline-c)' }}>
       <div className="flex items-center gap-2.5 min-w-0">
         <span className="w-4 h-4" style={{ color: 'var(--coral-ink)' }}>{WebI.bldg}</span>
         <span className="text-[11px] font-mono uppercase tracking-[0.16em]" style={{ color: 'var(--coral-ink)' }}>
-          Job Interview · Round 1
-        </span>
-        <span className="text-[10.5px]" style={{ color: 'var(--muted)' }}>
-          · objective: hold composure under tough HR questions
+          {title}
         </span>
       </div>
       <div className="flex items-center gap-5">
-        <HUDMeter label="Impression" filled={6} total={10} />
-        <HUDStress level="Medium" />
+        <HUDMeter label="Impression" filled={impression} total={10} />
+        <HUDStress level={stress} />
       </div>
     </div>
   );
@@ -183,11 +142,9 @@ function ScenMessage({ msg, intense }) {
       </div>
     );
   }
-  if (msg.from === 'summary') return <ScenarioSummaryCard />;
-  if (msg.from === 'npc-invitation') return <InvitationCard msg={msg} />;
 
   const isUser = msg.from === 'user';
-  const isLinda = msg.from === 'npc-c';
+  const isNpc = msg.from === 'npc' || msg.from === 'npc-c';
   const npc = NPCS_WEB[0];
 
   return (
@@ -197,29 +154,26 @@ function ScenMessage({ msg, intense }) {
         <div className="px-3.5 py-2.5 text-[14px] leading-relaxed"
              style={isUser
                ? { background: 'var(--bubble-sent)', color: 'var(--bubble-sent-ink)', borderRadius: '16px 16px 4px 16px', boxShadow: '0 1px 0.5px rgba(11,20,26,0.13)' }
-               : isLinda
+               : msg.from === 'npc-c'
                ? { background: '#F1ECE0', color: '#3A3120',
                    border: '1px solid #DDD3BD', borderRadius: '16px 16px 16px 4px', boxShadow: '0 1px 0.5px rgba(11,20,26,0.08)' }
                : { background: 'var(--bubble-received)', color: 'var(--bubble-received-ink)', border: '1px solid var(--hairline)', borderRadius: '16px 16px 16px 4px', boxShadow: '0 1px 0.5px rgba(11,20,26,0.08)' }}>
           {msg.text}
         </div>
-        <div className={`flex items-center gap-1.5 mt-1 ${isUser ? 'flex-row-reverse' : ''}`}>
-          <span className="text-[10px] font-mono" style={{ color: 'var(--muted)' }}>{msg.time}</span>
-          {msg.correction && (
-            <span className="inline-flex items-center gap-1 text-[10.5px]" style={{ color: 'var(--coral-ink)' }}>
-              <span className="w-3 h-3">{WebI.pencil}</span>
-              Lily noticed something
-            </span>
-          )}
-        </div>
+        {msg.time && (
+          <div className={`flex items-center gap-1.5 mt-1 ${isUser ? 'flex-row-reverse' : ''}`}>
+            <span className="text-[10px] font-mono" style={{ color: 'var(--muted)' }}>{msg.time}</span>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 // ---------- Invitation card ----------
-function InvitationCard({ msg }) {
+function InvitationCard({ session, onAccept, onDecline }) {
   const npc = NPCS_WEB[0];
+  const title = session ? session.scenarioTitle : 'Scenario';
   return (
     <div className="flex items-start gap-2 mb-3 fade-up">
       <WebAvatar npc={npc} size={26} />
@@ -227,7 +181,7 @@ function InvitationCard({ msg }) {
         <div className="px-3.5 py-2.5 text-[14px] leading-relaxed inline-block"
              style={{ background: 'var(--surface)', color: 'var(--ink)', border: '1px solid var(--hairline)',
                       borderRadius: '16px 16px 16px 4px' }}>
-          {msg.text}
+          Hey — want to try a practice scenario? I'll set it up for us.
         </div>
         <div className="mt-2.5 rounded-2xl rounded-tl-md p-4 fade-up"
              style={{
@@ -239,29 +193,24 @@ function InvitationCard({ msg }) {
             <span className="w-7 h-7 rounded-full grid place-items-center"
                   style={{ background: 'var(--coral-soft)' }}>☕</span>
             <span className="text-[11px] font-mono uppercase tracking-[0.18em]" style={{ color: 'var(--coral-ink)' }}>
-              Lily is suggesting · 一起练习
+              Scenario invitation · {title}
             </span>
           </div>
           <p className="text-[14px] leading-relaxed mb-3.5" style={{ color: 'var(--ink)' }}>
-            {msg.detail}
+            You have been invited to a <strong>{title}</strong> scenario. Accept to start the roleplay session.
           </p>
           <div className="flex items-center gap-2">
-            <button className="rounded-full px-5 py-2.5 text-[13px] font-medium transition"
+            <button onClick={onAccept}
+                    className="rounded-full px-5 py-2.5 text-[13px] font-medium transition"
                     style={{ background: 'var(--coral)', color: '#fff', boxShadow: '0 1px 0 oklch(1 0 0 / 0.3) inset' }}>
               Yeah, let's do it
             </button>
-            <button className="rounded-full px-4 py-2 text-[12.5px] transition hover:bg-[var(--bg-warm)]"
+            <button onClick={onDecline}
+                    className="rounded-full px-4 py-2 text-[12.5px] transition hover:bg-[var(--bg-warm)]"
                     style={{ color: 'var(--ink-2)', border: '1px solid var(--hairline-strong)' }}>
               Maybe later
             </button>
-            <span className="text-[10.5px] ml-auto" style={{ color: 'var(--muted)' }}>
-              · ~8 min · roleplay
-            </span>
           </div>
-        </div>
-        <div className="flex items-center gap-2 mt-1.5">
-          <span className="text-[10px] font-mono" style={{ color: 'var(--muted)' }}>{msg.time}</span>
-          <span className="text-[10px]" style={{ color: 'var(--muted)' }}>· {msg.note}</span>
         </div>
       </div>
     </div>
@@ -269,7 +218,13 @@ function InvitationCard({ msg }) {
 }
 
 // ---------- Summary card ----------
-function ScenarioSummaryCard() {
+function ScenarioSummaryCard({ session, transcript, summaryData }) {
+  const grade = (session && session.grade) || (summaryData && summaryData.grade) || '—';
+  const title = session ? session.scenarioTitle : 'Scenario';
+  const languageNote = summaryData && summaryData.languageNote;
+  const pragmaticsNote = summaryData && summaryData.pragmaticsNote;
+  const relationshipNote = summaryData && summaryData.relationshipNote;
+
   return (
     <div className="my-3 rounded-2xl p-5 fade-up"
          style={{ background: 'var(--surface)', border: '1px solid var(--hairline-2)',
@@ -282,10 +237,10 @@ function ScenarioSummaryCard() {
           </span>
           <div className="leading-tight">
             <div className="text-[10px] font-mono uppercase tracking-[0.18em]" style={{ color: 'var(--muted)' }}>
-              Mock interview · complete
+              {title} · complete
             </div>
             <div className="text-[16px] font-medium mt-0.5" style={{ color: 'var(--ink)' }}>
-              Good performance — B+
+              Scenario Summary · Grade: {grade}
             </div>
           </div>
         </div>
@@ -295,26 +250,66 @@ function ScenarioSummaryCard() {
         </span>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <SummaryBlock icon="🗣️" label="Language">
-          You used polite hedging well. Watch the slight overuse of <em>"I think"</em>.
-        </SummaryBlock>
-        <SummaryBlock icon="🧠" label="Pragmatics">
-          You acknowledged the weakness and reframed as growth. The move HR was testing for.
-        </SummaryBlock>
-        <SummaryBlock icon="❤️" label="Relationship">
-          <span style={{ color: 'var(--ink)' }}>Lily was impressed.</span> She'll tease you about it later.
-        </SummaryBlock>
-      </div>
+      {(languageNote || pragmaticsNote || relationshipNote) ? (
+        <div className="grid grid-cols-3 gap-3">
+          {languageNote && (
+            <SummaryBlock icon="🗣️" label="Language">
+              {languageNote}
+            </SummaryBlock>
+          )}
+          {pragmaticsNote && (
+            <SummaryBlock icon="🧠" label="Pragmatics">
+              {pragmaticsNote}
+            </SummaryBlock>
+          )}
+          {relationshipNote && (
+            <SummaryBlock icon="❤️" label="Relationship">
+              {relationshipNote}
+            </SummaryBlock>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          <SummaryBlock icon="🗣️" label="Language">
+            Performance summary is not available for this session.
+          </SummaryBlock>
+          <SummaryBlock icon="🧠" label="Pragmatics">
+            Pragmatics notes are not available.
+          </SummaryBlock>
+          <SummaryBlock icon="❤️" label="Relationship">
+            Relationship notes are not available.
+          </SummaryBlock>
+        </div>
+      )}
+
+      {transcript && transcript.length > 0 && (
+        <div className="mt-4 pt-3" style={{ borderTop: '1px dashed var(--hairline-2)' }}>
+          <div className="text-[10px] font-mono uppercase tracking-wider mb-2" style={{ color: 'var(--muted)' }}>
+            Transcript · {transcript.length} turns
+          </div>
+          <div className="space-y-1.5 max-h-48 overflow-y-auto">
+            {transcript.map((t) => (
+              <div key={t.id} className="text-[12px] leading-relaxed"
+                   style={{ color: t.from === 'user' ? 'var(--ink)' : 'var(--ink-2)' }}>
+                <span className="font-mono text-[10px] mr-2"
+                      style={{ color: 'var(--muted)' }}>
+                  {t.from === 'user' ? 'You' : 'NPC'}
+                </span>
+                {t.text}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center justify-between mt-4 pt-3"
            style={{ borderTop: '1px dashed var(--hairline-2)' }}>
         <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
-          ✨ AI · qwen2.5:7b · local
+          ✨ AI · local
         </span>
-        <button className="text-[11px] font-mono uppercase tracking-wider transition" style={{ color: 'var(--coral-ink)' }}>
-          View transcript →
-        </button>
+        <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: 'var(--coral-ink)' }}>
+          Grade: {grade}
+        </span>
       </div>
     </div>
   );
@@ -339,46 +334,7 @@ function SummaryBlock({ icon, label, children }) {
 
 // ---------- Composers ----------
 
-function CasualComposer({ state }) {
-  const [draft, setDraft] = useState('');
-  const chips = state === 'a' ? ['Tell me more', "I'm nervous", '什么意思?']
-              : state === 'b' ? ['Yeah, sure', 'Why HR though?', 'Tell me more']
-              : ['Thanks ❤️', 'I want a real coffee', "What's your name irl 😅"];
-  return (
-    <div className="px-6 pb-4 pt-3">
-      <div className="max-w-[820px] mx-auto">
-        <div className="flex items-center gap-2 mb-2.5">
-          <span className="text-[10px] font-mono uppercase tracking-wider shrink-0" style={{ color: 'var(--muted)' }}>
-            ✨ Suggest
-          </span>
-          {chips.map(c => (
-            <button key={c} onClick={() => setDraft(c)}
-                    className="shrink-0 px-3 py-1.5 rounded-full text-[12.5px] transition hover:bg-[var(--surface)]"
-                    style={{ background: 'var(--surface-2)', border: '1px solid var(--hairline)', color: 'var(--ink-2)' }}>
-              {c}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-end gap-2 rounded-2xl p-2 pl-3"
-             style={{ background: 'var(--surface)', border: '1px solid var(--hairline-2)' }}>
-          <button className="w-9 h-9 rounded-full grid place-items-center hover:bg-[var(--bg-warm)] transition"
-                  style={{ color: 'var(--muted)' }}>{WebI.plus}</button>
-          <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1}
-                    placeholder="Type in English or 中文…"
-                    className="flex-1 resize-none bg-transparent outline-none py-2 text-[14px] placeholder:text-[var(--muted)]"
-                    style={{ minHeight: 24, maxHeight: 120 }} />
-          <button disabled={!draft.trim()}
-                  className="h-9 px-4 rounded-full flex items-center gap-1.5 text-[13px] font-medium transition disabled:opacity-40"
-                  style={{ background: 'var(--accent)', color: '#fff' }}>
-            Send <span className="w-4 h-4">{WebI.send}</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ChoiceComposer() {
+function ChoiceComposer({ choices, onChoose, disabled }) {
   return (
     <div className="px-6 pb-4 pt-3" style={{ background: 'linear-gradient(180deg, transparent, var(--bg-warm-c) 40%)' }}>
       <div className="max-w-[820px] mx-auto">
@@ -386,163 +342,138 @@ function ChoiceComposer() {
           <span className="text-[10.5px] font-mono uppercase tracking-[0.16em]" style={{ color: 'var(--coral-ink)' }}>
             Choose your response · 选择回应
           </span>
-          <button className="text-[10.5px] font-mono uppercase tracking-wider transition"
-                  style={{ color: 'var(--muted)' }}>
-            let me type freely
-          </button>
         </div>
         <div className="grid grid-cols-3 gap-2.5">
-          {CHOICES.map((c, i) => <ChoiceCard key={i} index={i} choice={c} />)}
+          {(choices || []).map((c, i) => (
+            <ChoiceCard key={c.id || i} index={i} choice={c} onChoose={onChoose} disabled={disabled} />
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-function ChoiceCard({ index, choice }) {
+function ChoiceCard({ index, choice, onChoose, disabled }) {
   const [hover, setHover] = useState(false);
   return (
-    <button onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
-            className="text-left rounded-xl p-3.5 transition fade-up"
-            style={{
-              animationDelay: `${0.06 + index * 0.04}s`,
-              background: hover ? '#F4F9F5' : 'var(--surface-c)',
-              border: '1px solid ' + (hover ? 'var(--coral)' : 'var(--hairline-c)'),
-            }}>
+    <button
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onClick={() => !disabled && onChoose(choice)}
+      disabled={disabled}
+      className="text-left rounded-xl p-3.5 transition fade-up"
+      style={{
+        animationDelay: `${0.06 + index * 0.04}s`,
+        background: hover && !disabled ? '#F4F9F5' : 'var(--surface-c)',
+        border: '1px solid ' + (hover && !disabled ? 'var(--coral)' : 'var(--hairline-c)'),
+        opacity: disabled ? 0.5 : 1,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+      }}>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <span className="w-5 h-5 rounded grid place-items-center text-[10px] font-mono"
                 style={{ background: '#EAF1EC', color: 'var(--muted)' }}>
             {String.fromCharCode(65 + index)}
           </span>
-          <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: 'var(--coral-ink)' }}>
-            {choice.tone}
-          </span>
+          {choice.tone && (
+            <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: 'var(--coral-ink)' }}>
+              {choice.tone}
+            </span>
+          )}
         </div>
       </div>
       <p className="text-[13px] leading-snug" style={{ color: 'var(--ink)' }}>"{choice.text}"</p>
-      <div className="text-[10.5px] mt-2 pt-2 leading-snug"
-           style={{ color: 'var(--muted)', borderTop: '1px dashed var(--hairline-c)' }}>
-        {choice.desc}
-      </div>
+      {choice.desc && (
+        <div className="text-[10.5px] mt-2 pt-2 leading-snug"
+             style={{ color: 'var(--muted)', borderTop: '1px dashed var(--hairline-c)' }}>
+          {choice.desc}
+        </div>
+      )}
     </button>
   );
 }
 
 // ---------- Right context panel ----------
 
-function RightPanel({ state }) {
-  if (state === 'c') return <RightPanelActive />;
-  if (state === 'd') return <RightPanelAftermath />;
-  if (state === 'b') return <RightPanelInvitation />;
-  return <RightPanelCasual />;
+function RightPanel({ status, session, summaryData, hudState }) {
+  if (status === 'completed') return <RightPanelAftermath session={session} summaryData={summaryData} />;
+  if (status === 'active') return <RightPanelActive session={session} hudState={hudState} />;
+  if (status === 'invited') return <RightPanelInvitation session={session} />;
+  return <RightPanelEmpty />;
 }
 
-function RightPanelCasual() {
+function RightPanelEmpty() {
   return (
     <aside className="pane-right">
-      <SidebarHeader title="About this chat" />
+      <SidebarHeader title="No scenario yet" />
       <div className="px-5 pb-4">
-        <div className="text-[12.5px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>
-          You and Lily started talking about your interview tomorrow. She seems to be picking up on your nerves.
-        </div>
+        <p className="text-[12.5px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>
+          Keep chatting with an NPC to unlock a scenario invitation.
+        </p>
+        <a href="main-app.html"
+           className="mt-3 inline-block text-[12px] font-mono uppercase tracking-wider no-underline"
+           style={{ color: 'var(--coral-ink)' }}>
+          ← Back to chats
+        </a>
       </div>
-      <DiagBlock label="Lily's read on you">
-        <DiagItem>You're <span style={{ color: 'var(--ink)' }} className="font-medium">nervous</span> about something work-related</DiagItem>
-        <DiagItem>You haven't eaten breakfast (mentioned coffee only)</DiagItem>
-        <DiagItem>You usually arrive at the shop around 9:00</DiagItem>
-      </DiagBlock>
-      <DiagBlock label="Topics mentioned" plum>
-        <Chip>job interview</Chip><Chip>marketing</Chip><Chip>Manhattan</Chip><Chip>stomach nerves</Chip>
-      </DiagBlock>
     </aside>
   );
 }
 
-function RightPanelInvitation() {
+function RightPanelInvitation({ session }) {
+  const title = session ? session.scenarioTitle : 'Scenario';
   return (
     <aside className="pane-right">
-      <SidebarHeader title="A suggestion is forming" />
+      <SidebarHeader title="Scenario invitation" />
       <div className="px-5 pb-3">
         <p className="text-[12px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>
-          Based on the conversation, Lily is about to suggest a roleplay. This isn't a system prompt — it emerges from her persona.
+          You have been invited to a <strong>{title}</strong> scenario.
         </p>
       </div>
-      <DiagBlock label="Why Lily is suggesting this">
-        <DiagItem>You mentioned a <span style={{ color: 'var(--ink)' }} className="font-medium">job interview tomorrow</span></DiagItem>
-        <DiagItem>You said you're nervous about doing it in English</DiagItem>
-        <DiagItem>Lily's persona includes prior HR experience</DiagItem>
-        <DiagItem>Relationship is <span style={{ color: 'var(--ink)' }} className="font-medium">Friend</span> — low stakes</DiagItem>
-      </DiagBlock>
-      <DiagBlock label="If you accept" coral>
-        <DiagItem>Lily takes on the role of a tough HR manager named Linda</DiagItem>
-        <DiagItem>Roughly 6 exchanges, ~8 minutes</DiagItem>
-        <DiagItem>You can pause or exit anytime — relationship stays</DiagItem>
+      <DiagBlock label="What to expect">
+        <DiagItem>Roleplay practice with an NPC</DiagItem>
+        <DiagItem>Multiple turns with choices to guide conversation</DiagItem>
+        <DiagItem>A grade and summary when done</DiagItem>
       </DiagBlock>
     </aside>
   );
 }
 
-function RightPanelActive() {
+function RightPanelActive({ session, hudState }) {
+  const title = session ? session.scenarioTitle : 'Scenario';
+  const impression = hudState ? hudState.impression : 5;
+  const stress = hudState ? hudState.stress : 'Medium';
+  const turnsLeft = hudState ? hudState.turnsLeft : '?';
   return (
     <aside className="pane-right">
-      <SidebarHeader title="Linda's perspective" coral />
-      <div className="px-5 pb-3">
-        <p className="text-[12px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>
-          "I want to see how this candidate handles pressure. The marketing role needs someone who can stay composed when something unexpected lands on the table."
-        </p>
-      </div>
-
-      <DiagBlock label="What Linda is testing">
-        <DiagItem><span style={{ color: 'var(--ink)' }} className="font-medium">Composure under pressure</span></DiagItem>
-        <DiagItem>Honest self-assessment</DiagItem>
-        <DiagItem>Polite hedging in formal register</DiagItem>
+      <SidebarHeader title={title} coral />
+      <DiagBlock label="Current state" coral>
+        <DiagItem>Impression: <span style={{ color: 'var(--ink)' }} className="font-medium">{impression} / 10</span></DiagItem>
+        <DiagItem>Stress: <span style={{ color: 'var(--ink)' }} className="font-medium">{stress}</span></DiagItem>
+        <DiagItem>Turns remaining: <span style={{ color: 'var(--ink)' }} className="font-medium">{turnsLeft}</span></DiagItem>
       </DiagBlock>
-
-      <DiagBlock label="State" coral>
-        <DiagItem>Impression: <span style={{ color: 'var(--ink)' }} className="font-medium">6 / 10</span> — interested but probing</DiagItem>
-        <DiagItem>Stress: Medium — she's testing, not punishing</DiagItem>
-        <DiagItem>Turns remaining: 5</DiagItem>
-      </DiagBlock>
-
-      <DiagBlock label="Choice preview · hover above to see live impact">
-        <DiagItem>↗ Diplomatic — likely +Impression, +Composure</DiagItem>
-        <DiagItem>⤴ Confident — risky, could read as arrogant</DiagItem>
-        <DiagItem>↺ Reflective — buys time, shows honesty</DiagItem>
+      <DiagBlock label="Tip">
+        <DiagItem>Choose thoughtfully — each response affects impression and stress.</DiagItem>
       </DiagBlock>
     </aside>
   );
 }
 
-function RightPanelAftermath() {
+function RightPanelAftermath({ session, summaryData }) {
+  const grade = (session && session.grade) || (summaryData && summaryData.grade) || '—';
+  const title = session ? session.scenarioTitle : 'Scenario';
   return (
     <aside className="pane-right">
       <SidebarHeader title="Saved to your journey" />
       <div className="px-5 pb-3">
         <p className="text-[12px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>
-          This scenario is now part of your story with Lily. She'll reference it in future chats.
+          This scenario is now part of your story. Grade: <strong>{grade}</strong>
         </p>
       </div>
-
-      <DiagBlock label="What changed">
-        <DiagItem>Relationship with Lily: <span style={{ color: 'var(--ink)' }} className="font-medium">Friend → Close friend</span></DiagItem>
-        <DiagItem>+1 scenario practiced · +1 memory</DiagItem>
-        <DiagItem>Polite hedging promoted from "trying" to "going well"</DiagItem>
-      </DiagBlock>
-
-      <DiagBlock label="New memory · AI noticed" plum>
-        <div className="ai-border rounded-xl p-3 mt-1">
-          <div className="font-serif text-[15px] leading-tight" style={{ color: 'var(--ink)', fontWeight: 700 }}>
-            Polite Disagree-er
-          </div>
-          <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'var(--ink-2)' }}>
-            You handled "tell me a weakness" by acknowledging and reframing — twice in one conversation. That phrasing is now part of your toolkit.
-          </p>
-        </div>
-      </DiagBlock>
-
-      <DiagBlock label="Recommended next">
-        <DiagItem>Try <span style={{ color: 'var(--coral-ink)' }} className="font-medium">Salary Negotiation</span> with Linda — Lily will offer next time</DiagItem>
+      <DiagBlock label="Scenario completed">
+        <DiagItem>{title} · complete</DiagItem>
+        <DiagItem>Grade: <span style={{ color: 'var(--ink)' }} className="font-medium">{grade}</span></DiagItem>
+        <DiagItem>+1 scenario practiced · saved to journey</DiagItem>
       </DiagBlock>
     </aside>
   );
@@ -582,88 +513,286 @@ function DiagItem({ children }) {
   );
 }
 
-function Chip({ children }) {
+// ---------- Empty state ----------
+function EmptyState() {
   return (
-    <span className="inline-block text-[10.5px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded mr-1 mb-1"
-          style={{ background: 'var(--bg-warm)', color: 'var(--ink-2)' }}>
-      {children}
-    </span>
+    <div className="flex-1 flex flex-col items-center justify-center gap-4 px-8">
+      <span className="text-[48px]">🎭</span>
+      <div className="text-center">
+        <div className="text-[18px] font-medium mb-2" style={{ color: 'var(--ink)' }}>
+          No scenarios yet
+        </div>
+        <p className="text-[14px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>
+          Keep chatting with an NPC to unlock one.
+        </p>
+        <a href="main-app.html"
+           className="mt-4 inline-block text-[13px] font-medium no-underline"
+           style={{ color: 'var(--coral-ink)' }}>
+          ← Back to chats
+        </a>
+      </div>
+    </div>
   );
 }
 
 // ---------- App ----------
 
-const STATES = [
-  { id: 'a', label: 'A · Casual',     subtitle: "Lily and the user chat about tomorrow's interview." },
-  { id: 'b', label: 'B · Invitation', subtitle: 'Lily suggests a practice scenario from inside the chat.' },
-  { id: 'c', label: 'C · Active',     subtitle: 'Same chat, warmer mood. HUD appears. Input becomes structured choices.' },
-  { id: 'd', label: 'D · Aftermath',  subtitle: 'Back to casual. Summary card persists as a memory.' },
-];
-
 function App() {
-  const [state, setState] = useState('a');
-  const intense = state === 'c';
-  const scrollRef = useRef(null);
-  const thread = state === 'a' ? THREAD_A_WEB
-               : state === 'b' ? THREAD_B_WEB
-               : state === 'c' ? LINDA_MESSAGES
-               : THREAD_D_WEB;
+  // session: the list-level session object (id, status, grade, scenarioTitle, npcId)
+  const [session, setSession] = useState(null);
+  // detailSession: full session detail from GET /sessions/:id (for completed)
+  const [detailSession, setDetailSession] = useState(null);
+  // transcript: array of { id, role, from, text, meta, createdAt }
+  const [transcript, setTranscript] = useState([]);
+  // messages: live messages shown in the chat area during active play
+  // Each: { from: 'user'|'npc-c', text, time? }
+  const [messages, setMessages] = useState([]);
+  // choices: current choice set during active play
+  const [choices, setChoices] = useState([]);
+  // hudState: { impression, stress, turnsLeft }
+  const [hudState, setHudState] = useState(null);
+  // summaryData: { grade, languageNote, pragmaticsNote, relationshipNote } from scenario_end or completed fetch
+  const [summaryData, setSummaryData] = useState(null);
+  // loading / error
+  const [loading, setLoading] = useState(true);
+  const [choiceDisabled, setChoiceDisabled] = useState(false);
+  // npcTyping: show typing indicator
+  const [npcTyping, setNpcTyping] = useState(false);
+  // finalSummary: when scenario_end received during active play
+  const [finalSummary, setFinalSummary] = useState(null);
 
+  const scrollRef = useRef(null);
+
+  // Derived status: what to render
+  const status = finalSummary ? 'completed'
+               : session ? session.status
+               : null;
+
+  const intense = status === 'active';
+
+  // Scroll to bottom on messages change
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [state]);
+  }, [messages, transcript, finalSummary]);
 
-  const current = STATES.find(s => s.id === state);
+  // Mount: load sessions, pick best session to show
+  useEffect(() => {
+    setLoading(true);
+    API.me()
+      .then(() => API.sessions())
+      .then((list) => {
+        const active  = list.find((s) => s.status === 'active');
+        const invited = list.find((s) => s.status === 'invited');
+        const done    = list.find((s) => s.status === 'completed');
+        const picked  = active || invited || done || null;
+        setSession(picked);
+        setLoading(false);
+        // For completed sessions, fetch detail immediately
+        if (picked && picked.status === 'completed') {
+          API.session(picked.id).then((detail) => {
+            setDetailSession(detail.session);
+            setTranscript(detail.transcript || []);
+            if (detail.state) setHudState(detail.state);
+          }).catch(() => {});
+        }
+        // For active sessions, fetch detail to get initial state and any existing transcript
+        if (picked && picked.status === 'active') {
+          API.session(picked.id).then((detail) => {
+            setDetailSession(detail.session);
+            setTranscript(detail.transcript || []);
+            if (detail.state) setHudState(detail.state);
+            // Rebuild messages from transcript
+            const msgs = (detail.transcript || []).map((t) => ({
+              from: t.from === 'user' ? 'user' : 'npc-c',
+              text: t.text,
+              time: t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+            }));
+            setMessages(msgs);
+          }).catch(() => {});
+        }
+      })
+      .catch((e) => {
+        if (e.status === 401) location.assign('onboarding-journey.html');
+        setLoading(false);
+      });
+  }, []);
+
+  // Accept an invited session
+  function handleAccept() {
+    if (!session) return;
+    setChoiceDisabled(true);
+    API.acceptSession(session.id)
+      .then((result) => {
+        // Transition to active: update session status in local state
+        setSession((prev) => prev ? Object.assign({}, prev, { status: 'active' }) : prev);
+        // Opening message from NPC
+        const opening = result.openingMessage;
+        if (opening) {
+          setMessages([{
+            from: 'npc-c',
+            text: opening.text,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          }]);
+        }
+        // Set initial choices
+        if (result.choices) setChoices(result.choices);
+        // Set initial HUD state from returned state
+        if (result.state) setHudState(result.state);
+        setChoiceDisabled(false);
+      })
+      .catch(() => {
+        setChoiceDisabled(false);
+      });
+  }
+
+  // Decline an invited session
+  function handleDecline() {
+    if (!session) return;
+    API.declineSession(session.id)
+      .then(() => {
+        setSession(null);
+      })
+      .catch(() => {});
+  }
+
+  // Handle a choice in the active scenario
+  function handleChoose(choice) {
+    if (!session || choiceDisabled) return;
+    setChoiceDisabled(true);
+
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Append user's chosen text immediately
+    setMessages((prev) => prev.concat({
+      from: 'user',
+      text: choice.text,
+      time: timeStr,
+    }));
+
+    API.streamChoose(session.id, choice.id, (event) => {
+      const { type, data } = event;
+      if (type === 'typing_start') {
+        setNpcTyping(true);
+      } else if (type === 'typing_end') {
+        setNpcTyping(false);
+      } else if (type === 'message_complete') {
+        setNpcTyping(false);
+        setMessages((prev) => prev.concat({
+          from: 'npc-c',
+          text: data.fullText,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        }));
+      } else if (type === 'state_update') {
+        setHudState({
+          impression: data.impression,
+          stress: data.stress,
+          turnsLeft: data.turnsLeft,
+        });
+      } else if (type === 'choices') {
+        setChoices(data.choices || data);
+        setChoiceDisabled(false);
+      } else if (type === 'scenario_end') {
+        setFinalSummary(data.summary || data);
+        setSummaryData(data.summary || data);
+        setChoices([]);
+        setChoiceDisabled(false);
+      } else if (type === 'error') {
+        // Re-enable choices so user can retry
+        setNpcTyping(false);
+        setChoiceDisabled(false);
+        setMessages((prev) => prev.concat({
+          from: 'system',
+          text: 'Connection error — please try again.',
+        }));
+      }
+      // 'done' event: ignore (stream finished)
+    });
+  }
+
+  // Effective summary for the summary card
+  const effectiveSummary = finalSummary || summaryData;
+  const effectiveSession = detailSession || session;
 
   return (
-    <div className="app-shell chat-bg" data-screen-label={`0${STATES.findIndex(s => s.id === state) + 1} Web · ${current.label}`}
+    <div className="app-shell chat-bg"
          style={{ background: intense ? 'var(--bg-warm-c)' : 'var(--bg)' }}>
       <WebConversationsRail activeId="lily" intense={intense} />
 
       <section className="pane-main">
-        <ScenChatHeader intense={intense} />
-        {intense && <ScenarioHUD />}
+        <ScenChatHeader intense={intense} session={effectiveSession} hudState={hudState} />
+        {intense && <ScenarioHUD session={effectiveSession} hudState={hudState} />}
+
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6">
           <div className="max-w-[820px] mx-auto py-2">
-            {state === 'd'
-              ? <div className="text-center mt-4 mb-2">
-                  <span className="text-[10px] font-mono uppercase tracking-[0.16em]" style={{ color: 'var(--muted)' }}>
-                    ↑ 8 minutes of roleplay · scroll up to revisit
-                  </span>
-                </div>
-              : <DayDivider label="Today · 今天" />}
-            {state === 'c' && (
-              <div className="text-center my-2 fade-up">
-                <span className="text-[10px] font-mono uppercase tracking-[0.16em] px-2.5 py-1 rounded-full"
-                      style={{ background: 'var(--surface-2c)', color: 'var(--muted)', border: '1px solid var(--hairline-c)' }}>
-                  roleplay started · 8:47
-                </span>
+            {loading && (
+              <div className="text-center mt-8">
+                <span className="text-[12px] font-mono" style={{ color: 'var(--muted)' }}>Loading…</span>
               </div>
             )}
-            {thread.map((m, i) => <ScenMessage key={i} msg={m} intense={intense} />)}
+
+            {!loading && status === null && <EmptyState />}
+
+            {!loading && status === 'invited' && session && (
+              <>
+                <DayDivider label="Today · 今天" />
+                <InvitationCard
+                  session={session}
+                  onAccept={handleAccept}
+                  onDecline={handleDecline}
+                />
+              </>
+            )}
+
+            {!loading && status === 'active' && (
+              <>
+                <div className="text-center my-2 fade-up">
+                  <span className="text-[10px] font-mono uppercase tracking-[0.16em] px-2.5 py-1 rounded-full"
+                        style={{ background: 'var(--surface-2c)', color: 'var(--muted)', border: '1px solid var(--hairline-c)' }}>
+                    Roleplay started
+                  </span>
+                </div>
+                {messages.map((m, i) => <ScenMessage key={i} msg={m} intense={true} />)}
+                {npcTyping && (
+                  <div className="flex items-end gap-2 mb-2.5 fade-up">
+                    <WebAvatar npc={NPCS_WEB[0]} size={26} />
+                    <div className="px-3.5 py-2.5 text-[14px]"
+                         style={{ background: 'var(--bubble-received)', color: 'var(--bubble-received-ink)',
+                                  border: '1px solid var(--hairline)', borderRadius: '16px 16px 16px 4px' }}>
+                      <span className="font-mono text-[12px]" style={{ color: 'var(--muted)' }}>…</span>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {!loading && status === 'completed' && (
+              <>
+                <DayDivider label="Completed scenario · 已完成" />
+                <ScenarioSummaryCard
+                  session={effectiveSession}
+                  transcript={transcript}
+                  summaryData={effectiveSummary}
+                />
+              </>
+            )}
           </div>
         </div>
-        {intense ? <ChoiceComposer /> : <CasualComposer state={state} />}
+
+        {status === 'active' && !finalSummary && choices.length > 0 && (
+          <ChoiceComposer
+            choices={choices}
+            onChoose={handleChoose}
+            disabled={choiceDisabled}
+          />
+        )}
       </section>
 
-      <RightPanel state={state} />
-
-      {/* Top state tabs */}
-      <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 p-1 rounded-full"
-           style={{ background: 'oklch(0.18 0.01 55 / 0.92)', backdropFilter: 'blur(8px)' }}>
-        <span className="px-2 text-[9.5px] font-mono uppercase tracking-[0.18em]"
-              style={{ color: 'oklch(0.62 0.03 55)' }}>States</span>
-        {STATES.map(s => (
-          <button key={s.id} onClick={() => setState(s.id)}
-                  className="px-3 py-1.5 rounded-full text-[10.5px] font-mono uppercase tracking-wider transition"
-                  style={{
-                    background: state === s.id ? '#fff' : 'transparent',
-                    color: state === s.id ? '#1F1B16' : 'oklch(0.78 0.02 60)',
-                  }}>
-            {s.label}
-          </button>
-        ))}
-      </div>
+      <RightPanel
+        status={status}
+        session={effectiveSession}
+        summaryData={effectiveSummary}
+        hudState={hudState}
+      />
 
       <WebDock current="02 Scenario" />
     </div>
