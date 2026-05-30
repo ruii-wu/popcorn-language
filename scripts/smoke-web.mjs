@@ -37,7 +37,9 @@ async function login(page, u, p) {
 async function flowApi(browser) {
   console.log('[api] window.API wiring + same-origin reach');
   const page = await newPage(browser);
-  await gotoApp(page, 'main-app.html');
+  // Use the onboarding page for the anonymous check: main-app.html correctly redirects an
+  // unauthenticated visitor to onboarding, which would destroy the eval context mid-flight.
+  await gotoApp(page, 'onboarding-journey.html');
   const shape = await page.evaluate(() =>
     typeof window.API === 'object' && typeof window.API.streamMessage === 'function');
   assert(shape, 'window.API exposes streamMessage');
