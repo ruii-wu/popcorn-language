@@ -17,7 +17,7 @@ export interface SettingsView {
 // Mirrors the UserSettings model defaults (spec §八).
 export const DEFAULT_SETTINGS: SettingsView = {
   grammarCorrection: true,
-  modelName: 'qwen2.5:7b-instruct',
+  modelName: 'qwen3.5:9b',
   uiLanguage: 'zh-CN',
   voiceTTSEnabled: false,
   showAIRationale: true,
