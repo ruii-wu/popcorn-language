@@ -89,9 +89,14 @@ async function flowJourney(browser) {
   const page = await newPage(browser);
   await login(page, 'demo', 'demo');
   await gotoApp(page, 'onboarding-journey.html');
-  await page.waitForTimeout(3000); // allow in-browser Babel + fetches
+  await page.waitForTimeout(4000); // allow in-browser Babel + fetches
   const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
-  assert(/Lily/.test(body), 'journey view mentions Lily (seeded relationship)');
+  // All three seeded NPC relationships must appear (demo-DB-specific check)
+  assert(/Lily/.test(body),  'journey view shows Lily (seeded close relationship)');
+  assert(/Chen/.test(body),  'journey view shows Chen (seeded friend relationship)');
+  assert(/Emma/.test(body),  'journey view shows Emma (seeded acquaintance relationship)');
+  // The journey header shows a real days count from the DB (demo streak ~6 days)
+  assert(/Close friend/i.test(body), 'journey view shows "Close friend" stage label for Lily');
 }
 
 async function flowScenario(browser) {

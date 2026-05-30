@@ -1,7 +1,7 @@
 // Popcorn Language — Web Onboarding + Your Journey
 // Onboarding is full-bleed (no app shell). Journey uses the 3-pane shell.
 
-const { useState } = React;
+const { useState, useEffect } = React;
 
 // ============================================================
 // ONBOARDING — full-bleed, 3 steps
@@ -38,10 +38,6 @@ function OnboardingShell({ step, totalSteps = 3, onBack, children }) {
         </div>
         <div className="flex items-center gap-4">
           <StepDots step={step} total={totalSteps} />
-          <button className="text-[11.5px] transition hover:text-[var(--ink)]"
-                  style={{ color: 'var(--muted)' }}>
-            Already have an account? <span className="underline underline-offset-2">Sign in</span>
-          </button>
         </div>
       </header>
 
@@ -297,7 +293,8 @@ function ProfileStep({ onNext, onBack }) {
                     style={{ color: 'var(--ink-2)' }}>
               Back
             </button>
-            <button onClick={onNext} disabled={interests.size < 3}
+            <button onClick={() => onNext({ role, goal, interests: Array.from(interests) })}
+                    disabled={interests.size < 3}
                     className="group inline-flex items-center gap-2 px-6 py-3 rounded-full text-[14px] font-medium transition disabled:opacity-40"
                     style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-ink)' }}>
               Continue
@@ -339,7 +336,25 @@ function Pillbtn({ selected, onClick, children }) {
 
 // ---------- Step 3: Meet Lily ----------
 
-function MeetStep({ onNext, onBack }) {
+function MeetStep({ onFinish, onBack, profileData }) {
+  const [username, setUsername] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleFinish() {
+    if (!username.trim()) { setError('Please pick a username.'); return; }
+    setBusy(true);
+    setError('');
+    try {
+      const { role, goal, interests } = profileData || {};
+      const goalStr = Array.isArray(goal) ? (goal[0] || null) : (goal || null);
+      await finishOnboarding({ username: username.trim(), role: role || null, goal: goalStr, interests: interests || [] });
+    } catch (e) {
+      setError(e.message || 'Something went wrong.');
+      setBusy(false);
+    }
+  }
+
   return (
     <OnboardingShell step={2} onBack={onBack}>
       <div className="max-w-[1100px] mx-auto px-10 py-4 pb-16">
@@ -422,6 +437,31 @@ function MeetStep({ onNext, onBack }) {
                 </div>
               </div>
             </div>
+
+            {/* Username input */}
+            <div className="mt-7">
+              <label className="text-[12px] font-mono uppercase tracking-wider block mb-2"
+                     style={{ color: 'var(--muted)' }}>
+                Pick a username
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleFinish()}
+                placeholder="e.g. alex123"
+                className="w-full px-4 py-2.5 rounded-xl text-[14px] outline-none"
+                style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--hairline)',
+                  color: 'var(--ink)',
+                }}
+                disabled={busy}
+              />
+              {error && (
+                <p className="mt-2 text-[12px]" style={{ color: 'var(--coral-ink)' }}>{error}</p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -431,22 +471,37 @@ function MeetStep({ onNext, onBack }) {
             Up next → Mr. Chen and Emma will appear as your conversations grow.
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={onBack}
+            <button onClick={onBack} disabled={busy}
                     className="px-5 py-2.5 rounded-full text-[13px] transition hover:bg-[var(--bg-warm)]"
                     style={{ color: 'var(--ink-2)' }}>
               Back
             </button>
-            <button onClick={onNext}
-                    className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-full text-[15px] font-medium transition"
+            <button onClick={handleFinish} disabled={busy || !username.trim()}
+                    className="group inline-flex items-center gap-2 px-7 py-3.5 rounded-full text-[15px] font-medium transition disabled:opacity-40"
                     style={{ background: 'var(--coral)', color: '#fff' }}>
-              Start chatting
-              <span className="transition group-hover:translate-x-1">{WebI.arrowR}</span>
+              {busy ? 'Setting up…' : 'Start chatting'}
+              {!busy && <span className="transition group-hover:translate-x-1">{WebI.arrowR}</span>}
             </button>
           </div>
         </div>
       </div>
     </OnboardingShell>
   );
+}
+
+async function finishOnboarding({ username, role, goal, interests }) {
+  try {
+    await API.register(username, username);
+  } catch (e) {
+    if (e.status === 409) {
+      await API.login(username, username);
+    } else {
+      throw e;
+    }
+  }
+  await API.saveProfile({ role: role || null, goal: goal || null, interests: interests || [] });
+  await API.onboardingComplete();
+  location.assign('main-app.html');
 }
 
 function Trait({ children }) {
@@ -458,54 +513,93 @@ function Trait({ children }) {
   );
 }
 
+// ---------- Login form (returning users) ----------
+
+function LoginForm() {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleLogin() {
+    if (!username.trim()) { setError('Enter your username.'); return; }
+    setBusy(true);
+    setError('');
+    try {
+      await API.login(username.trim(), password);
+      location.assign('main-app.html');
+    } catch (e) {
+      setError(e.message || 'Login failed.');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-8 rounded-xl px-6 py-5 max-w-[420px] mx-auto"
+         style={{ background: 'var(--surface)', border: '1px solid var(--hairline)' }}>
+      <div className="text-[11px] font-mono uppercase tracking-wider mb-4" style={{ color: 'var(--muted)' }}>
+        Already have an account? Log in
+      </div>
+      <div className="flex flex-col gap-3">
+        <input
+          type="text"
+          value={username}
+          onChange={e => setUsername(e.target.value)}
+          placeholder="Username"
+          className="w-full px-4 py-2.5 rounded-xl text-[14px] outline-none"
+          style={{ background: 'var(--bg)', border: '1px solid var(--hairline)', color: 'var(--ink)' }}
+          disabled={busy}
+          onKeyDown={e => e.key === 'Enter' && handleLogin()}
+        />
+        <input
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          placeholder="Password"
+          className="w-full px-4 py-2.5 rounded-xl text-[14px] outline-none"
+          style={{ background: 'var(--bg)', border: '1px solid var(--hairline)', color: 'var(--ink)' }}
+          disabled={busy}
+          onKeyDown={e => e.key === 'Enter' && handleLogin()}
+        />
+        {error && <p className="text-[12px]" style={{ color: 'var(--coral-ink)' }}>{error}</p>}
+        <button onClick={handleLogin} disabled={busy}
+                className="w-full py-2.5 rounded-xl text-[14px] font-medium transition disabled:opacity-40"
+                style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-ink)' }}>
+          {busy ? 'Logging in…' : 'Log in'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ============================================================
 // YOUR JOURNEY — wide dashboard
 // ============================================================
 
-const RELATIONSHIPS = [
-  { id: 'lily', name: 'Lily', glyph: '☕',
-    bg: '#D5F2DC', ink: '#15784A',
-    stage: 'Close friend', stageValue: 3,
-    sub: '8 conversations · 2 scenarios',
-    note: 'Invited you to Mock Interview yesterday',
-    last: 'today, 9:08' },
-  { id: 'chen', name: 'Mr. Chen', glyph: '陈',
-    bg: 'oklch(0.93 0.02 250)', ink: 'oklch(0.40 0.06 250)',
-    stage: 'Acquaintance', stageValue: 1,
-    sub: '3 conversations · 1 declined',
-    note: 'Asked about the rollout plan',
-    last: '1d ago' },
-  { id: 'emma', name: 'Emma', glyph: 'E',
-    bg: 'oklch(0.93 0.04 340)', ink: 'oklch(0.48 0.10 340)',
-    stage: 'Friend', stageValue: 2,
-    sub: '5 conversations',
-    note: 'Constantly wants cat pictures',
-    last: '5h ago' },
-];
-
-const SCENARIOS = [
-  { name: 'Mock Interview', npc: 'Lily', outcome: 'completed', result: 'B+', when: 'Yesterday', tags: ['Formal register', 'Polite hedging'] },
-  { name: 'Coffee Order — busy hours', npc: 'Lily', outcome: 'completed', result: 'A−', when: 'May 12', tags: ['Casual register', 'Time pressure'] },
-  { name: 'Apartment Dispute', npc: 'Mr. Chen', outcome: 'declined', when: 'Last week' },
-  { name: 'Late to a meeting', npc: 'Mr. Chen', outcome: 'in-progress', when: 'Earlier today', tags: ['Apologetic register'] },
-];
-
-const MEMORIES = [
-  { title: 'Cat Person Diplomat',
-    body: "You've talked about your cat in 5 different conversations — with all three NPCs. Pattern detected: you bring up cats when you want to change the subject.",
-    when: 'noticed Tuesday' },
-  { title: 'Coffee Order Expert',
-    body: "You've successfully ordered coffee in three different scenarios — casual, polite, even apologetic when you were late. Register flexibility under low-stakes.",
-    when: 'noticed last week' },
-  { title: 'Polite Disagree-er',
-    body: 'You handled disagreement gracefully — you used "I see what you mean, but…" twice last week. That phrasing is a keeper.',
-    when: 'noticed yesterday' },
-  { title: 'Tense-Switcher',
-    body: "When you talk about things that haven't happened yet, you sometimes drop into present tense (\"tomorrow I go\"). You self-correct about 60% of the time now — up from 20% last month.",
-    when: 'noticed today' },
-];
+// NPC glyph/colour lookup for rendering relationship cards from live API data
+const NPC_VISUAL = {
+  lily:  { glyph: '☕', bg: '#D5F2DC',                      ink: '#15784A' },
+  chen:  { glyph: '陈', bg: 'oklch(0.93 0.02 250)',          ink: 'oklch(0.40 0.06 250)' },
+  emma:  { glyph: 'E',  bg: 'oklch(0.93 0.04 340)',          ink: 'oklch(0.48 0.10 340)' },
+};
 
 function JourneyDashboard() {
+  const [journey, setJourney] = useState(null);
+  const [rels, setRels] = useState([]);
+  const [achs, setAchs] = useState([]);
+
+  useEffect(() => {
+    Promise.all([API.journey(), API.relationships(), API.achievements()])
+      .then(([j, r, a]) => { setJourney(j); setRels(r); setAchs(a); })
+      .catch(() => {});
+  }, []);
+
+  const days          = journey ? journey.days          : '—';
+  const conversations = journey ? journey.conversations : '—';
+  const scenarios     = journey ? journey.scenarios     : '—';
+  const memories      = journey ? journey.memories      : '—';
+  const friendCount   = rels.length || 3;
+
   return (
     <div className="app-shell" data-screen-label="04 Web · Your Journey">
       <WebNavRail activeTop="journey" />
@@ -519,13 +613,13 @@ function JourneyDashboard() {
             </span>
             <div className="flex items-end justify-between gap-8 mt-2 flex-wrap">
               <h1 className="font-serif text-[58px] leading-[0.95]">
-                17 days,<br /><span style={{ color: 'var(--accent-ink)' }}>3 friendships.</span>
+                {days} days,<br /><span style={{ color: 'var(--accent-ink)' }}>{friendCount} friendships.</span>
               </h1>
               <div className="grid grid-cols-4 gap-2 min-w-[460px]">
-                <StatBox label="days"          value="17" />
-                <StatBox label="conversations" value="86" />
-                <StatBox label="scenarios"     value="4"  />
-                <StatBox label="memories"      value="4"  plum />
+                <StatBox label="days"          value={String(days)} />
+                <StatBox label="conversations" value={String(conversations)} />
+                <StatBox label="scenarios"     value={String(scenarios)} />
+                <StatBox label="memories"      value={String(memories)} plum />
               </div>
             </div>
           </div>
@@ -534,25 +628,21 @@ function JourneyDashboard() {
           <Section eyebrow="Relationships" zh="关系"
                    title="People you talk to" mt={12}>
             <div className="grid grid-cols-3 gap-3">
-              {RELATIONSHIPS.map(r => <RelationshipCard key={r.id} r={r} />)}
+              {rels.length > 0
+                ? rels.map(r => <LiveRelationshipCard key={r.npcId} r={r} />)
+                : <p className="text-[13px] col-span-3" style={{ color: 'var(--muted)' }}>Loading…</p>
+              }
             </div>
           </Section>
 
-          {/* Scenarios */}
-          <Section eyebrow="Scenarios" zh="情景"
-                   title="What you've practiced" mt={12}>
+          {/* Achievements */}
+          <Section eyebrow="Achievements" zh="成就"
+                   title="What you've unlocked" mt={12}>
             <div className="grid grid-cols-2 gap-3">
-              {SCENARIOS.map((s, i) => <ScenarioCard key={i} s={s} />)}
-            </div>
-          </Section>
-
-          {/* Memories */}
-          <Section eyebrow="Memories" zh="为你生成"
-                   title="What your AI noticed about how you talk" mt={12}
-                   plum
-                   desc="Observations your local LLM made by looking at your conversations. Different for every learner — these are yours alone.">
-            <div className="grid grid-cols-2 gap-3">
-              {MEMORIES.map((m, i) => <MemoryCard key={i} m={m} />)}
+              {achs.length > 0
+                ? achs.map(a => <AchievementCard key={a.id} a={a} />)
+                : <p className="text-[13px] col-span-2" style={{ color: 'var(--muted)' }}>Loading…</p>
+              }
             </div>
           </Section>
 
@@ -566,6 +656,72 @@ function JourneyDashboard() {
       </section>
 
       <WebDock current="03 Onboarding & Journey" />
+    </div>
+  );
+}
+
+function LiveRelationshipCard({ r }) {
+  const visual = NPC_VISUAL[r.npcId] || { glyph: r.name ? r.name[0] : '?', bg: 'var(--surface-2)', ink: 'var(--ink)' };
+  const stageLabel = RELATIONSHIP_LABEL[r.stage] || r.stage || '—';
+  const stageValue = r.stageValue != null ? r.stageValue
+                   : r.stage === 'close' ? 3 : r.stage === 'friend' ? 2 : 1;
+  const sub  = r.sub  || '';
+  const note = r.note || '';
+  const last = r.last || '';
+
+  return (
+    <div className="rounded-xl p-4"
+         style={{ background: 'var(--surface)', border: '1px solid var(--hairline)' }}>
+      <div className="flex items-start gap-3 mb-2">
+        <div className="w-12 h-12 rounded-full grid place-items-center shrink-0"
+             style={{ background: visual.bg, color: visual.ink, fontSize: 22,
+                      fontFamily: /[一-龥]/.test(visual.glyph) ? "'Outfit', sans-serif" : 'inherit' }}>
+          {visual.glyph}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[15px] font-medium truncate">{r.name}</span>
+            {last && <span className="text-[10px] font-mono" style={{ color: 'var(--muted)' }}>{last}</span>}
+          </div>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <WebRelationshipDots value={stageValue} />
+            <span className="text-[11px]" style={{ color: 'var(--muted)' }}>{stageLabel}</span>
+          </div>
+        </div>
+      </div>
+      {sub && <div className="text-[11.5px]" style={{ color: 'var(--ink-2)' }}>{sub}</div>}
+      {note && (
+        <p className="text-[12px] mt-2 leading-snug" style={{ color: 'var(--ink-2)' }}>
+          {note}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function AchievementCard({ a }) {
+  return (
+    <div className="rounded-xl p-4 flex items-start gap-3"
+         style={{
+           background: 'var(--surface)',
+           border: '1px solid ' + (a.unlocked ? 'var(--hairline)' : 'var(--hairline)'),
+           opacity: a.unlocked ? 1 : 0.5,
+         }}>
+      <div className="text-[28px] shrink-0" style={{ lineHeight: 1 }}>
+        {a.icon || '🏆'}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-[14px] font-medium" style={{ color: 'var(--ink)' }}>{a.title}</div>
+        <p className="text-[12px] mt-0.5 leading-snug" style={{ color: 'var(--ink-2)' }}>{a.description}</p>
+        {a.unlocked && a.unlockedAt && (
+          <div className="text-[10px] font-mono mt-1.5" style={{ color: 'var(--muted)' }}>
+            Unlocked {new Date(a.unlockedAt).toLocaleDateString()}
+          </div>
+        )}
+        {!a.unlocked && (
+          <div className="text-[10px] font-mono mt-1.5" style={{ color: 'var(--muted)' }}>Locked</div>
+        )}
+      </div>
     </div>
   );
 }
@@ -605,132 +761,56 @@ function Section({ eyebrow, zh, title, desc, children, mt = 8, plum }) {
   );
 }
 
-function RelationshipCard({ r }) {
-  return (
-    <div className="rounded-xl p-4"
-         style={{ background: 'var(--surface)', border: '1px solid var(--hairline)' }}>
-      <div className="flex items-start gap-3 mb-2">
-        <div className="w-12 h-12 rounded-full grid place-items-center shrink-0"
-             style={{ background: r.bg, color: r.ink, fontSize: 22,
-                      fontFamily: /[\u4e00-\u9fa5]/.test(r.glyph) ? "'Outfit', sans-serif" : 'inherit' }}>
-          {r.glyph}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[15px] font-medium truncate">{r.name}</span>
-            <span className="text-[10px] font-mono" style={{ color: 'var(--muted)' }}>{r.last}</span>
-          </div>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <WebRelationshipDots value={r.stageValue} />
-            <span className="text-[11px]" style={{ color: 'var(--muted)' }}>{r.stage}</span>
-          </div>
-        </div>
-      </div>
-      <div className="text-[11.5px]" style={{ color: 'var(--ink-2)' }}>{r.sub}</div>
-      {r.note && (
-        <p className="text-[12px] mt-2 leading-snug" style={{ color: 'var(--ink-2)' }}>
-          {r.note}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function ScenarioCard({ s }) {
-  const status = s.outcome === 'completed' ? { label: '✓ completed', color: 'var(--moss)', bg: 'var(--moss-soft)' }
-              : s.outcome === 'declined'   ? { label: '⤴ declined',   color: 'var(--muted)', bg: 'var(--bg-warm)' }
-              :                              { label: '🕐 in progress', color: 'var(--coral-ink)', bg: 'var(--coral-soft)' };
-  return (
-    <div className="rounded-xl p-4 flex items-start gap-4"
-         style={{ background: 'var(--surface)', border: '1px solid var(--hairline)' }}>
-      <div className="flex-1 min-w-0">
-        <div className="text-[14px] font-medium" style={{ color: 'var(--ink)' }}>
-          {s.name}
-        </div>
-        <div className="text-[11.5px] mt-0.5" style={{ color: 'var(--muted)' }}>
-          with {s.npc} · {s.when}
-        </div>
-        {s.tags && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            {s.tags.map(t => (
-              <span key={t} className="text-[9.5px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded"
-                    style={{ background: 'var(--bg-warm)', color: 'var(--ink-2)' }}>
-                {t}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-      {s.result && (
-        <span className="font-serif text-[26px] shrink-0" style={{ color: 'var(--coral-ink)', lineHeight: 1 }}>
-          {s.result}
-        </span>
-      )}
-      <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded shrink-0"
-            style={{ background: status.bg, color: status.color }}>
-        {status.label}
-      </span>
-    </div>
-  );
-}
-
-function MemoryCard({ m }) {
-  return (
-    <div className="ai-border rounded-xl p-4 relative">
-      <div className="flex items-center gap-1.5 mb-2">
-        <span style={{ color: 'var(--plum)' }}>{WebI.sparkleF}</span>
-        <span className="text-[9.5px] font-mono uppercase tracking-wider" style={{ color: 'var(--plum-ink)' }}>
-          AI · observed
-        </span>
-        <span className="text-[9.5px] font-mono uppercase tracking-wider ml-auto" style={{ color: 'var(--muted)' }}>
-          {m.when}
-        </span>
-      </div>
-      <div className="font-serif text-[22px] leading-tight" style={{ color: 'var(--ink)', fontWeight: 700 }}>
-        {m.title}
-      </div>
-      <p className="text-[12.5px] mt-2 leading-relaxed" style={{ color: 'var(--ink-2)' }}>
-        {m.body}
-      </p>
-    </div>
-  );
-}
-
 // ============================================================
 // APP
 // ============================================================
 
 function App() {
-  const [view, setView] = useState('onboarding');
+  // 'loading' | 'wizard' | 'journey'
+  const [appView, setAppView] = useState('loading');
   const [step, setStep] = useState(0);
+  const [profileData, setProfileData] = useState({ role: 'Software engineer', goal: 'work', interests: ['Coffee', 'Cats', 'Tech'] });
 
+  useEffect(() => {
+    API.me()
+      .then(() => setAppView('journey'))
+      .catch(() => setAppView('wizard'));
+  }, []);
+
+  if (appView === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+        <span className="text-[13px] font-mono" style={{ color: 'var(--muted)' }}>Loading…</span>
+      </div>
+    );
+  }
+
+  if (appView === 'journey') {
+    return (
+      <div className="min-h-screen">
+        <JourneyDashboard />
+        <WebDock current="03 Onboarding & Journey" />
+      </div>
+    );
+  }
+
+  // Wizard view
   return (
     <div className="min-h-screen">
-      {/* Top section toggle */}
-      <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 p-1 rounded-full"
-           style={{ background: 'oklch(0.18 0.01 55 / 0.92)', backdropFilter: 'blur(8px)' }}>
-        <span className="px-2 text-[9.5px] font-mono uppercase tracking-[0.18em]"
-              style={{ color: 'oklch(0.62 0.03 55)' }}>Screens</span>
-        {[
-          { id: 'onboarding', label: view === 'onboarding' ? `Onboarding · 0${step+1}/03` : 'Onboarding' },
-          { id: 'journey',    label: 'Your Journey' },
-        ].map(t => (
-          <button key={t.id} onClick={() => setView(t.id)}
-                  className="px-3 py-1.5 rounded-full text-[10.5px] font-mono uppercase tracking-wider transition"
-                  style={{
-                    background: view === t.id ? '#fff' : 'transparent',
-                    color: view === t.id ? '#1F1B16' : 'oklch(0.78 0.02 60)',
-                  }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {view === 'onboarding' && step === 0 && <WelcomeStep onNext={() => setStep(1)} />}
-      {view === 'onboarding' && step === 1 && <ProfileStep onNext={() => setStep(2)} onBack={() => setStep(0)} />}
-      {view === 'onboarding' && step === 2 && <MeetStep    onNext={() => setView('journey')} onBack={() => setStep(1)} />}
-      {view === 'journey'    && <JourneyDashboard />}
-
+      {step === 0 && <WelcomeStep onNext={() => setStep(1)} />}
+      {step === 1 && (
+        <ProfileStep
+          onNext={(data) => { setProfileData(data); setStep(2); }}
+          onBack={() => setStep(0)}
+        />
+      )}
+      {step === 2 && (
+        <MeetStep
+          profileData={profileData}
+          onBack={() => setStep(1)}
+        />
+      )}
+      {step === 0 && <LoginForm />}
       <WebDock current="03 Onboarding & Journey" />
     </div>
   );
