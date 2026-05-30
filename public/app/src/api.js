@@ -82,7 +82,7 @@
     logout: () => apiPost('/api/auth/logout', {}),
     // chat
     npcs: () => apiGet('/api/npcs'),
-    thread: (npcId, limit) => apiGet('/api/threads/' + npcId + '?limit=' + (limit || 50)),
+    thread: (npcId, limit) => apiGet('/api/threads/' + npcId + '/messages?limit=' + (limit || 50)),
     streamMessage: (npcId, text, onEvent) =>
       streamPost('/api/threads/' + npcId + '/messages', { text: text }, onEvent),
     // onboarding / journey / profile

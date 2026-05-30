@@ -68,6 +68,22 @@ async function flowChat(browser) {
   const npcCount = await page.locator('button', { hasText: /Lily|Emma|Chen/ }).count();
   assert(npcCount >= 3, 'rail lists ≥3 NPCs from API (got ' + npcCount + ')');
 
+  // Thread history must LOAD and RENDER (regression guard for the GET endpoint): the first
+  // message returned by the API for the open thread must appear in the chat pane before we
+  // send anything. Catches api.js pointing thread() at the wrong (DELETE-only) route.
+  const firstMsg = await page.evaluate(async () => {
+    const r = await window.API.thread('lily');
+    return (r.messages && r.messages[0] && r.messages[0].text) || '';
+  });
+  if (firstMsg) {
+    const probe = firstMsg.slice(0, 24);
+    const rendered = await page.waitForFunction(
+      (t) => document.body.innerText.includes(t), probe, { timeout: 10000 }).then(() => true).catch(() => false);
+    assert(rendered, 'prior thread history renders from /messages (probe: "' + probe + '")');
+  } else {
+    ok('thread has no prior history to assert (seed-dependent) — skipped');
+  }
+
   // Send a message; Ollama may be up or down. Assert the user bubble appears and the
   // composer re-enables (never stuck). If Ollama is down, an error bubble appears.
   const box = page.locator('textarea');
