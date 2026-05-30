@@ -4,7 +4,7 @@ NUS Master of Computing capstone — a **local-LLM-powered, bilingual (中→EN)
 
 > ⚠️ **Local demo only.** Authentication is intentionally minimal (see [A note on auth](#a-note-on-auth)). **Never deploy this beyond localhost.**
 
-> **Project status: backend complete (W1–W8).** Chat (SSE streaming), the pluggable memory engine + ablation harness, scenario gameplay, grammar correction, relationships/progression, achievements (static + dynamic), the Journey dashboard, Settings, and system/reset are all implemented and tested. 220+ Vitest cases pass; `typecheck` is clean. The UI is the static prototype in `prototypes/web/` (the Next.js app is API-only).
+> **Project status: backend complete (W1–W8) + web client wired (W10).** Chat (SSE streaming), the pluggable memory engine + ablation harness, scenario gameplay, grammar correction, relationships/progression, achievements (static + dynamic), the Journey dashboard, Settings, and system/reset are all implemented and tested. 225 Vitest cases pass; `typecheck` is clean. The React UI now talks to the live API and is **served same-origin from the backend at `/app`** (`public/app/`) — open `http://localhost:3100/app/main-app.html` to use the product end-to-end. The chat model is `qwen3.5:9b`.
 
 ---
 
@@ -13,9 +13,12 @@ NUS Master of Computing capstone — a **local-LLM-powered, bilingual (中→EN)
 - **Node.js 20+** (`node -v`). Tested on Node 24.
 - **Ollama** — *optional* for development. The app boots and all tests pass without it. For live AI:
   ```
-  ollama pull qwen2.5:7b-instruct
+  ollama pull qwen3.5:9b
   ollama pull nomic-embed-text
   ```
+  (If your Ollama lacks the `qwen3.5:9b` tag, pull the nearest Qwen chat model and set
+  `OLLAMA_CHAT_MODEL` in `.env`. A 9B model on CPU streams replies but is slow — the UI
+  shows tokens as they generate and never blocks.)
 
 ## Setup
 
@@ -32,11 +35,13 @@ npm run db:seed:demo               # optional: a rich `demo`/`demo` user for dem
 ```powershell
 npm run dev                        # http://localhost:3100
 ```
+Then open the web client at **`http://localhost:3100/app/main-app.html`** (served same-origin
+with the API, so the session cookie and `/api/*` calls just work).
 
 Health check:
 ```
 GET http://localhost:3100/api/system/health
-→ { "server":"up", "uptimeMs":6, "ollama": { "reachable":false, "model":"qwen2.5:7b-instruct", "modelInstalled":false, "latencyMs":6 } }
+→ { "server":"up", "uptimeMs":6, "ollama": { "reachable":false, "model":"qwen3.5:9b", "modelInstalled":false, "latencyMs":6 } }
 ```
 `"reachable": false` is expected when Ollama isn't running — it does not block development.
 
@@ -56,7 +61,14 @@ No test calls a live model.
 npm run db:seed && npm run db:seed:demo
 npm run dev
 ```
-Log in as **`demo` / `demo`** — a learner pre-populated with three relationships (Lily = close, Chen = friend, Emma = acquaintance), memory facts + a memory card, one completed graded scenario, unlocked achievements, and a multi-day streak. `db:seed:demo` is additive and idempotent.
+Open `http://localhost:3100/app/main-app.html` and log in as **`demo` / `demo`** (the
+onboarding page at `/app/onboarding-journey.html` has the login form; new accounts are created
+by running its wizard) — a learner pre-populated with three relationships (Lily = close, Chen =
+friend, Emma = acquaintance), memory facts + a memory card, one completed graded scenario,
+unlocked achievements, and a multi-day streak. `db:seed:demo` is additive and idempotent.
+
+A headless end-to-end smoke of the wired UI (drives the installed Edge against a running dev
+server) lives at `npm run smoke:web` (`node scripts/smoke-web.mjs <api|chat|journey|scenario|all>`).
 
 ## API surface (34 routes)
 
@@ -86,7 +98,7 @@ All business routes require the `pop_uid` session cookie (via `withUser`) and ar
 |---|---|---|
 | `DATABASE_URL` | `file:./dev.db` | SQLite database location |
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Local Ollama HTTP API |
-| `OLLAMA_CHAT_MODEL` | `qwen2.5:7b-instruct` | Chat / JSON generation model |
+| `OLLAMA_CHAT_MODEL` | `qwen3.5:9b` | Chat / JSON generation model |
 | `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Embedding model (semantic memory recall) |
 
 ## Project structure
@@ -107,8 +119,10 @@ prisma/
   seed.ts / seed-data.ts    # base seed (3 NPCs, 2 scenarios, 6 achievements)
   seedDemo.ts / seed-demo.ts # rich demo user (npm run db:seed:demo)
 tests/ unit/ integration/   # pure-logic + SQLite-backed tests (mocked Ollama)
+scripts/smoke-web.mjs       # headless Edge end-to-end smoke of the wired UI
 docs/                       # background, specs, plans, and reports (figures)
-prototypes/web/             # static HTML/JSX UI prototype (no build step)
+public/app/                 # the web client (CDN React + in-browser Babel, no build),
+                            #   served same-origin by Next at /app; src/api.js → /api/*
 ```
 
 ## Roadmap, design & report docs
@@ -118,12 +132,19 @@ prototypes/web/             # static HTML/JSX UI prototype (no build step)
 - **Per-phase plans:** `docs/superpowers/plans/2026-05-*-backend-w{1..9}-*.md`
 - **Report figures:** [`docs/reports/memory-ablation.md`](docs/reports/memory-ablation.md) · [`docs/reports/architecture.md`](docs/reports/architecture.md)
 
-## Web prototype (static demo)
+## Web client
 
-```powershell
-./scripts/start.ps1                # serves prototypes/web/ at http://localhost:8080 (requires Python 3)
-```
-The three demo screens (main app · scenario · onboarding/journey) cross-link via the bottom-right dock.
+The React UI lives in `public/app/` (CDN React + in-browser Babel — **no build step**) and is
+served **same-origin** by the Next backend, so the `pop_uid` cookie and `/api/*` calls work with
+no CORS. With `npm run dev` running, open:
+
+- **Main app (chat):** `http://localhost:3100/app/main-app.html`
+- **Onboarding / Journey:** `http://localhost:3100/app/onboarding-journey.html`
+- **Scenario:** `http://localhost:3100/app/scenario.html`
+
+The three screens cross-link via the bottom-right dock. `src/api.js` is the thin client
+(`window.API`) that wraps `/api/*` including an SSE-over-POST reader for streaming chat/scenario
+turns.
 
 ## A note on auth
 

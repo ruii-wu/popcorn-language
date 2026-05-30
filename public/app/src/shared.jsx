@@ -143,6 +143,11 @@ function WebDock({ current }) {
 
 // Left nav rail — shared between web app and journey screens
 function WebNavRail({ activeTop = 'chats' }) {
+  const { useState, useEffect } = React;
+  const [j, setJ] = useState(null);
+  useEffect(() => {
+    if (window.API) window.API.journey().then(setJ).catch(() => {});
+  }, []);
   const items = [
   { id: 'chats', label: 'Chats', icon: WebI.msgs, href: 'main-app.html' },
   { id: 'journey', label: 'Your Journey', icon: WebI.book, href: 'onboarding-journey.html' },
@@ -172,10 +177,10 @@ function WebNavRail({ activeTop = 'chats' }) {
         <span style={{ color: 'var(--coral-ink)' }} className="w-4 h-4">{WebI.flame}</span>
         <div className="leading-tight">
           <div className="text-[11.5px]" style={{ color: 'var(--ink)' }}>
-            7-day streak
+            {j ? `${j.days}-day streak` : '—'}
           </div>
           <div className="text-[9.5px]" style={{ color: 'var(--muted)' }}>
-            42 conversations · this week
+            {j ? `${j.conversations} conversations` : 'Loading…'}
           </div>
         </div>
       </div>
@@ -217,7 +222,7 @@ function WebNavRail({ activeTop = 'chats' }) {
 }
 
 // Conversations sub-rail (used in chat views)
-function WebConversationsRail({ activeId, onSelect, intense }) {
+function WebConversationsRail({ npcs = [], activeId, onSelect, intense }) {
   return (
     <div className="pane-nav h-full flex flex-col chat-bg"
     style={{ background: intense ? 'var(--bg-warm-c)' : 'var(--bg-warm)',
@@ -256,7 +261,7 @@ function WebConversationsRail({ activeId, onSelect, intense }) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 pb-3">
-        {NPCS_WEB.map((npc) =>
+        {npcs.map((npc) =>
         <button key={npc.id} onClick={() => onSelect && onSelect(npc.id)}
         className="w-full flex items-start gap-2.5 px-2.5 py-2.5 rounded-lg transition text-left mb-0.5"
         style={{

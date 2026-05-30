@@ -3,7 +3,7 @@
 
 const { useState, useEffect, useRef } = React;
 
-// ---------- Thread (Lily, casual) ----------
+// ---------- Thread (Lily, casual) — kept for reference, no longer used ----------
 const LILY_THREAD_WEB = [
   { from: 'npc',  text: "morning! you're earlier than usual today ☕", time: '9:02' },
   { from: 'user', text: "Yes, today I am go to library early.", time: '9:03',
@@ -21,6 +21,31 @@ const LILY_THREAD_WEB = [
   { from: 'npc',  text: "haha okay so — \"everything\" is the flavor. poppy seeds, sesame, garlic, onion, salt — basically everything on top. NYC classic.", time: '9:07' },
   { from: 'npc',  text: "wait you've NEVER had a bagel here?? we have to fix this", time: '9:08', isLatest: true },
 ];
+
+// ---------- Mappers ----------
+function fmtTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function mapNpc(a) {
+  return {
+    id: a.id, name: a.name,
+    avatarGlyph: a.avatar ? a.avatar.glyph : '?',
+    avatarBg: a.avatar ? a.avatar.bg : 'var(--surface-2)',
+    avatarInk: a.avatar ? a.avatar.ink : 'var(--ink)',
+    relationship: a.relationship, stageValue: a.stageValue,
+    status: a.status || '', lastPreview: a.lastMessage || '',
+    time: a.lastTime ? fmtTime(a.lastTime) : '',
+    hasSomething: !!a.hasSomething,
+  };
+}
+
+function mapMsg(m) {
+  return { id: m.id, from: m.from, text: m.text,
+           time: m.createdAt ? fmtTime(m.createdAt) : '',
+           correction: m.correction || null };
+}
 
 // ---------- Chat header ----------
 
@@ -89,7 +114,7 @@ function MessageRow({ npc, msg, showCorrection, onToggle }) {
         <div className="px-3.5 py-2.5 text-[14px] leading-relaxed"
              style={isUser
                ? { background: 'var(--bubble-sent)', color: 'var(--bubble-sent-ink)', borderRadius: '16px 16px 4px 16px', boxShadow: '0 1px 0.5px rgba(11,20,26,0.13)' }
-               : { background: 'var(--bubble-received)', color: 'var(--bubble-received-ink)', border: '1px solid var(--hairline)', borderRadius: '16px 16px 16px 4px', boxShadow: '0 1px 0.5px rgba(11,20,26,0.08)' }}>
+               : { background: 'var(--bubble-received)', color: 'var(--bubble-received-ink)', border: '1px solid var(--hairline)', borderRadius: '16px 16px 16px 4px', boxShadow: '0 1px 0.5px rgba(11,20,26,0.08)', opacity: msg.error ? 0.7 : 1, outline: msg.error ? '1px solid var(--coral)' : 'none' }}>
           {msg.text}
         </div>
         <div className={`flex items-center gap-1.5 mt-1 ${isUser ? 'flex-row-reverse' : ''}`}>
@@ -149,9 +174,15 @@ function Typing({ npc }) {
 }
 
 // ---------- Composer ----------
-function Composer() {
+function Composer({ onSend, disabled }) {
   const [draft, setDraft] = useState('');
   const chips = ['Tell me more', 'Why?', '什么意思?', 'Recommend me one'];
+  const submit = () => {
+    const t = draft.trim();
+    if (!t || disabled) return;
+    onSend(t);
+    setDraft('');
+  };
   return (
     <div className="px-6 pb-4 pt-3">
       <div className="max-w-[820px] mx-auto">
@@ -173,13 +204,14 @@ function Composer() {
                   style={{ color: 'var(--muted)' }}>{WebI.plus}</button>
           <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1}
                     placeholder="Type in English or 中文…"
+                    onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); submit(); } }}
                     className="flex-1 resize-none bg-transparent outline-none py-2 text-[14px] placeholder:text-[var(--muted)]"
                     style={{ minHeight: 24, maxHeight: 120 }} />
           <button className="w-9 h-9 rounded-full grid place-items-center hover:bg-[var(--bg-warm)] transition"
                   style={{ color: 'var(--muted)' }}>{WebI.smile}</button>
-          <button disabled={!draft.trim()}
-                  className="h-9 px-4 rounded-full flex items-center gap-1.5 text-[13px] font-medium transition disabled:opacity-40"
-                  style={{ background: 'var(--accent)', color: '#fff' }}>
+          <button onClick={submit} disabled={disabled}
+                  className="h-9 px-4 rounded-full flex items-center gap-1.5 text-[13px] font-medium transition"
+                  style={{ background: 'var(--accent)', color: '#fff', opacity: (!draft.trim() || disabled) ? 0.4 : 1 }}>
             Send <span className="w-4 h-4">{WebI.send}</span>
           </button>
         </div>
@@ -306,37 +338,120 @@ function KnowItem({ children }) {
 // ---------- Main app ----------
 
 function App() {
-  const [activeId, setActiveId] = useState('lily');
-  const [expanded, setExpanded] = useState(1);
-  const npc = NPCS_WEB.find(n => n.id === activeId);
+  const [npcs, setNpcs] = useState([]);
+  const [activeId, setActiveId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [typing, setTyping] = useState(false);
+  const [streaming, setStreaming] = useState('');   // live NPC token buffer
+  const [sending, setSending] = useState(false);
+  const [expanded, setExpanded] = useState(-1);
+  const [offer, setOffer] = useState(null);          // scenario_offer payload
   const scrollRef = useRef(null);
+
+  // auth gate + initial NPC load
+  useEffect(() => {
+    API.me()
+      .then(() => API.npcs())
+      .then((list) => {
+        const mapped = list.map(mapNpc);
+        setNpcs(mapped);
+        setActiveId((cur) => cur || (mapped[0] && mapped[0].id));
+      })
+      .catch((e) => {
+        if (e.status === 401) location.assign('onboarding-journey.html');
+      });
+  }, []);
+
+  // load thread when active NPC changes
+  useEffect(() => {
+    if (!activeId) return;
+    setOffer(null); setStreaming(''); setTyping(false);
+    API.thread(activeId)
+      .then((r) => setMessages((r.messages || []).map(mapMsg)))
+      .catch(() => setMessages([]));
+  }, [activeId]);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [activeId]);
+  }, [messages, streaming, typing]);
+
+  function send(text) {
+    if (!text.trim() || sending || !activeId) return;
+    setSending(true); setStreaming('');
+    let acc = '';
+    API.streamMessage(activeId, text, (ev) => {
+      const d = ev.data || {};
+      switch (ev.type) {
+        case 'user_message_saved':
+          setMessages((m) => m.concat([{ id: d.messageId, from: 'user', text: text,
+            time: fmtTime(d.createdAt || Date.now()), correction: null }]));
+          break;
+        case 'typing_start': setTyping(true); break;
+        case 'token': acc += d.delta || ''; setStreaming(acc); break;
+        case 'typing_end': setTyping(false); break;
+        case 'message_complete':
+          setStreaming('');
+          setMessages((m) => m.concat([{ id: d.messageId, from: 'npc',
+            text: d.fullText || acc, time: fmtTime(Date.now()), correction: null }]));
+          setSending(false);  // re-enable composer once NPC has replied; done may still arrive later
+          break;
+        case 'correction':
+          setMessages((m) => m.map((x) => x.id === d.targetMessageId
+            ? Object.assign({}, x, { correction: d.correction }) : x));
+          break;
+        case 'scenario_offer': setOffer(d); break;
+        case 'error':
+          setTyping(false); setStreaming('');
+          setMessages((m) => m.concat([{ id: 'err-' + Date.now(), from: 'npc', error: true,
+            text: (d.code === 'LLM_UNAVAILABLE'
+              ? 'Local model unavailable — start Ollama (qwen3.5:9b) and retry.'
+              : ('Error: ' + (d.message || d.code))), time: fmtTime(Date.now()), correction: null }]));
+          break;
+        case 'done': setSending(false); break;
+        default: break;
+      }
+    }).catch(() => setSending(false));
+  }
+
+  const npc = npcs.find((n) => n.id === activeId);
+  if (!npc) {
+    return <div className="app-shell" data-screen-label="01 Web · Main App"
+                style={{ display: 'grid', placeItems: 'center' }}>
+             <span style={{ color: 'var(--muted)' }}>Loading…</span>
+           </div>;
+  }
 
   return (
     <div className="app-shell" data-screen-label="01 Web · Main App">
-      <WebConversationsRail activeId={activeId} onSelect={setActiveId} />
-
+      <WebConversationsRail npcs={npcs} activeId={activeId} onSelect={setActiveId} />
       <section className="pane-main">
         <WebChatHeader npc={npc} />
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6">
           <div className="max-w-[820px] mx-auto py-2">
             <DayDivider label="Today · 今天" />
-            {LILY_THREAD_WEB.map((m, i) => (
-              <MessageRow key={i} npc={npc} msg={m}
+            {messages.map((m, i) => (
+              <MessageRow key={m.id || i} npc={npc} msg={m}
                           showCorrection={!!m.correction && expanded === i}
                           onToggle={() => setExpanded(expanded === i ? -1 : i)} />
             ))}
-            <Typing npc={npc} />
+            {streaming && <MessageRow npc={npc} msg={{ from: 'npc', text: streaming, time: '' }}
+                                      showCorrection={false} onToggle={() => {}} />}
+            {typing && <Typing npc={npc} />}
+            {offer && (
+              <div className="my-3 p-3 rounded-xl" style={{ background: 'var(--plum-soft)', border: '1px solid var(--plum)' }}>
+                <div className="text-[12.5px] font-medium" style={{ color: 'var(--plum-ink)' }}>
+                  ✨ {offer.title || 'A scenario is available'}
+                </div>
+                <a href={'scenario.html'} className="text-[11px] underline" style={{ color: 'var(--plum-ink)' }}>
+                  Open scenario →
+                </a>
+              </div>
+            )}
           </div>
         </div>
-        <Composer />
+        <Composer onSend={send} disabled={sending} />
       </section>
-
       <RightPanel npc={npc} />
-
       <WebDock current="01 Main App" />
     </div>
   );

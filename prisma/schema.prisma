@@ -45,7 +45,7 @@ model UserSettings {
   userId            String   @unique
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   grammarCorrection Boolean  @default(true)
-  modelName         String   @default("qwen2.5:7b-instruct")
+  modelName         String   @default("qwen3.5:9b")
   uiLanguage        String   @default("zh-CN")
   voiceTTSEnabled   Boolean  @default(false)
   showAIRationale   Boolean  @default(true)

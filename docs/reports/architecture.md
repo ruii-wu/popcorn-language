@@ -7,7 +7,7 @@
 
 ```mermaid
 flowchart TB
-  subgraph Client["Static UI prototype (prototypes/web)"]
+  subgraph Client["Web client (public/app) — served same-origin, wired to /api"]
     UI["Main chat · Scenario · Onboarding/Journey"]
   end
   subgraph Next["Next.js 14 App Router (src/app/api/*)"]
