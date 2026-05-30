@@ -27,11 +27,11 @@ async function gotoApp(page, file) {
   await page.waitForFunction(() => !!window.API, null, { timeout: 15000 });
 }
 
+// Authenticate at the context level (sets the pop_uid cookie) BEFORE loading any app
+// page, so the page renders already-authed — no first-load 401/redirect race.
 async function login(page, u, p) {
-  const r = await page.evaluate(async ([u, p]) => {
-    try { await window.API.login(u, p); return 'ok'; } catch (e) { return 'err:' + e.status; }
-  }, [u, p]);
-  if (r !== 'ok') throw new Error('login failed: ' + r);
+  const r = await page.context().request.post(`${BASE}/api/auth/login`, { data: { username: u, password: p } });
+  if (!r.ok()) throw new Error('login failed: ' + r.status());
 }
 
 async function flowApi(browser) {
@@ -52,10 +52,8 @@ async function flowApi(browser) {
 async function flowChat(browser) {
   console.log('[chat] rail + thread + streaming send from live API');
   const page = await newPage(browser);
-  await gotoApp(page, 'main-app.html');
   await login(page, 'demo', 'demo');
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => !!window.API, null, { timeout: 15000 });
+  await gotoApp(page, 'main-app.html');
 
   // The conversations rail renders one <button> per NPC with the relationship label.
   // Seeded demo: Lily = Close friend (stage 3). Mock NPCS_WEB has Lily = Friend (2),
@@ -89,10 +87,8 @@ async function flowChat(browser) {
 async function flowJourney(browser) {
   console.log('[journey] onboarding page renders live journey for demo');
   const page = await newPage(browser);
-  await gotoApp(page, 'main-app.html');
   await login(page, 'demo', 'demo');
-  await page.goto(`${BASE}/app/onboarding-journey.html`, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => !!window.API, null, { timeout: 15000 });
+  await gotoApp(page, 'onboarding-journey.html');
   await page.waitForTimeout(3000); // allow in-browser Babel + fetches
   const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
   assert(/Lily/.test(body), 'journey view mentions Lily (seeded relationship)');
@@ -101,10 +97,8 @@ async function flowJourney(browser) {
 async function flowScenario(browser) {
   console.log('[scenario] scenario page renders the seeded completed session');
   const page = await newPage(browser);
-  await gotoApp(page, 'main-app.html');
   await login(page, 'demo', 'demo');
-  await page.goto(`${BASE}/app/scenario.html`, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => !!window.API, null, { timeout: 15000 });
+  await gotoApp(page, 'scenario.html');
   await page.waitForTimeout(3000);
   const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
   assert(/A-|Mock Interview|Summary|Grade/i.test(body),
