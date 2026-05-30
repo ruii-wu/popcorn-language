@@ -143,6 +143,11 @@ function WebDock({ current }) {
 
 // Left nav rail — shared between web app and journey screens
 function WebNavRail({ activeTop = 'chats' }) {
+  const { useState, useEffect } = React;
+  const [j, setJ] = useState(null);
+  useEffect(() => {
+    if (window.API) window.API.journey().then(setJ).catch(() => {});
+  }, []);
   const items = [
   { id: 'chats', label: 'Chats', icon: WebI.msgs, href: 'main-app.html' },
   { id: 'journey', label: 'Your Journey', icon: WebI.book, href: 'onboarding-journey.html' },
@@ -172,10 +177,10 @@ function WebNavRail({ activeTop = 'chats' }) {
         <span style={{ color: 'var(--coral-ink)' }} className="w-4 h-4">{WebI.flame}</span>
         <div className="leading-tight">
           <div className="text-[11.5px]" style={{ color: 'var(--ink)' }}>
-            7-day streak
+            {j ? `${j.days}-day streak` : '—'}
           </div>
           <div className="text-[9.5px]" style={{ color: 'var(--muted)' }}>
-            42 conversations · this week
+            {j ? `${j.conversations} conversations` : 'Loading…'}
           </div>
         </div>
       </div>
