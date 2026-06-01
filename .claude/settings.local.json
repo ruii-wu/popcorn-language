@@ -5,7 +5,9 @@
       "Bash(npm install *)",
       "PowerShell(Get-Command *)",
       "PowerShell(Get-ChildItem *)",
-      "PowerShell(winget list *)"
+      "PowerShell(winget list *)",
+      "PowerShell(Invoke-WebRequest -Uri http://localhost:3100/api/system/health -UseBasicParsing)",
+      "PowerShell(git log *)"
     ]
   }
 }
