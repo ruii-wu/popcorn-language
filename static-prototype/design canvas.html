@@ -21,6 +21,12 @@
 <body>
   <div id="root"></div>
   <script type="text/babel" src="design-canvas.jsx"></script>
-  <script type="text/babel" src="canvas-app.jsx"></script>
+  <script type="text/babel">
+    // 简单的根组件渲染
+    const App = () => {
+      return React.createElement('div', null, '设计画布已加载');
+    };
+    ReactDOM.render(React.createElement(App), document.getElementById('root'));
+  </script>
 </body>
 </html>
