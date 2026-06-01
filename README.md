@@ -131,6 +131,7 @@ public/app/                 # the web client (CDN React + in-browser Babel, no b
 - **Master plan (W1–W9):** [`docs/superpowers/plans/2026-05-25-backend-overall-plan.md`](docs/superpowers/plans/2026-05-25-backend-overall-plan.md)
 - **Per-phase plans:** `docs/superpowers/plans/2026-05-*-backend-w{1..9}-*.md`
 - **Report figures:** [`docs/reports/memory-ablation.md`](docs/reports/memory-ablation.md) · [`docs/reports/architecture.md`](docs/reports/architecture.md)
+- **UAT SOP:** [`docs/uat-sop.md`](docs/uat-sop.md) — manual user-acceptance-test procedure for the web client (15 test cases keyed to the demo seed)
 
 ## Web client
 
