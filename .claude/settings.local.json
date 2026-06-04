@@ -45,7 +45,23 @@
       "Bash(git branch *)",
       "Bash(git fetch *)",
       "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('.claude/settings.local.json','utf8'\\)\\); console.log\\('settings.local.json: valid JSON, ' + JSON.parse\\(require\\('fs'\\).readFileSync\\('.claude/settings.local.json','utf8'\\)\\).permissions.allow.length + ' allow rules'\\)\")",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "WebFetch(domain:open.feishu.cn)",
+      "PowerShell(lark-cli *)",
+      "PowerShell(<internal> *)",
+      "PowerShell(pip uninstall *)",
+      "PowerShell(handle.exe C:\\\\Users\\\\<user>\\\\AppData\\\\Local\\\\<internal>\\\\<agent>\\\\.git\\\\objects\\\\pack\\\\tmp_pack_Zu7go3 2>$null)",
+      "PowerShell(npx skills add https://<registry>/<vendor>/<samples> -s web-search --agent claude-code)",
+      "PowerShell(New-Item *)",
+      "PowerShell(codex *)",
+      "WebSearch",
+      "PowerShell(npx skills list)",
+      "PowerShell(cd D:\\\\MCOMP\\\\Capstone\\\\popcorn_language\\\\.claude\\\\skills\\\\web-search; $env:PYTHONUTF8=1; python scripts/web_search.py \"Codex桌面版 登录失败 failed to start login server os error 10013 解决方案\")",
+      "PowerShell(net *)",
+      "PowerShell(Set-Location \"D:\\\\MCOMP\\\\Capstone\\\\popcorn_language\\\\.claude\\\\skills\\\\web-search\"; $env:PYTHONUTF8=1; python scripts/web_search.py \"是否有写PRD的skill 产品需求文档 技能 Claude Code skill\")",
+      "PowerShell(Move-Item *)",
+      "Read(//c/Users/<user>/.claude/plugins/**)",
+      "Bash(claude plugin *)"
     ]
   }
 }
