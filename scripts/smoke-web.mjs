@@ -46,7 +46,8 @@ async function flowApi(browser) {
   assert(me.ok() && body.user && body.user.username === 'demo',
     'GET /api/auth/me through Vite proxy returns demo user');
   await gotoRoute(page, '/');
-  assert(true, 'main route ("/") mounted React');
+  const rootText = await page.locator('#root').innerText();
+  assert(rootText.trim().length > 0, 'main route ("/") rendered content into #root');
 }
 
 async function flowChat(browser) {
