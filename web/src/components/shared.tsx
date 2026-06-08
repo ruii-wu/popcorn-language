@@ -81,7 +81,7 @@ export function WebAvatar({ npc, size = 40, hasSomething }: { npc: any; size?: n
         background: npc.avatarBg,
         color: npc.avatarInk,
         fontSize: size * 0.46,
-        fontFamily: /[一-龥]/.test(npc.avatarGlyph) ? "'Outfit', sans-serif" : 'inherit'
+        fontFamily: /[\u4e00-\u9fa5]/.test(npc.avatarGlyph) ? "'Outfit', sans-serif" : 'inherit'
       }}>
         {npc.avatarGlyph}
       </div>
