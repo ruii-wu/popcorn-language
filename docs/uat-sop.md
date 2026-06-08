@@ -17,7 +17,7 @@
 
 This SOP defines a repeatable procedure for **User Acceptance Testing** of the Popcorn
 Language web client. UAT confirms that the product, as experienced through the browser UI at
-`http://localhost:3100/app/*`, behaves correctly against the **live backend** and satisfies the
+`http://localhost:5173/*` (Vite SPA; `/api` proxied to the Next.js backend on :3100), behaves correctly against the **live backend** and satisfies the
 intended learner workflows: onboarding, persistent NPC chat, the Journey dashboard, scenario
 gameplay, and settings.
 
@@ -100,7 +100,7 @@ npm run db:seed:demo        # idempotent — safe to re-run to reset the demo ac
 ollama list                # expect qwen3.5:9b and nomic-embed-text
 
 # 6. Start the app
-npm run dev                 # serves API + UI on http://localhost:3100
+npm run dev                 # starts the API on :3100 and the Vite UI on :5173
 ```
 
 **Verify the environment is healthy before testing:**
@@ -109,8 +109,8 @@ npm run dev                 # serves API + UI on http://localhost:3100
    - Expect `{"server":"up", ...}`.
    - For **[AI]** cases, expect `"ollama": { "reachable": true, "model": "qwen3.5:9b", "modelInstalled": true }`.
    - `"reachable": false` is acceptable for **[Core]**-only sessions.
-2. Open `http://localhost:3100/app/main-app.html` — the chat UI should load (CDN React + Babel
-   compile in-browser; first load may take a second or two).
+2. Open `http://localhost:5173/` — the chat UI should load (Vite SPA; first load may take a
+   second or two).
 
 **To reset between full passes:** re-run `npm run db:seed:demo` (drops and recreates the `demo`
 user and all its data). A deeper reset is available in-app via Settings → System reset (**TC-14**).
@@ -172,7 +172,7 @@ The build is **accepted** when:
 ## 11. Test cases
 
 Tag legend: **[Core]** = works with Ollama off · **[AI]** = requires Ollama running.
-All cases start from `http://localhost:3100/app/...` in a fresh browser context unless noted.
+All cases start from `http://localhost:5173/...` in a fresh browser context unless noted.
 
 ### 11.0 Results tracking table
 
@@ -199,24 +199,24 @@ All cases start from `http://localhost:3100/app/...` in a fresh browser context 
 ### TC-01 — New-user onboarding wizard  **[Core]**
 **Precondition:** logged out. **Goal:** a brand-new account can be created through the UI.
 **Steps:**
-1. Open `/app/onboarding-journey.html`.
+1. Open `/onboarding`.
 2. Complete the onboarding wizard: enter a **new** username (e.g. `uat01`), pick a role, a goal,
    and one or more interests; submit.
 **Expected:** account is created and onboarding completes; you are taken to the main app
-(`main-app.html`) authenticated, with the three seeded NPCs visible in the rail and an empty
+(`/`) authenticated, with the three seeded NPCs visible in the rail and an empty
 chat history for the new user.
 **Result:** ☐ Pass ☐ Fail — _notes:_
 
 ### TC-02 — Login as demo  **[Core]**
 **Precondition:** logged out; demo seeded. **Steps:**
-1. Open `/app/onboarding-journey.html` and use the login form: `demo` / `demo`.
+1. Open `/onboarding` and use the login form: `demo` / `demo`.
 **Expected:** login succeeds; the page shows the demo learner's Journey (relationships,
-achievements). Navigating to `/app/main-app.html` shows the chat UI authenticated (no redirect
+achievements). Navigating to `/` shows the chat UI authenticated (no redirect
 back to onboarding).
 **Result:** ☐ Pass ☐ Fail — _notes:_
 
 ### TC-03 — Chat rail shows live relationships  **[Core]**
-**Precondition:** logged in as demo; on `/app/main-app.html`. **Steps:**
+**Precondition:** logged in as demo; on `/`. **Steps:**
 1. Inspect the conversations rail.
 **Expected:** ≥3 NPC rows. **Lily** labelled **"Close friend"**, **Mr. Chen** "Friend", **Emma**
 "Acquaintance" — these come from `/api/npcs` (the old mock had Lily as "Friend", so "Close friend"
@@ -224,7 +224,7 @@ proves live data). Nav rail shows a live streak (~6 days) and conversation count
 **Result:** ☐ Pass ☐ Fail — _notes:_
 
 ### TC-04 — Thread history loads  **[Core]**
-**Precondition:** logged in as demo; on `/app/main-app.html`. **Steps:**
+**Precondition:** logged in as demo; on `/`. **Steps:**
 1. Open Lily's conversation.
 **Expected:** prior messages render before any new input — user bubble "Hi! Good to see you
 again." and NPC bubble "Hey! Always good to chat with you." (loaded from
@@ -259,7 +259,7 @@ correction appears.
 
 ### TC-08 — Journey: streak & relationships  **[Core]**
 **Precondition:** logged in as demo. **Steps:**
-1. Open `/app/onboarding-journey.html` (Journey view).
+1. Open `/onboarding` (Journey view).
 **Expected:** all three relationships shown with correct stages — Lily *Close friend*, Chen
 *Friend*, Emma *Acquaintance*; a multi-day streak (~6 days) and conversation counts are displayed
 from the live API.
@@ -275,7 +275,7 @@ ones (Three Friends, Bilingual, Streak Week) are shown as not-yet-earned. The me
 
 ### TC-10 — Scenario: completed summary  **[Core]**
 **Precondition:** logged in as demo. **Steps:**
-1. Open `/app/scenario.html`.
+1. Open `/scenario`.
 **Expected:** the seeded **completed** Mock Interview session renders as a summary card showing
 **Grade A-** and the language / pragmatics / relationship notes.
 **Result:** ☐ Pass ☐ Fail — _notes:_
@@ -284,7 +284,7 @@ ones (Three Friends, Bilingual, Streak Week) are shown as not-yet-earned. The me
 **Precondition:** logged in as demo; Ollama up. **Steps:**
 1. In chat with **Lily**, steer the conversation toward interview/job topics until a **scenario
    offer** appears (`scenario_offer`), **or** start the offered "Mock Interview".
-2. On `/app/scenario.html`, the session shows as **invited** → click **Accept**.
+2. On `/scenario`, the session shows as **invited** → click **Accept**.
 3. Play through the turns by selecting offered **choices**; observe state updates each turn.
 4. Continue until the scenario **ends** and a graded summary is produced.
 **Expected:** accept transitions invited→active; each choice streams an NPC turn and updates state
@@ -311,7 +311,7 @@ re-login); each target renders its live data.
 
 ### TC-14 — Logout & session re-gate  **[Core]**
 **Precondition:** logged in as demo. **Steps:**
-1. Log out (or clear the `pop_uid` cookie). 2. Navigate to `/app/main-app.html`.
+1. Log out (or clear the `pop_uid` cookie). 2. Navigate to `/`.
 **Expected:** an unauthenticated visit to the main app **redirects to onboarding** (the auth gate);
 protected `/api/*` calls return 401. After logging back in, access is restored.
 **Result:** ☐ Pass ☐ Fail — _notes:_
