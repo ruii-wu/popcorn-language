@@ -1,0 +1,166 @@
+/* Web UI design tokens — chat-app visual vocabulary
+   (cool neutrals, green accent, sent/received bubbles, system sans only).
+   Original palette — not a recreation of any branded chat product. */
+:root {
+  --canvas:        #D7DCE0;
+  --bg:            #E6EBEF;     /* main chat canvas — cool light slate */
+  --bg-warm:       #EEF1F4;     /* lighter cool surface (legacy name kept) */
+  --bg-cool:       #EEF1F4;     /* shell / search bg */
+  --surface:       #FFFFFF;
+  --surface-2:     #F4F6F8;
+
+  /* Active-scenario tint — slight green wash (was warm peach) */
+  --bg-warm-c:     #DCEDE2;
+  --surface-c:     #ECF6EF;
+  --surface-2c:    #E2EFE7;
+  --hairline-c:    #BFD4C5;
+
+  /* Text & hairlines — cool, chat-app neutrals */
+  --ink:           #0E1A21;
+  --ink-2:         #3A4A55;
+  --muted:         #6B7A83;
+  --hairline:      #E4E8EB;
+  --hairline-2:    #D1D7DB;
+  --hairline-strong: #B5BFC4;
+
+  /* Primary accent — chat-app green */
+  --accent:        #1FA463;
+  --accent-ink:    #15784A;
+  --accent-soft:   #DCF1E3;
+  --accent-strong: #0E5C37;
+
+  /* Sent / received message bubbles — classic chat pattern */
+  --bubble-sent:        #D5F2DC;
+  --bubble-sent-ink:    #0E1A21;
+  --bubble-received:    #FFFFFF;
+  --bubble-received-ink:#0E1A21;
+
+  /* Primary button */
+  --btn-primary-bg:   #1FA463;
+  --btn-primary-ink:  #FFFFFF;
+  --btn-primary-hover:#15784A;
+
+  /* Brand mark */
+  --brand-bg:    #1FA463;
+  --brand-ink:   #FFFFFF;
+
+  /* Legacy "coral" tokens — kept alive as aliases of the green accent
+     so we don't have to rename every reference in the JSX. */
+  --coral:        var(--accent);
+  --coral-ink:    var(--accent-ink);
+  --coral-soft:   var(--accent-soft);
+  --coral-strong: var(--accent-strong);
+
+  /* AI personalization — cool indigo (was warm plum) */
+  --plum:      #5677CB;
+  --plum-ink:  #2E4596;
+  --plum-soft: #E5ECFA;
+
+  /* Success — slightly different green */
+  --moss:      #128A4D;
+  --moss-soft: #CFEEDB;
+}
+
+html, body, #root { height: 100%; }
+body {
+  /* System sans stack — clean chat-app feel; PingFang / Microsoft YaHei
+     handle the bilingual EN / 中文 lines cleanly. */
+  font-family:
+    -apple-system, BlinkMacSystemFont,
+    "Segoe UI", "PingFang SC", "Microsoft YaHei",
+    "Helvetica Neue", Helvetica, Arial,
+    sans-serif;
+  background: var(--bg-cool);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.005em;
+  margin: 0;
+}
+
+/* "Display" headings — same sans stack, heavier weight + tighter tracking.
+   Class name is kept as .font-serif so existing JSX needs no editing,
+   but it is now strictly sans, NEVER italic. */
+.font-serif {
+  font-family:
+    -apple-system, BlinkMacSystemFont,
+    "Segoe UI", "PingFang SC", "Microsoft YaHei",
+    "Helvetica Neue", Helvetica, Arial,
+    sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  font-style: normal !important;        /* kill any inline `italic` from old JSX */
+}
+/* Inline italics on display text are a Claude-style tic — kill them here
+   so any leftover `style={{ fontStyle: 'italic' }}` from the previous
+   build can't reintroduce the look. */
+.font-serif em,
+.font-serif i {
+  font-style: normal;
+}
+
+.font-mono  {
+  font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--hairline-2); border-radius: 8px; border: 2px solid var(--bg-cool); }
+::-webkit-scrollbar-track { background: transparent; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.35s ease-out both; }
+
+@keyframes shimmer { 0%, 100% { opacity: 0.5 } 50% { opacity: 1 } }
+.ai-dot { animation: shimmer 2.8s ease-in-out infinite; }
+
+@keyframes pulseSubtle {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+.pulse-subtle { animation: pulseSubtle 2.4s ease-in-out infinite; }
+
+@keyframes typing {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+.typing-dot { animation: typing 1.2s ease-in-out infinite; }
+.typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+/* AI-generated "memory" cards — cool palette (green / indigo / blue) */
+@keyframes shimmerBorder { to { background-position: 200% 50%; } }
+.ai-border {
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(110deg,
+      #B6C2E6 0%,
+      #BFEFDA 40%,
+      #B6C2E6 60%,
+      #BFE0F2 80%,
+      #B6C2E6 100%) border-box;
+  background-size: 200% 200%;
+  border: 1.5px solid transparent;
+  animation: shimmerBorder 8s linear infinite;
+}
+
+.chat-bg { transition: background 700ms ease, border-color 700ms ease; }
+
+/* App shell layout — web */
+.app-shell {
+  display: grid;
+  grid-template-columns: 244px 1fr 320px;
+  grid-template-rows: 100vh;        /* keep panes confined to viewport */
+  height: 100vh;
+  background: var(--bg);
+}
+.pane-nav   { background: var(--bg-cool); border-right: 1px solid var(--hairline); min-height: 0; }
+.pane-main  { background: var(--bg);      display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+.pane-right { background: var(--surface); border-left: 1px solid var(--hairline); overflow-y: auto; min-height: 0; }
+
+/* Subtle dotted chat-canvas pattern — cool tone, very faint */
+.chat-pattern {
+  background-color: var(--bg);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><g fill='%230E1A21' opacity='0.025'><circle cx='12' cy='18' r='1.5'/><circle cx='42' cy='66' r='1.2'/><circle cx='90' cy='28' r='1.6'/><circle cx='128' cy='90' r='1.3'/><circle cx='74' cy='118' r='1.4'/><circle cx='30' cy='140' r='1.2'/><circle cx='150' cy='44' r='1.4'/><circle cx='105' cy='150' r='1.2'/></g></svg>");
+}
