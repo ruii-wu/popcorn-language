@@ -71,7 +71,7 @@ an end user. It is distinct from the automated `vitest` suite (developer-level) 
 | Node.js | 20+ (`node -v`) |
 | Browser | Microsoft Edge or Google Chrome (Chromium) |
 | Ollama | Running locally with `qwen3.5:9b` **and** `nomic-embed-text` pulled — required for **live AI** test cases |
-| Network | Localhost only; no internet required except the first CDN load of React/Babel for the UI |
+| Network | Localhost only; no internet required (the Vite UI is a locally-built bundle) |
 
 > **Ollama note.** Test cases are tagged **[AI]** (requires Ollama up) or **[Core]** (works with
 > Ollama off). The app **must not hang** when Ollama is down — that resilience is itself a test
@@ -358,8 +358,6 @@ Do **not** raise these — they are intentional and documented:
   on purpose.
 - **Slow replies on CPU** — `qwen3.5:9b` streams but is slow on CPU; the UI shows tokens
   progressively and never blocks. This is hardware, not a bug.
-- **No build step** — the UI loads React + Babel from CDN and compiles JSX in the browser; the
-  first paint may lag slightly.
 - **`reachable: false` in health** when Ollama is off is expected and does not block the app.
 - **EOL churn** — `docs/reports/memory-ablation.md` may show as modified after `npm test` (a
   deterministic LF rewrite); harmless, restore with `git checkout --`.
