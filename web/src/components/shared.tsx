@@ -1,11 +1,11 @@
 // Shared design primitives for the web UI variant.
 // Ported from public/app/src/shared.jsx — faithful ES-module + TypeScript translation.
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 
-const Icon = ({ d, className = "w-5 h-5", strokeWidth = 1.6 }: { d: React.ReactNode; className?: string; strokeWidth?: number }) =>
+const Icon = ({ d, className = "w-5 h-5", strokeWidth = 1.6 }: { d: ReactNode; className?: string; strokeWidth?: number }) =>
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth}
 strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>;
 
