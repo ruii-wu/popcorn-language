@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import type { NpcListItem, ThreadMessage } from '@popcorn/shared';
 import {
   WebI,
   RELATIONSHIP_LABEL,
@@ -38,7 +39,7 @@ function fmtTime(iso: any) {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-function mapNpc(a: any) {
+function mapNpc(a: NpcListItem) {
   return {
     id: a.id, name: a.name,
     avatarGlyph: a.avatar ? a.avatar.glyph : '?',
@@ -51,7 +52,7 @@ function mapNpc(a: any) {
   };
 }
 
-function mapMsg(m: any) {
+function mapMsg(m: ThreadMessage) {
   return { id: m.id, from: m.from, text: m.text,
            time: m.createdAt ? fmtTime(m.createdAt) : '',
            correction: m.correction || null };
@@ -363,7 +364,7 @@ export default function App() {
   useEffect(() => {
     api.me()
       .then(() => api.npcs())
-      .then((list: any) => {
+      .then((list) => {
         const mapped = list.map(mapNpc);
         setNpcs(mapped);
         setActiveId((cur) => cur || (mapped[0] && mapped[0].id));
@@ -378,7 +379,7 @@ export default function App() {
     if (!activeId) return;
     setOffer(null); setStreaming(''); setTyping(false);
     api.thread(activeId)
-      .then((r: any) => setMessages((r.messages || []).map(mapMsg)))
+      .then((r) => setMessages((r.messages || []).map(mapMsg)))
       .catch(() => setMessages([]));
   }, [activeId]);
 
@@ -390,33 +391,32 @@ export default function App() {
     if (!text.trim() || sending || !activeId) return;
     setSending(true); setStreaming('');
     let acc = '';
-    api.streamMessage(activeId, text, (ev: any) => {
-      const d = ev.data || {};
+    api.streamMessage(activeId, text, (ev) => {
       switch (ev.type) {
         case 'user_message_saved':
-          setMessages((m) => m.concat([{ id: d.messageId, from: 'user', text: text,
-            time: fmtTime(d.createdAt || Date.now()), correction: null }]));
+          setMessages((m) => m.concat([{ id: ev.data.messageId, from: 'user', text: text,
+            time: fmtTime(ev.data.createdAt || Date.now()), correction: null }]));
           break;
         case 'typing_start': setTyping(true); break;
-        case 'token': acc += d.delta || ''; setStreaming(acc); break;
+        case 'token': acc += ev.data.delta || ''; setStreaming(acc); break;
         case 'typing_end': setTyping(false); break;
         case 'message_complete':
           setStreaming('');
-          setMessages((m) => m.concat([{ id: d.messageId, from: 'npc',
-            text: d.fullText || acc, time: fmtTime(Date.now()), correction: null }]));
+          setMessages((m) => m.concat([{ id: ev.data.messageId, from: 'npc',
+            text: ev.data.fullText || acc, time: fmtTime(Date.now()), correction: null }]));
           setSending(false);  // re-enable composer once NPC has replied; done may still arrive later
           break;
         case 'correction':
-          setMessages((m) => m.map((x) => x.id === d.targetMessageId
-            ? Object.assign({}, x, { correction: d.correction }) : x));
+          setMessages((m) => m.map((x) => x.id === ev.data.targetMessageId
+            ? Object.assign({}, x, { correction: ev.data.correction }) : x));
           break;
-        case 'scenario_offer': setOffer(d); break;
+        case 'scenario_offer': setOffer(ev.data); break;
         case 'error':
           setTyping(false); setStreaming('');
           setMessages((m) => m.concat([{ id: 'err-' + Date.now(), from: 'npc', error: true,
-            text: (d.code === 'LLM_UNAVAILABLE'
+            text: (ev.data.code === 'LLM_UNAVAILABLE'
               ? 'Local model unavailable — start Ollama (qwen3.5:9b) and retry.'
-              : ('Error: ' + (d.message || d.code))), time: fmtTime(Date.now()), correction: null }]));
+              : ('Error: ' + (ev.data.message || ev.data.code))), time: fmtTime(Date.now()), correction: null }]));
           break;
         case 'done': setSending(false); break;
         default: break;

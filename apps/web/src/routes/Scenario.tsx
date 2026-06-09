@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import type { SessionDetailResponse, ScenarioTranscriptItem, AcceptSessionResponse } from '@popcorn/shared';
 import {
   WebI,
   NPCS_WEB,
@@ -593,15 +594,15 @@ export default function Scenario() {
     api.me()
       .then(() => api.sessions())
       .then((list) => {
-        const active  = list.find((s: any) => s.status === 'active');
-        const invited = list.find((s: any) => s.status === 'invited');
-        const done    = list.find((s: any) => s.status === 'completed');
+        const active  = list.find((s) => s.status === 'active');
+        const invited = list.find((s) => s.status === 'invited');
+        const done    = list.find((s) => s.status === 'completed');
         const picked  = active || invited || done || null;
         setSession(picked);
         setLoading(false);
         // For completed sessions, fetch detail immediately
         if (picked && picked.status === 'completed') {
-          api.session(picked.id).then((detail: any) => {
+          api.session(picked.id).then((detail: SessionDetailResponse) => {
             setDetailSession(detail.session);
             setTranscript(detail.transcript || []);
             if (detail.state) setHudState(detail.state);
@@ -609,12 +610,12 @@ export default function Scenario() {
         }
         // For active sessions, fetch detail to get initial state and any existing transcript
         if (picked && picked.status === 'active') {
-          api.session(picked.id).then((detail: any) => {
+          api.session(picked.id).then((detail: SessionDetailResponse) => {
             setDetailSession(detail.session);
             setTranscript(detail.transcript || []);
             if (detail.state) setHudState(detail.state);
             // Rebuild messages from transcript
-            const msgs = (detail.transcript || []).map((t: any) => ({
+            const msgs = (detail.transcript || []).map((t: ScenarioTranscriptItem) => ({
               from: t.from === 'user' ? 'user' : 'npc-c',
               text: t.text,
               time: t.createdAt ? new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
@@ -634,7 +635,7 @@ export default function Scenario() {
     if (!session) return;
     setChoiceDisabled(true);
     api.acceptSession(session.id)
-      .then((result: any) => {
+      .then((result: AcceptSessionResponse) => {
         // Transition to active: update session status in local state
         setSession((prev: any) => prev ? Object.assign({}, prev, { status: 'active' }) : prev);
         // Opening message from NPC
@@ -682,33 +683,32 @@ export default function Scenario() {
     }));
 
     api.streamChoose(session.id, choice.id, (event) => {
-      const { type, data } = event;
-      if (type === 'typing_start') {
+      if (event.type === 'typing_start') {
         setNpcTyping(true);
-      } else if (type === 'typing_end') {
+      } else if (event.type === 'typing_end') {
         setNpcTyping(false);
-      } else if (type === 'message_complete') {
+      } else if (event.type === 'message_complete') {
         setNpcTyping(false);
         setMessages((prev) => prev.concat({
           from: 'npc-c',
-          text: (data as any).fullText,
+          text: event.data.fullText,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         }));
-      } else if (type === 'state_update') {
+      } else if (event.type === 'state_update') {
         setHudState({
-          impression: (data as any).impression,
-          stress: (data as any).stress,
-          turnsLeft: (data as any).turnsLeft,
+          impression: event.data.impression,
+          stress: event.data.stress,
+          turnsLeft: event.data.turnsLeft,
         });
-      } else if (type === 'choices') {
-        setChoices((data as any).choices || data);
+      } else if (event.type === 'choices') {
+        setChoices(event.data.choices);
         setChoiceDisabled(false);
-      } else if (type === 'scenario_end') {
-        setFinalSummary((data as any).summary || data);
-        setSummaryData((data as any).summary || data);
+      } else if (event.type === 'scenario_end') {
+        setFinalSummary(event.data.summary);
+        setSummaryData(event.data.summary);
         setChoices([]);
         setChoiceDisabled(false);
-      } else if (type === 'error') {
+      } else if (event.type === 'error') {
         // Re-enable choices so user can retry
         setNpcTyping(false);
         setChoiceDisabled(false);

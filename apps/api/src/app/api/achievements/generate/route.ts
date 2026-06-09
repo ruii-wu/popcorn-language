@@ -4,8 +4,6 @@ import { OllamaClient } from '@/server/llm/ollama';
 import { withUser, json } from '@/server/http/respond';
 import { generateDynamicAchievement } from '@/server/achievements/dynamic';
 
-export const dynamic = 'force-dynamic';
-
 export async function POST(req: Request): Promise<Response> {
   return withUser(req, async (userId) => {
     const achievement = await generateDynamicAchievement(prisma, new OllamaClient(), userId);

@@ -7,8 +7,6 @@ import { sseResponse } from '@/server/sse/events';
 import { OllamaClient } from '@/server/llm/ollama';
 import { runScenarioTurn } from '@/server/scenario/turn';
 
-export const dynamic = 'force-dynamic';
-
 export async function POST(req: Request, { params }: { params: { id: string } }): Promise<Response> {
   let userId: string;
   try { userId = requireUser(req).userId; } catch { return errorJson(401, 'UNAUTHORIZED', 'Sign in required'); }

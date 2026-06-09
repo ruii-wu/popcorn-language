@@ -7,8 +7,6 @@ import { sseResponse } from '@/server/sse/events';
 import { streamChat } from '@/server/chat/streamChat';
 import { OllamaClient } from '@/server/llm/ollama';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET(req: Request, { params }: { params: { npcId: string } }): Promise<Response> {
   return withUser(req, async (userId) => {
     const url = new URL(req.url);

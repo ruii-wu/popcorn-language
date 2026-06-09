@@ -1,8 +1,6 @@
 import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
 
-export const dynamic = 'force-dynamic';
-
 const LILY = 'lily';
 
 export async function POST(req: Request): Promise<Response> {

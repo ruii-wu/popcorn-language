@@ -49,3 +49,18 @@ export const MemoryEvalBody = z.object({
   k: z.number().int().positive().max(20).optional(),
 });
 export type MemoryEvalBody = z.infer<typeof MemoryEvalBody>;
+
+// settings PUT — partial update (every field optional). Single source for the
+// memory-strategy enum, shared by the request schema and the response type.
+export const MEMORY_STRATEGIES = ['recency', 'summary', 'semantic', 'hybrid'] as const;
+export type MemoryStrategy = (typeof MEMORY_STRATEGIES)[number];
+
+export const SettingsPatch = z.object({
+  grammarCorrection: z.boolean().optional(),
+  modelName: z.string().min(1).optional(),
+  uiLanguage: z.string().min(1).optional(),
+  voiceTTSEnabled: z.boolean().optional(),
+  showAIRationale: z.boolean().optional(),
+  memoryStrategy: z.enum(MEMORY_STRATEGIES).optional(),
+});
+export type SettingsPatch = z.infer<typeof SettingsPatch>;

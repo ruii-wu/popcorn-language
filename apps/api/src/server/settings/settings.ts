@@ -1,9 +1,6 @@
 // src/server/settings/settings.ts
-import { z } from 'zod';
+import { MEMORY_STRATEGIES, type MemoryStrategy, type SettingsPatch } from '@popcorn/shared';
 import type { PrismaClient } from '@prisma/client';
-
-export const MEMORY_STRATEGIES = ['recency', 'summary', 'semantic', 'hybrid'] as const;
-export type MemoryStrategyName = (typeof MEMORY_STRATEGIES)[number];
 
 export interface SettingsView {
   grammarCorrection: boolean;
@@ -11,7 +8,7 @@ export interface SettingsView {
   uiLanguage: string;
   voiceTTSEnabled: boolean;
   showAIRationale: boolean;
-  memoryStrategy: MemoryStrategyName;
+  memoryStrategy: MemoryStrategy;
 }
 
 // Mirrors the UserSettings model defaults (spec §八).
@@ -24,24 +21,12 @@ export const DEFAULT_SETTINGS: SettingsView = {
   memoryStrategy: 'hybrid',
 };
 
-// An empty patch {} is valid (no-op upsert) and returns the current effective settings.
-// Zod patch for PUT /api/settings — every field optional (partial update).
-export const SettingsPatch = z.object({
-  grammarCorrection: z.boolean().optional(),
-  modelName: z.string().min(1).optional(),
-  uiLanguage: z.string().min(1).optional(),
-  voiceTTSEnabled: z.boolean().optional(),
-  showAIRationale: z.boolean().optional(),
-  memoryStrategy: z.enum(MEMORY_STRATEGIES).optional(),
-});
-export type SettingsPatchInput = z.infer<typeof SettingsPatch>;
-
 function toView(row: {
   grammarCorrection: boolean; modelName: string; uiLanguage: string;
   voiceTTSEnabled: boolean; showAIRationale: boolean; memoryStrategy: string;
 }): SettingsView {
   const strat = (MEMORY_STRATEGIES as readonly string[]).includes(row.memoryStrategy)
-    ? (row.memoryStrategy as MemoryStrategyName)
+    ? (row.memoryStrategy as MemoryStrategy)
     : DEFAULT_SETTINGS.memoryStrategy;
   return {
     grammarCorrection: row.grammarCorrection,
@@ -63,7 +48,7 @@ export async function readSettings(prisma: PrismaClient, userId: string): Promis
 export async function writeSettings(
   prisma: PrismaClient,
   userId: string,
-  patch: SettingsPatchInput,
+  patch: SettingsPatch,
 ): Promise<SettingsView> {
   const row = await prisma.userSettings.upsert({
     where: { userId },

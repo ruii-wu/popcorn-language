@@ -1,10 +1,8 @@
 // src/app/api/settings/route.ts
-import { SettingsResponse } from '@popcorn/shared';
+import { SettingsResponse, SettingsPatch } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
-import { readSettings, writeSettings, SettingsPatch } from '@/server/settings/settings';
-
-export const dynamic = 'force-dynamic';
+import { readSettings, writeSettings } from '@/server/settings/settings';
 
 export async function GET(req: Request): Promise<Response> {
   return withUser(req, async (userId) => {

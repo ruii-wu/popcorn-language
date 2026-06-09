@@ -5,8 +5,6 @@ import { OllamaClient } from '@/server/llm/ollama';
 import { withUser, json, errorJson } from '@/server/http/respond';
 import { runMemoryEval } from '@/server/memory/eval/harness';
 
-export const dynamic = 'force-dynamic';
-
 export async function POST(req: Request): Promise<Response> {
   // Dev-only research surface — the endpoint does not exist in production.
   if (process.env.NODE_ENV === 'production') {

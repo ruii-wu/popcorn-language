@@ -5,8 +5,6 @@ import { withUser, json, errorJson } from '@/server/http/respond';
 import { OllamaClient } from '@/server/llm/ollama';
 import { acceptScenario, ScenarioError } from '@/server/scenario/accept';
 
-export const dynamic = 'force-dynamic';
-
 export async function POST(req: Request, { params }: { params: { id: string } }): Promise<Response> {
   return withUser(req, async (userId) => {
     try {
