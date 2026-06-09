@@ -4,7 +4,7 @@ NUS Master of Computing capstone — a **local-LLM-powered, bilingual (中→EN)
 
 > ⚠️ **Local demo only.** Authentication is intentionally minimal (see [A note on auth](#a-note-on-auth)). **Never deploy this beyond localhost.**
 
-> **Project status: backend complete (W1–W8) + web client wired (W10).** Chat (SSE streaming), the pluggable memory engine + ablation harness, scenario gameplay, grammar correction, relationships/progression, achievements (static + dynamic), the Journey dashboard, Settings, and system/reset are all implemented and tested. 225 Vitest cases pass; `typecheck` is clean. The React UI now talks to the live API and is **served same-origin from the backend at `/app`** (`public/app/`) — open `http://localhost:3100/app/main-app.html` to use the product end-to-end. The chat model is `qwen3.5:9b`.
+> **Project status: backend complete (W1–W8) + web client wired (W10).** Chat (SSE streaming), the pluggable memory engine + ablation harness, scenario gameplay, grammar correction, relationships/progression, achievements (static + dynamic), the Journey dashboard, Settings, and system/reset are all implemented and tested. 225 Vitest cases pass; `typecheck` is clean. The frontend is now a **Vite + React + TypeScript SPA** (`web/`) that proxies `/api` to the Next.js backend — open `http://localhost:5173/` to use the product end-to-end. The chat model is `qwen3.5:9b`.
 
 ---
 
@@ -33,10 +33,10 @@ npm run db:seed:demo               # optional: a rich `demo`/`demo` user for dem
 ## Run
 
 ```powershell
-npm run dev                        # http://localhost:3100
+npm run dev                        # API on :3100, Vite UI on :5173
 ```
-Then open the web client at **`http://localhost:3100/app/main-app.html`** (served same-origin
-with the API, so the session cookie and `/api/*` calls just work).
+Then open the web client at **`http://localhost:5173/`** (the Vite SPA proxies `/api/*` to the
+Next.js backend on :3100, so the session cookie and API calls just work).
 
 Health check:
 ```
@@ -61,8 +61,8 @@ No test calls a live model.
 npm run db:seed && npm run db:seed:demo
 npm run dev
 ```
-Open `http://localhost:3100/app/main-app.html` and log in as **`demo` / `demo`** (the
-onboarding page at `/app/onboarding-journey.html` has the login form; new accounts are created
+Open `http://localhost:5173/` and log in as **`demo` / `demo`** (the
+onboarding page at `http://localhost:5173/onboarding` has the login form; new accounts are created
 by running its wizard) — a learner pre-populated with three relationships (Lily = close, Chen =
 friend, Emma = acquaintance), memory facts + a memory card, one completed graded scenario,
 unlocked achievements, and a multi-day streak. `db:seed:demo` is additive and idempotent.
@@ -121,8 +121,8 @@ prisma/
 tests/ unit/ integration/   # pure-logic + SQLite-backed tests (mocked Ollama)
 scripts/smoke-web.mjs       # headless Edge end-to-end smoke of the wired UI
 docs/                       # background, specs, plans, and reports (figures)
-public/app/                 # the web client (CDN React + in-browser Babel, no build),
-                            #   served same-origin by Next at /app; src/api.js → /api/*
+web/                        # Vite + React + TypeScript SPA; proxies /api/* to Next.js on :3100
+public/app/                 # legacy dev tool only (design-canvas.html), still served by Next at /app
 ```
 
 ## Roadmap, design & report docs
@@ -135,17 +135,17 @@ public/app/                 # the web client (CDN React + in-browser Babel, no b
 
 ## Web client
 
-The React UI lives in `public/app/` (CDN React + in-browser Babel — **no build step**) and is
-served **same-origin** by the Next backend, so the `pop_uid` cookie and `/api/*` calls work with
-no CORS. With `npm run dev` running, open:
+The frontend is a **Vite + React + TypeScript SPA** (`web/`) that proxies `/api/*` to the
+Next.js backend on :3100, so the `pop_uid` cookie and API calls work with no CORS configuration
+needed. `npm run dev` starts both the API server and the Vite dev server together. Open:
 
-- **Main app (chat):** `http://localhost:3100/app/main-app.html`
-- **Onboarding / Journey:** `http://localhost:3100/app/onboarding-journey.html`
-- **Scenario:** `http://localhost:3100/app/scenario.html`
+- **Main app (chat):** `http://localhost:5173/`
+- **Onboarding / Journey:** `http://localhost:5173/onboarding`
+- **Scenario:** `http://localhost:5173/scenario`
 
-The three screens cross-link via the bottom-right dock. `src/api.js` is the thin client
-(`window.API`) that wraps `/api/*` including an SSE-over-POST reader for streaming chat/scenario
-turns.
+The three screens cross-link via the bottom-right dock. `public/app/` retains only the
+legacy `design-canvas.html` dev tool, still reachable at
+`http://localhost:3100/app/design-canvas.html`.
 
 ## A note on auth
 

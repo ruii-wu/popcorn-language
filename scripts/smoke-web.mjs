@@ -1,13 +1,13 @@
-// scripts/smoke-web.mjs — headless browser smoke for the wired web client.
-// Drives the installed Microsoft Edge (channel: 'msedge') against a running dev
-// server on :3100. Proves the UI renders values from the live API (not the old
-// mock constants) and degrades gracefully when Ollama is down.
+// scripts/smoke-web.mjs — headless browser smoke for the Vite web client.
+// Drives Microsoft Edge (channel: 'msedge') against a running dev setup:
+//   Vite SPA on :5173 (proxies /api -> Next.js on :3100).
+// Proves the UI renders values from the live API and degrades gracefully when Ollama is down.
 //
-// Usage:  node scripts/smoke-web.mjs <flow>     flow ∈ api|chat|journey|scenario|all
-// Pre-req: `npm run dev` is up on :3100, and `npm run db:seed:demo` has been run.
+// Usage:  node scripts/smoke-web.mjs <flow>     flow in api|chat|journey|scenario|all
+// Pre-req: `npm run dev` is up (API :3100 + Vite :5173), and `npm run db:seed:demo` has run.
 import { chromium } from 'playwright';
 
-const BASE = 'http://localhost:3100';
+const BASE = 'http://localhost:5173';
 const flow = process.argv[2] || 'all';
 let failures = 0;
 
@@ -22,59 +22,51 @@ async function newPage(browser) {
   return page;
 }
 
-async function gotoApp(page, file) {
-  await page.goto(`${BASE}/app/${file}`, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => !!window.API, null, { timeout: 15000 });
+// Navigate to a SPA route and wait for React to mount (root has children).
+async function gotoRoute(page, route) {
+  await page.goto(`${BASE}${route}`, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => {
+    const r = document.getElementById('root');
+    return !!r && r.children.length > 0;
+  }, null, { timeout: 15000 });
 }
 
-// Authenticate at the context level (sets the pop_uid cookie) BEFORE loading any app
-// page, so the page renders already-authed — no first-load 401/redirect race.
+// Log in through the :5173 proxy so the pop_uid cookie is stored for the page origin.
 async function login(page, u, p) {
   const r = await page.context().request.post(`${BASE}/api/auth/login`, { data: { username: u, password: p } });
   if (!r.ok()) throw new Error('login failed: ' + r.status());
 }
 
 async function flowApi(browser) {
-  console.log('[api] window.API wiring + same-origin reach');
+  console.log('[api] proxy reachability + app boot');
   const page = await newPage(browser);
-  // Use the onboarding page for the anonymous check: main-app.html correctly redirects an
-  // unauthenticated visitor to onboarding, which would destroy the eval context mid-flight.
-  await gotoApp(page, 'onboarding-journey.html');
-  const shape = await page.evaluate(() =>
-    typeof window.API === 'object' && typeof window.API.streamMessage === 'function');
-  assert(shape, 'window.API exposes streamMessage');
-  const me = await page.evaluate(async () => {
-    try { const u = await window.API.me(); return 'user:' + (u.user ? u.user.username : '?'); }
-    catch (e) { return 'status:' + e.status; }
-  });
-  assert(me.startsWith('user:') || me === 'status:401',
-    'API.me() reaches /api same-origin (got ' + me + ')');
+  await login(page, 'demo', 'demo');
+  const me = await page.context().request.get(`${BASE}/api/auth/me`);
+  const body = await me.json().catch(() => ({}));
+  assert(me.ok() && body.user && body.user.username === 'demo',
+    'GET /api/auth/me through Vite proxy returns demo user');
+  await gotoRoute(page, '/');
+  const rootText = await page.locator('#root').innerText();
+  assert(rootText.trim().length > 0, 'main route ("/") rendered content into #root');
 }
 
 async function flowChat(browser) {
   console.log('[chat] rail + thread + streaming send from live API');
   const page = await newPage(browser);
   await login(page, 'demo', 'demo');
-  await gotoApp(page, 'main-app.html');
+  await gotoRoute(page, '/');
 
-  // The conversations rail renders one <button> per NPC with the relationship label.
-  // Seeded demo: Lily = Close friend (stage 3). Mock NPCS_WEB has Lily = Friend (2),
-  // so "Lily … Close friend" only appears when the rail reads /api/npcs.
   const lilyBtn = page.locator('button', { hasText: 'Lily' }).first();
   await lilyBtn.waitFor({ timeout: 15000 });
   const lilyText = (await lilyBtn.innerText()).replace(/\s+/g, ' ');
   assert(/Close friend/i.test(lilyText), 'Lily row shows API stage "Close friend" (got: ' + lilyText.slice(0, 60) + ')');
 
   const npcCount = await page.locator('button', { hasText: /Lily|Emma|Chen/ }).count();
-  assert(npcCount >= 3, 'rail lists ≥3 NPCs from API (got ' + npcCount + ')');
+  assert(npcCount >= 3, 'rail lists >=3 NPCs from API (got ' + npcCount + ')');
 
-  // Thread history must LOAD and RENDER (regression guard for the GET endpoint): the first
-  // message returned by the API for the open thread must appear in the chat pane before we
-  // send anything. Catches api.js pointing thread() at the wrong (DELETE-only) route.
-  const firstMsg = await page.evaluate(async () => {
-    const r = await window.API.thread('lily');
-    return (r.messages && r.messages[0] && r.messages[0].text) || '';
-  });
+  const histRes = await page.context().request.get(`${BASE}/api/threads/lily/messages?limit=50`);
+  const hist = await histRes.json().catch(() => ({}));
+  const firstMsg = (hist.messages && hist.messages[0] && hist.messages[0].text) || '';
   if (firstMsg) {
     const probe = firstMsg.slice(0, 24);
     const rendered = await page.waitForFunction(
@@ -84,15 +76,12 @@ async function flowChat(browser) {
     ok('thread has no prior history to assert (seed-dependent) — skipped');
   }
 
-  // Send a message; Ollama may be up or down. Assert the user bubble appears and the
-  // composer re-enables (never stuck). If Ollama is down, an error bubble appears.
   const box = page.locator('textarea');
   await box.fill('hello from smoke');
   await page.locator('button', { hasText: 'Send' }).click();
   await page.waitForFunction(() => document.body.innerText.includes('hello from smoke'),
     null, { timeout: 15000 });
   ok('user message bubble rendered (user_message_saved)');
-  // composer re-enabled within 30s (covers Ollama-down error path and a short real reply)
   try {
     await page.waitForFunction(() => {
       const b = [...document.querySelectorAll('button')].find((x) => /Send/.test(x.textContent));
@@ -103,26 +92,24 @@ async function flowChat(browser) {
 }
 
 async function flowJourney(browser) {
-  console.log('[journey] onboarding page renders live journey for demo');
+  console.log('[journey] /onboarding renders live journey for demo');
   const page = await newPage(browser);
   await login(page, 'demo', 'demo');
-  await gotoApp(page, 'onboarding-journey.html');
-  await page.waitForTimeout(4000); // allow in-browser Babel + fetches
+  await gotoRoute(page, '/onboarding');
+  await page.waitForTimeout(2000);
   const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
-  // All three seeded NPC relationships must appear (demo-DB-specific check)
-  assert(/Lily/.test(body),  'journey view shows Lily (seeded close relationship)');
-  assert(/Chen/.test(body),  'journey view shows Chen (seeded friend relationship)');
-  assert(/Emma/.test(body),  'journey view shows Emma (seeded acquaintance relationship)');
-  // The journey header shows a real days count from the DB (demo streak ~6 days)
+  assert(/Lily/.test(body), 'journey view shows Lily (seeded close relationship)');
+  assert(/Chen/.test(body), 'journey view shows Chen (seeded friend relationship)');
+  assert(/Emma/.test(body), 'journey view shows Emma (seeded acquaintance relationship)');
   assert(/Close friend/i.test(body), 'journey view shows "Close friend" stage label for Lily');
 }
 
 async function flowScenario(browser) {
-  console.log('[scenario] scenario page renders the seeded completed session');
+  console.log('[scenario] /scenario renders the seeded session');
   const page = await newPage(browser);
   await login(page, 'demo', 'demo');
-  await gotoApp(page, 'scenario.html');
-  await page.waitForTimeout(3000);
+  await gotoRoute(page, '/scenario');
+  await page.waitForTimeout(2000);
   const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
   assert(/A-|Mock Interview|Summary|Grade/i.test(body),
     'scenario view renders the seeded session summary');
