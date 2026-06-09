@@ -1,3 +1,5 @@
+import type { MemoryStrategy } from './requests';
+
 // Response types — one per typed client method, mirroring today's handler output.
 // Derived by reading each handler / its src/server mapper; no behavior change.
 //
@@ -100,8 +102,8 @@ export interface MemoryItem {
   npcId: string | null;
 }
 
-// GET /api/settings (mirrors SettingsView)
-export type MemoryStrategy = 'recency' | 'summary' | 'semantic' | 'hybrid';
+// GET /api/settings (mirrors SettingsView). MemoryStrategy is the single source
+// in ./requests (shared with the SettingsPatch request enum).
 export interface SettingsResponse {
   grammarCorrection: boolean;
   modelName: string;

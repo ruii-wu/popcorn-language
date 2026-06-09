@@ -2,6 +2,7 @@
 // Ported from public/app/src/api.js (plain global script) to ESM TypeScript.
 import type {
   ProfileBody,
+  SettingsPatch,
   MeResponse,
   AuthResponse,
   NpcListItem,
@@ -129,7 +130,7 @@ export const api = {
   achievements: (): Promise<Achievement[]> => apiGet<Achievement[]>('/api/achievements'),
   memories: (): Promise<MemoryItem[]> => apiGet<MemoryItem[]>('/api/memories'),
   settings: (): Promise<SettingsResponse> => apiGet<SettingsResponse>('/api/settings'),
-  saveSettings: (s: unknown) => apiPut('/api/settings', s),
+  saveSettings: (s: SettingsPatch) => apiPut('/api/settings', s),
   // scenario
   scenarioCatalog: (): Promise<ScenarioCatalogItem[]> => apiGet<ScenarioCatalogItem[]>('/api/scenarios/catalog'),
   sessions: (query?: string): Promise<SessionListItem[]> =>
