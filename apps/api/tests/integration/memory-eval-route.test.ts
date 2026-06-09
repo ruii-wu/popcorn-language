@@ -45,13 +45,11 @@ describe('POST /api/dev/memory-eval', () => {
 
   it('404s in production (the endpoint does not exist in prod), even with a cookie', async () => {
     const prev = process.env.NODE_ENV;
-    // @ts-expect-error -- override readonly NODE_ENV for the test
     process.env.NODE_ENV = 'production';
     try {
       const res = await POST(post('whoever', {}));
       expect(res.status).toBe(404);
     } finally {
-      // @ts-expect-error -- restore
       process.env.NODE_ENV = prev;
     }
   });
