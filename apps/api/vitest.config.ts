@@ -13,5 +13,7 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
     exclude: [...configDefaults.exclude, 'web/**'],
     fileParallelism: false,
+    // @popcorn/shared exports TS source; inline it so vitest transforms it.
+    server: { deps: { inline: [/@popcorn\/shared/] } },
   },
 });
