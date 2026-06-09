@@ -17,8 +17,8 @@ The migration surface was inspected: all 34 route handlers are already Web-stand
 **Goals**
 - Serve all 34 API routes from a **Hono** app on :3100 (port unchanged → the Vite proxy and `scripts/smoke-web.mjs` are untouched), with **identical behavior**.
 - **Reuse the 34 handler bodies verbatim** via a thin adapter (the handlers stay at `src/app/api/<path>/route.ts`).
-- Remove Next.js entirely (deps, config, `dynamic` exports, the one `NextResponse` line, tsconfig plugin).
-- Migrate the ~30 integration tests that invoke handlers directly to Hono's in-process `app.request()`; leave the `src/server/*` unit tests untouched.
+- Remove Next.js entirely (deps, config, the one `NextResponse` line, tsconfig plugin).
+- Keep the existing handler-level tests passing **unchanged** (the handlers are unchanged), and add **one** new `app.request()`-based test that asserts every route is mounted at the right path+method and that auth/404 behave correctly.
 
 **Non-goals (Stage B)**
 - `packages/shared`, zod schema extraction, the RPC client (Stage C).
@@ -86,24 +86,27 @@ Routes with multiple methods are mounted once per method. The complete path/meth
   `dotenv/config` does not override variables already in `process.env`, so the smoke's shell-set `OLLAMA_BASE_URL` still wins (same as under Next).
 - **`apps/api` scripts:** `dev` → `tsx watch src/index.ts`; `start` → `tsx src/index.ts`; remove `build` (no build step for a tsx-run server); `test`/`test:watch`/`typecheck`/`db:*`/`report:ablation` unchanged. **Root scripts:** drop `build:api`; `dev:api` (`npm run dev -w apps/api`) now runs the Hono dev server; everything else unchanged.
 
-## 7. Test migration
+## 7. Tests — minimal (no migration)
 
-The ~30 integration tests that do `import { GET/POST } from '@/app/api/.../route'` and call the handler directly migrate to Hono's in-process client:
+Because the 34 handlers stay in place and **unchanged**, the ~30 integration tests that `import { GET/POST } from '@/app/api/.../route'` and call them directly **keep passing as-is** — they are NOT migrated, and `src/server/*` unit tests are untouched. That keeps Stage B churn low.
+
+The new Hono layer is validated two ways:
+1. **A new `apps/api/tests/integration/hono-app.test.ts`** that imports the Hono `app` and asserts:
+   - `app.routes` contains every expected `{ method, path }` mount (the full 37-mount table) — this catches a missing route, a typo'd path, or a wrong HTTP method comprehensively, without invoking each handler;
+   - a couple of `app.request()` behaviors: a protected GET returns 401 without a cookie, an unknown path returns 404, and a dynamic-segment route receives its param.
+2. **`smoke all`** — the existing end-to-end browser smoke drives the real Hono server over HTTP through the Vite proxy.
 ```ts
 import { app } from '@/http/app';
-const res = await app.request('/api/threads/lily/messages', {
-  method: 'POST',
-  headers: { cookie: `${SESSION_COOKIE}=${userId}` },
-  body: JSON.stringify({ text: 'hi' }),
-});
-expect(res.status).toBe(200);
+// behavior spot-check:
+const res = await app.request('/api/auth/me');           // no cookie
+expect(res.status).toBe(401);
+expect((await app.request('/api/nope')).status).toBe(404);
 ```
-`app.request()` runs the full Hono routing + handler in-process (no server, no port), returning the same `Response` the tests already assert on (status, headers, `res.text()`/`res.json()`, SSE body). DB-backed assertions via `prisma` are unchanged. The `src/server/*` unit tests (cosine, prompt-builder, scenario-state, etc.) do not touch routes and are untouched.
 
 ## 8. Verification (the gate)
 
 - `npm install` (root) resolves; `apps/api` typecheck + `apps/web` typecheck exit 0.
-- Backend suite (`npm test`) passes at the **same profile** as before (the one Ollama-gated SSE test excepted when Ollama is absent).
+- Backend suite (`npm test`) passes: the existing handler-level tests unchanged **plus** the new `hono-app.test.ts` green; the one Ollama-gated SSE test is excepted when Ollama is absent.
 - `npm run dev` brings up the Hono API (:3100) + Vite (:5173); `node scripts/smoke-web.mjs all` → **SMOKE PASS** (api/chat/journey/scenario), proving every endpoint — including the 3 SSE endpoints — behaves identically through Hono.
 - No `next`/`react` remain in `apps/api/package.json`; `grep` finds no `next/server`/`NextResponse` in `apps/api/src`.
 
@@ -113,7 +116,7 @@ expect(res.status).toBe(200);
 
 ## 10. Risks & mitigations
 
-- **A route missed or mis-mapped** (wrong path/method/param). Mitigated by enumerating the full route table in the plan and by the `smoke all` + full backend suite gate, which exercises every flow.
+- **A route missed or mis-mapped** (wrong path/method/param). Mitigated by `hono-app.test.ts` asserting `app.routes` contains the full `{method, path}` table (catches any missing/typo'd/wrong-method mount), plus `smoke all`.
 - **Global type drift** (Request/Response) from tsconfig changes. Mitigated by **keeping the `DOM` lib** so handler types are unchanged.
 - **.env not loaded** for the non-Next runtime. Mitigated by `import 'dotenv/config'` in `index.ts` (prisma also self-loads `DATABASE_URL`; the Ollama client defaults to :11434).
 - **SSE buffering** differences under Hono/node-server. Mitigated by returning the existing `sseResponse` `Response` verbatim and validating the streaming chat flow in `smoke all`.
