@@ -17,9 +17,10 @@
 
 This SOP defines a repeatable procedure for **User Acceptance Testing** of the Popcorn
 Language web client. UAT confirms that the product, as experienced through the browser UI at
-`http://localhost:5173/*` (Vite SPA; `/api` proxied to the Next.js backend on :3100), behaves correctly against the **live backend** and satisfies the
+`http://localhost:5173/`, behaves correctly against the **live backend** and satisfies the
 intended learner workflows: onboarding, persistent NPC chat, the Journey dashboard, scenario
-gameplay, and settings.
+gameplay, and settings. The frontend is the Vite SPA (`web/`); `/api` requests are proxied to
+the Next.js backend on :3100.
 
 UAT here is **acceptance-level, manual, black-box** testing performed by an evaluator acting as
 an end user. It is distinct from the automated `vitest` suite (developer-level) and the
@@ -172,7 +173,7 @@ The build is **accepted** when:
 ## 11. Test cases
 
 Tag legend: **[Core]** = works with Ollama off · **[AI]** = requires Ollama running.
-All cases start from `http://localhost:5173/...` in a fresh browser context unless noted.
+All cases start from `http://localhost:5173/` in a fresh browser context unless noted.
 
 ### 11.0 Results tracking table
 

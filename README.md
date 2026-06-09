@@ -143,7 +143,7 @@ needed. `npm run dev` starts both the API server and the Vite dev server togethe
 - **Onboarding / Journey:** `http://localhost:5173/onboarding`
 - **Scenario:** `http://localhost:5173/scenario`
 
-The three screens cross-link via the bottom-right dock. `public/app/` now retains only the
+The three screens cross-link via the bottom-right dock. `public/app/` retains only the
 legacy `design-canvas.html` dev tool, still reachable at
 `http://localhost:3100/app/design-canvas.html`.
 
