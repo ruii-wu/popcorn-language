@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import type { NpcListItem, ThreadMessage } from '@popcorn/shared';
 import {
   WebI,
   RELATIONSHIP_LABEL,
@@ -38,7 +39,7 @@ function fmtTime(iso: any) {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-function mapNpc(a: any) {
+function mapNpc(a: NpcListItem) {
   return {
     id: a.id, name: a.name,
     avatarGlyph: a.avatar ? a.avatar.glyph : '?',
@@ -51,7 +52,7 @@ function mapNpc(a: any) {
   };
 }
 
-function mapMsg(m: any) {
+function mapMsg(m: ThreadMessage) {
   return { id: m.id, from: m.from, text: m.text,
            time: m.createdAt ? fmtTime(m.createdAt) : '',
            correction: m.correction || null };
@@ -363,7 +364,7 @@ export default function App() {
   useEffect(() => {
     api.me()
       .then(() => api.npcs())
-      .then((list: any) => {
+      .then((list) => {
         const mapped = list.map(mapNpc);
         setNpcs(mapped);
         setActiveId((cur) => cur || (mapped[0] && mapped[0].id));
@@ -378,7 +379,7 @@ export default function App() {
     if (!activeId) return;
     setOffer(null); setStreaming(''); setTyping(false);
     api.thread(activeId)
-      .then((r: any) => setMessages((r.messages || []).map(mapMsg)))
+      .then((r) => setMessages((r.messages || []).map(mapMsg)))
       .catch(() => setMessages([]));
   }, [activeId]);
 

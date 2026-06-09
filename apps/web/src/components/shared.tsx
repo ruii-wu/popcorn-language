@@ -4,6 +4,7 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
+import type { JourneySummaryResponse } from '@popcorn/shared';
 
 const Icon = ({ d, className = "w-5 h-5", strokeWidth = 1.6 }: { d: ReactNode; className?: string; strokeWidth?: number }) =>
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth}
@@ -147,7 +148,7 @@ export function WebDock({ current }: { current?: string }) {
 
 // Left nav rail — shared between web app and journey screens
 export function WebNavRail({ activeTop = 'chats' }: { activeTop?: string }) {
-  const [j, setJ] = useState<any>(null);
+  const [j, setJ] = useState<JourneySummaryResponse | null>(null);
   useEffect(() => {
     api.journey().then(setJ).catch(() => {});
   }, []);

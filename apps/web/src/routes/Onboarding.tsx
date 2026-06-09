@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import type { JourneySummaryResponse, RelationshipCard, Achievement } from '@popcorn/shared';
 import { WebI, RELATIONSHIP_LABEL, WebRelationshipDots, WebDock, WebNavRail } from '../components/shared';
 
 // ============================================================
@@ -589,9 +590,9 @@ const NPC_VISUAL: Record<string, { glyph: string; bg: string; ink: string }> = {
 };
 
 function JourneyDashboard() {
-  const [journey, setJourney] = useState<any>(null);
-  const [rels, setRels] = useState<any[]>([]);
-  const [achs, setAchs] = useState<any[]>([]);
+  const [journey, setJourney] = useState<JourneySummaryResponse | null>(null);
+  const [rels, setRels] = useState<RelationshipCard[]>([]);
+  const [achs, setAchs] = useState<Achievement[]>([]);
 
   useEffect(() => {
     Promise.all([api.journey(), api.relationships(), api.achievements()])
@@ -634,7 +635,7 @@ function JourneyDashboard() {
                    title="People you talk to" mt={12}>
             <div className="grid grid-cols-3 gap-3">
               {rels.length > 0
-                ? rels.map((r: any) => <LiveRelationshipCard key={r.npcId} r={r} />)
+                ? rels.map((r) => <LiveRelationshipCard key={r.npcId} r={r} />)
                 : <p className="text-[13px] col-span-3" style={{ color: 'var(--muted)' }}>Loading…</p>
               }
             </div>
@@ -645,7 +646,7 @@ function JourneyDashboard() {
                    title="What you've unlocked" mt={12}>
             <div className="grid grid-cols-2 gap-3">
               {achs.length > 0
-                ? achs.map((a: any) => <AchievementCard key={a.id} a={a} />)
+                ? achs.map((a) => <AchievementCard key={a.id} a={a} />)
                 : <p className="text-[13px] col-span-2" style={{ color: 'var(--muted)' }}>Loading…</p>
               }
             </div>
@@ -665,7 +666,7 @@ function JourneyDashboard() {
   );
 }
 
-function LiveRelationshipCard({ r }: { r: any }) {
+function LiveRelationshipCard({ r }: { r: RelationshipCard }) {
   const visual = NPC_VISUAL[r.npcId] || { glyph: r.name ? r.name[0] : '?', bg: 'var(--surface-2)', ink: 'var(--ink)' };
   const stageLabel = RELATIONSHIP_LABEL[r.stage] || r.stage || '—';
   const stageValue = r.stageValue != null ? r.stageValue
@@ -704,7 +705,7 @@ function LiveRelationshipCard({ r }: { r: any }) {
   );
 }
 
-function AchievementCard({ a }: { a: any }) {
+function AchievementCard({ a }: { a: Achievement }) {
   return (
     <div className="rounded-xl p-4 flex items-start gap-3"
          style={{
