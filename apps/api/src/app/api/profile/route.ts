@@ -2,8 +2,6 @@ import { ProfileBody, ProfileResponse } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET(req: Request): Promise<Response> {
   return withUser(req, async (userId) => {
     const user = await prisma.user.findUnique({ where: { id: userId }, include: { profile: true } });

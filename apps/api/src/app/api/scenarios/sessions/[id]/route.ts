@@ -4,8 +4,6 @@ import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
 import { mapSessionDetail } from '@/server/scenario/sessionView';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET(req: Request, { params }: { params: { id: string } }): Promise<Response> {
   return withUser(req, async (userId) => {
     const session = await prisma.scenarioSession.findFirst({

@@ -4,8 +4,6 @@ import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
 import { readSettings, writeSettings } from '@/server/settings/settings';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET(req: Request): Promise<Response> {
   return withUser(req, async (userId) => {
     const out: SettingsResponse = await readSettings(prisma, userId);

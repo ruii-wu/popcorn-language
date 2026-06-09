@@ -3,8 +3,6 @@ import { withUser, json, errorJson } from '@/server/http/respond';
 import { OllamaClient } from '@/server/llm/ollama';
 import { correctGrammar } from '@/server/correction/grammar';
 
-export const dynamic = 'force-dynamic';
-
 export async function POST(
   req: Request,
   { params }: { params: { npcId: string; msgId: string } },

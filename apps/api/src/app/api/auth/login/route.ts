@@ -4,8 +4,6 @@ import { loginAccount } from '@/server/auth/accounts';
 import { serializeSessionCookie } from '@/server/auth/session';
 import { errorJson } from '@/server/http/respond';
 
-export const dynamic = 'force-dynamic';
-
 export async function POST(req: Request): Promise<Response> {
   const parsed = CredentialsBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return errorJson(400, 'BAD_REQUEST', 'username and password required');

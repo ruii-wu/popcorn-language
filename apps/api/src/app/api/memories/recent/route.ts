@@ -2,8 +2,6 @@
 import { prisma } from '@/server/db/client';
 import { withUser, json } from '@/server/http/respond';
 
-export const dynamic = 'force-dynamic';
-
 // Right-panel "What X knows" / "Memories from this chat": the npc's cards plus cross-NPC observations.
 export async function GET(req: Request): Promise<Response> {
   return withUser(req, async (userId) => {

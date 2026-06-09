@@ -4,8 +4,6 @@ import { prisma } from '@/server/db/client';
 import { withUser, json } from '@/server/http/respond';
 import { STAGE_VALUE } from '@/server/scenario/trigger';
 
-export const dynamic = 'force-dynamic';
-
 export async function GET(req: Request): Promise<Response> {
   return withUser(req, async (userId) => {
     const templates = await prisma.scenarioTemplate.findMany({ where: { enabled: true } });
