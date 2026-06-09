@@ -1,5 +1,6 @@
 // web/src/api/client.ts — thin same-origin client for the Popcorn backend.
 // Ported from public/app/src/api.js (plain global script) to ESM TypeScript.
+import type { ProfileBody } from '@popcorn/shared';
 
 interface ApiError extends Error {
   status?: number;
@@ -97,7 +98,7 @@ export const api = {
     streamPost('/api/threads/' + npcId + '/messages', { text: text }, onEvent),
   // onboarding / journey / profile
   profile: () => apiGet('/api/profile'),
-  saveProfile: (p: unknown) => apiPut('/api/profile', p),
+  saveProfile: (p: ProfileBody) => apiPut('/api/profile', p),
   onboardingComplete: () => apiPost('/api/onboarding/complete', {}),
   journey: () => apiGet('/api/journey/summary'),
   relationships: () => apiGet('/api/journey/relationships'),
