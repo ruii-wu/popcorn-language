@@ -136,12 +136,6 @@ export function WebDock({ current }: { current?: string }) {
           {i.label}
         </Link>
       )}
-      <span className="w-px h-4 mx-0.5" style={{ background: 'oklch(0.38 0.02 55)' }} />
-      <a href="http://localhost:3100/app/design-canvas.html" target="_blank" rel="noreferrer"
-      className="px-3 py-1.5 rounded-full text-[10.5px] font-mono uppercase tracking-wider transition no-underline"
-      style={{ color: 'oklch(0.78 0.02 60)' }}>
-        ↗ Canvas
-      </a>
     </div>);
 
 }
