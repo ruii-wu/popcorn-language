@@ -1,4 +1,5 @@
 // src/app/api/achievements/route.ts
+import { Achievement } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json } from '@/server/http/respond';
 
@@ -26,6 +27,7 @@ export async function GET(req: Request): Promise<Response> {
         icon: u.achievement.icon, unlocked: true, unlockedAt: u.unlockedAt,
       }));
 
-    return json([...staticList, ...dynamicList]);
+    const out: Achievement[] = [...staticList, ...dynamicList];
+    return json(out);
   });
 }

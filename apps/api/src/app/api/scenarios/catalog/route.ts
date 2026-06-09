@@ -1,4 +1,5 @@
 // src/app/api/scenarios/catalog/route.ts
+import { ScenarioCatalogItem } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json } from '@/server/http/respond';
 import { STAGE_VALUE } from '@/server/scenario/trigger';
@@ -12,7 +13,7 @@ export async function GET(req: Request): Promise<Response> {
     const stageByNpc = new Map(rels.map((r) => [r.npcId, r.stageValue]));
 
     return json(
-      templates.map((t) => ({
+      templates.map((t): ScenarioCatalogItem => ({
         id: t.id,
         title: t.title,
         titleZh: t.titleZh,

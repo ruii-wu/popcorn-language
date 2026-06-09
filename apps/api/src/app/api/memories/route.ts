@@ -1,4 +1,5 @@
 // src/app/api/memories/route.ts
+import { MemoryItem } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json } from '@/server/http/respond';
 
@@ -17,7 +18,7 @@ export async function GET(req: Request): Promise<Response> {
     });
 
     return json(
-      rows.map((m) => ({
+      rows.map((m): MemoryItem => ({
         id: m.id,
         title: m.title,
         body: m.body,

@@ -1,4 +1,5 @@
 // src/app/api/scenarios/sessions/route.ts
+import { SessionListItem } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json } from '@/server/http/respond';
 import { mapSessionListItem } from '@/server/scenario/sessionView';
@@ -16,6 +17,7 @@ export async function GET(req: Request): Promise<Response> {
       include: { template: true, summary: true },
       orderBy: { invitedAt: 'desc' },
     });
-    return json(rows.map(mapSessionListItem));
+    const out: SessionListItem[] = rows.map(mapSessionListItem);
+    return json(out);
   });
 }

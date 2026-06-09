@@ -1,4 +1,4 @@
-import { ProfileBody } from '@popcorn/shared';
+import { ProfileBody, ProfileResponse } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
 
@@ -8,12 +8,13 @@ export async function GET(req: Request): Promise<Response> {
   return withUser(req, async (userId) => {
     const user = await prisma.user.findUnique({ where: { id: userId }, include: { profile: true } });
     const p = user?.profile;
-    return json({
+    const out: ProfileResponse = {
       role: p?.role ?? null,
       goal: p?.goal ?? null,
       interests: p ? (JSON.parse(p.interests) as string[]) : [],
       language: user?.language ?? 'zh-CN',
-    });
+    };
+    return json(out);
   });
 }
 

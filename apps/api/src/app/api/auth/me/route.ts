@@ -1,3 +1,4 @@
+import { MeResponse } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
 import { computeStreak } from '@/server/users/streak';
@@ -21,7 +22,7 @@ export async function GET(req: Request): Promise<Response> {
       prisma.memory.count({ where: { userId } }),
     ]);
 
-    return json({
+    const out: MeResponse = {
       user: {
         id: user.id,
         username: user.username,
@@ -31,6 +32,7 @@ export async function GET(req: Request): Promise<Response> {
       },
       streak: { days: streak.days, weekCount: streak.weekCount },
       totals: { conversations, scenarios, memories },
-    });
+    };
+    return json(out);
   });
 }
