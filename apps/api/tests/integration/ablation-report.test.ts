@@ -3,7 +3,8 @@
 // Deterministic: recall@k is stable, so the written file is byte-identical run-to-run.
 import { describe, it, expect, afterAll } from 'vitest';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { PrismaClient } from '@prisma/client';
 import { runMemoryEval } from '@/server/memory/eval/harness';
 import { renderAblationReport } from '@/server/memory/eval/report';
@@ -31,7 +32,9 @@ describe('ablation report generator', () => {
     expect(get('semantic').recallAtK).toBeGreaterThan(get('recency').recallAtK);
 
     const md = renderAblationReport(result);
-    const dir = resolve(process.cwd(), 'docs/reports');
+    // Resolve the repo-root docs/reports regardless of cwd (vitest runs from apps/api).
+    const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
+    const dir = resolve(repoRoot, 'docs/reports');
     mkdirSync(dir, { recursive: true });
     writeFileSync(resolve(dir, 'memory-ablation.md'), md, 'utf8');
 
