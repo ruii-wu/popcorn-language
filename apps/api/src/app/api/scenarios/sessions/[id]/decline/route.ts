@@ -1,5 +1,5 @@
 // src/app/api/scenarios/sessions/[id]/decline/route.ts
-import { DeclineBody } from '@popcorn/shared';
+import { DeclineBody, OkResponse } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
 import { declineScenario } from '@/server/scenario/lifecycle';
@@ -14,7 +14,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const body = parsed.data;
     try {
       await declineScenario({ prisma, userId, sessionId: params.id, reason: body.reason });
-      return json({ ok: true });
+      const out: OkResponse = { ok: true };
+      return json(out);
     } catch (e) {
       if (e instanceof ScenarioError) return errorJson(e.code === 'NOT_FOUND' ? 404 : 409, e.code, e.message);
       throw e;

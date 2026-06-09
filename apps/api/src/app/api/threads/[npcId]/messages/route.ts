@@ -1,4 +1,4 @@
-import { SendMessageBody } from '@popcorn/shared';
+import { SendMessageBody, ThreadResponse } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
 import { requireUser } from '@/server/auth/requireUser';
@@ -32,7 +32,8 @@ export async function GET(req: Request, { params }: { params: { npcId: string } 
     });
     const hasMore = rows.length > limit;
     const page = rows.slice(0, limit).reverse();
-    return json({ messages: page.map(mapMessageToApi), hasMore });
+    const out: ThreadResponse = { messages: page.map(mapMessageToApi), hasMore };
+    return json(out);
   });
 }
 

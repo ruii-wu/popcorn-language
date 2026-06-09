@@ -1,3 +1,4 @@
+import { NpcListItem } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json } from '@/server/http/respond';
 
@@ -14,7 +15,7 @@ export async function GET(req: Request): Promise<Response> {
     });
     const threadByNpc = new Map(threads.map((t) => [t.npcId, t]));
 
-    const out = npcs.map((n) => {
+    const out = npcs.map((n): NpcListItem => {
       const rel = relByNpc.get(n.id);
       const last = threadByNpc.get(n.id)?.messages[0];
       return {

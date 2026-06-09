@@ -1,4 +1,5 @@
 // src/app/api/journey/summary/route.ts
+import { JourneySummaryResponse } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json } from '@/server/http/respond';
 import { computeStreak } from '@/server/users/streak';
@@ -19,6 +20,7 @@ export async function GET(req: Request): Promise<Response> {
       prisma.memory.count({ where: { userId } }),
     ]);
 
-    return json({ days, conversations, scenarios, memories });
+    const out: JourneySummaryResponse = { days, conversations, scenarios, memories };
+    return json(out);
   });
 }

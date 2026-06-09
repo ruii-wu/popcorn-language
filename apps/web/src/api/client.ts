@@ -1,13 +1,31 @@
 // web/src/api/client.ts — thin same-origin client for the Popcorn backend.
 // Ported from public/app/src/api.js (plain global script) to ESM TypeScript.
-import type { ProfileBody } from '@popcorn/shared';
+import type {
+  ProfileBody,
+  MeResponse,
+  AuthResponse,
+  NpcListItem,
+  ThreadResponse,
+  ProfileResponse,
+  JourneySummaryResponse,
+  RelationshipCard,
+  StreakResponse,
+  Achievement,
+  MemoryItem,
+  SettingsResponse,
+  ScenarioCatalogItem,
+  SessionListItem,
+  SessionDetailResponse,
+  AcceptSessionResponse,
+  OkResponse,
+} from '@popcorn/shared';
 
 interface ApiError extends Error {
   status?: number;
   body?: unknown;
 }
 
-async function req(method: string, url: string, body?: unknown) {
+async function req<T = unknown>(method: string, url: string, body?: unknown): Promise<T> {
   const opts: RequestInit = { method: method, headers: {} };
   if (body !== undefined) {
     (opts.headers as Record<string, string>)['Content-Type'] = 'application/json';
@@ -23,11 +41,11 @@ async function req(method: string, url: string, body?: unknown) {
     err.body = data;
     throw err;
   }
-  return data;
+  return data as T;
 }
-const apiGet = (u: string) => req('GET', u);
-const apiPost = (u: string, b?: unknown) => req('POST', u, b === undefined ? {} : b);
-const apiPut = (u: string, b?: unknown) => req('PUT', u, b);
+const apiGet = <T = unknown>(u: string) => req<T>('GET', u);
+const apiPost = <T = unknown>(u: string, b?: unknown) => req<T>('POST', u, b === undefined ? {} : b);
+const apiPut = <T = unknown>(u: string, b?: unknown) => req<T>('PUT', u, b);
 
 // SSE over POST: EventSource cannot POST, so read the stream manually.
 // Calls onEvent({ type, data }) per `event:`/`data:` frame.
@@ -87,33 +105,39 @@ export function parseFrame(frame: string): { type: string; data: unknown } {
 
 export const api = {
   // auth/session
-  me: () => apiGet('/api/auth/me'),
-  login: (username: string, password: string) => apiPost('/api/auth/login', { username: username, password: password }),
-  register: (username: string, password: string) => apiPost('/api/auth/register', { username: username, password: password }),
+  me: (): Promise<MeResponse> => apiGet<MeResponse>('/api/auth/me'),
+  login: (username: string, password: string): Promise<AuthResponse> =>
+    apiPost<AuthResponse>('/api/auth/login', { username: username, password: password }),
+  register: (username: string, password: string): Promise<AuthResponse> =>
+    apiPost<AuthResponse>('/api/auth/register', { username: username, password: password }),
   logout: () => apiPost('/api/auth/logout', {}),
   // chat
-  npcs: () => apiGet('/api/npcs'),
-  thread: (npcId: string, limit?: number) => apiGet('/api/threads/' + npcId + '/messages?limit=' + (limit || 50)),
+  npcs: (): Promise<NpcListItem[]> => apiGet<NpcListItem[]>('/api/npcs'),
+  thread: (npcId: string, limit?: number): Promise<ThreadResponse> =>
+    apiGet<ThreadResponse>('/api/threads/' + npcId + '/messages?limit=' + (limit || 50)),
   streamMessage: (npcId: string, text: string, onEvent: (e: { type: string; data: unknown }) => void) =>
     streamPost('/api/threads/' + npcId + '/messages', { text: text }, onEvent),
   // onboarding / journey / profile
-  profile: () => apiGet('/api/profile'),
+  profile: (): Promise<ProfileResponse> => apiGet<ProfileResponse>('/api/profile'),
   saveProfile: (p: ProfileBody) => apiPut('/api/profile', p),
   onboardingComplete: () => apiPost('/api/onboarding/complete', {}),
-  journey: () => apiGet('/api/journey/summary'),
-  relationships: () => apiGet('/api/journey/relationships'),
-  streak: () => apiGet('/api/journey/streak'),
-  achievements: () => apiGet('/api/achievements'),
-  memories: () => apiGet('/api/memories'),
-  settings: () => apiGet('/api/settings'),
+  journey: (): Promise<JourneySummaryResponse> => apiGet<JourneySummaryResponse>('/api/journey/summary'),
+  relationships: (): Promise<RelationshipCard[]> => apiGet<RelationshipCard[]>('/api/journey/relationships'),
+  streak: (): Promise<StreakResponse> => apiGet<StreakResponse>('/api/journey/streak'),
+  achievements: (): Promise<Achievement[]> => apiGet<Achievement[]>('/api/achievements'),
+  memories: (): Promise<MemoryItem[]> => apiGet<MemoryItem[]>('/api/memories'),
+  settings: (): Promise<SettingsResponse> => apiGet<SettingsResponse>('/api/settings'),
   saveSettings: (s: unknown) => apiPut('/api/settings', s),
   // scenario
-  scenarioCatalog: () => apiGet('/api/scenarios/catalog'),
-  sessions: (query?: string) => apiGet('/api/scenarios/sessions' + (query || '')),
-  session: (id: string) => apiGet('/api/scenarios/sessions/' + id),
-  acceptSession: (id: string) => apiPost('/api/scenarios/sessions/' + id + '/accept', {}),
-  declineSession: (id: string, reason?: string) =>
-    apiPost('/api/scenarios/sessions/' + id + '/decline', reason ? { reason: reason } : {}),
+  scenarioCatalog: (): Promise<ScenarioCatalogItem[]> => apiGet<ScenarioCatalogItem[]>('/api/scenarios/catalog'),
+  sessions: (query?: string): Promise<SessionListItem[]> =>
+    apiGet<SessionListItem[]>('/api/scenarios/sessions' + (query || '')),
+  session: (id: string): Promise<SessionDetailResponse> =>
+    apiGet<SessionDetailResponse>('/api/scenarios/sessions/' + id),
+  acceptSession: (id: string): Promise<AcceptSessionResponse> =>
+    apiPost<AcceptSessionResponse>('/api/scenarios/sessions/' + id + '/accept', {}),
+  declineSession: (id: string, reason?: string): Promise<OkResponse> =>
+    apiPost<OkResponse>('/api/scenarios/sessions/' + id + '/decline', reason ? { reason: reason } : {}),
   streamChoose: (id: string, choiceId: string, onEvent: (e: { type: string; data: unknown }) => void, extra?: Record<string, unknown>) =>
     streamPost('/api/scenarios/sessions/' + id + '/choose',
       Object.assign({ choiceId: choiceId }, extra || {}), onEvent),

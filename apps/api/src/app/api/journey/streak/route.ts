@@ -1,4 +1,5 @@
 // src/app/api/journey/streak/route.ts
+import { StreakResponse } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json } from '@/server/http/respond';
 import { computeStreak } from '@/server/users/streak';
@@ -12,6 +13,7 @@ export async function GET(req: Request): Promise<Response> {
       select: { createdAt: true },
     });
     const { days, weekCount, perDay } = computeStreak(events.map((e) => e.createdAt));
-    return json({ days, weekCount, perDay });
+    const out: StreakResponse = { days, weekCount, perDay };
+    return json(out);
   });
 }

@@ -1,4 +1,5 @@
 // src/app/api/scenarios/sessions/[id]/route.ts
+import { SessionDetailResponse } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
 import { mapSessionDetail } from '@/server/scenario/sessionView';
@@ -17,6 +18,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
       where: { scenarioSessionId: session.id },
       orderBy: { createdAt: 'asc' },
     });
-    return json(mapSessionDetail(session, messages));
+    const out: SessionDetailResponse = mapSessionDetail(session, messages);
+    return json(out);
   });
 }

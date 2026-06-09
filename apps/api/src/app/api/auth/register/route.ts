@@ -1,4 +1,4 @@
-import { CredentialsBody } from '@popcorn/shared';
+import { CredentialsBody, AuthResponse } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { registerAccount, UsernameTakenError } from '@/server/auth/accounts';
 import { serializeSessionCookie } from '@/server/auth/session';
@@ -11,7 +11,8 @@ export async function POST(req: Request): Promise<Response> {
   if (!parsed.success) return errorJson(400, 'BAD_REQUEST', 'username and password required');
   try {
     const { userId } = await registerAccount(prisma, parsed.data);
-    return Response.json({ userId }, { headers: { 'Set-Cookie': serializeSessionCookie(userId) } });
+    const out: AuthResponse = { userId };
+    return Response.json(out, { headers: { 'Set-Cookie': serializeSessionCookie(userId) } });
   } catch (e) {
     if (e instanceof UsernameTakenError) return errorJson(409, 'USERNAME_TAKEN', 'Username already taken');
     throw e;

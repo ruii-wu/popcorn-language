@@ -1,4 +1,4 @@
-import { CredentialsBody } from '@popcorn/shared';
+import { CredentialsBody, AuthResponse } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { loginAccount } from '@/server/auth/accounts';
 import { serializeSessionCookie } from '@/server/auth/session';
@@ -11,5 +11,6 @@ export async function POST(req: Request): Promise<Response> {
   if (!parsed.success) return errorJson(400, 'BAD_REQUEST', 'username and password required');
   const result = await loginAccount(prisma, parsed.data);
   if (!result) return errorJson(401, 'INVALID_CREDENTIALS', 'Wrong username or password');
-  return Response.json({ userId: result.userId }, { headers: { 'Set-Cookie': serializeSessionCookie(result.userId) } });
+  const out: AuthResponse = { userId: result.userId };
+  return Response.json(out, { headers: { 'Set-Cookie': serializeSessionCookie(result.userId) } });
 }
