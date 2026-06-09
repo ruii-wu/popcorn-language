@@ -3,9 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3100",
-    "build": "next build",
-    "start": "next start",
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:migrate": "prisma migrate dev",
@@ -20,16 +19,14 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@hono/node-server": "^2.0.4",
     "@prisma/client": "5.18.0",
-    "next": "14.2.5",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "dotenv": "^17.4.2",
+    "hono": "^4.12.24",
     "zod": "3.23.8"
   },
   "devDependencies": {
     "@types/node": "20.14.15",
-    "@types/react": "18.3.3",
-    "@types/react-dom": "18.3.0",
     "prisma": "5.18.0",
     "tsx": "4.17.0",
     "typescript": "5.5.4",
