@@ -1,5 +1,5 @@
 // src/app/api/scenarios/sessions/[id]/decline/route.ts
-import { z } from 'zod';
+import { DeclineBody } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
 import { declineScenario } from '@/server/scenario/lifecycle';
@@ -7,11 +7,9 @@ import { ScenarioError } from '@/server/scenario/accept';
 
 export const dynamic = 'force-dynamic';
 
-const Body = z.object({ reason: z.string().max(500).optional() });
-
 export async function POST(req: Request, { params }: { params: { id: string } }): Promise<Response> {
   return withUser(req, async (userId) => {
-    const parsed = Body.safeParse(await req.json().catch(() => ({})));
+    const parsed = DeclineBody.safeParse(await req.json().catch(() => ({})));
     if (!parsed.success) return errorJson(400, 'BAD_REQUEST', 'invalid decline payload');
     const body = parsed.data;
     try {

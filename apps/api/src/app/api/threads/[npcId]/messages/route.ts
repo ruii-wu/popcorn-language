@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { SendMessageBody } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
 import { requireUser } from '@/server/auth/requireUser';
@@ -36,8 +36,6 @@ export async function GET(req: Request, { params }: { params: { npcId: string } 
   });
 }
 
-const PostBody = z.object({ text: z.string().min(1), lang: z.string().optional() });
-
 export async function POST(req: Request, { params }: { params: { npcId: string } }): Promise<Response> {
   let userId: string;
   try {
@@ -45,7 +43,7 @@ export async function POST(req: Request, { params }: { params: { npcId: string }
   } catch {
     return errorJson(401, 'UNAUTHORIZED', 'Sign in required');
   }
-  const parsed = PostBody.safeParse(await req.json().catch(() => null));
+  const parsed = SendMessageBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return errorJson(400, 'BAD_REQUEST', 'text is required');
 
   const gen = streamChat({

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { ProfileBody } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
 
@@ -17,16 +17,9 @@ export async function GET(req: Request): Promise<Response> {
   });
 }
 
-const PutBody = z.object({
-  role: z.string().nullish(),
-  goal: z.string().nullish(),
-  interests: z.array(z.string()).default([]),
-  language: z.string().optional(),
-});
-
 export async function PUT(req: Request): Promise<Response> {
   return withUser(req, async (userId) => {
-    const parsed = PutBody.safeParse(await req.json().catch(() => null));
+    const parsed = ProfileBody.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return errorJson(400, 'BAD_REQUEST', 'invalid profile payload');
     const { role, goal, interests, language } = parsed.data;
     const interestsJson = JSON.stringify(interests);
