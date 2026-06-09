@@ -20,7 +20,10 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@hono/node-server": "^2.0.4",
     "@prisma/client": "5.18.0",
+    "dotenv": "^17.4.2",
+    "hono": "^4.12.24",
     "next": "14.2.5",
     "react": "18.3.1",
     "react-dom": "18.3.1",

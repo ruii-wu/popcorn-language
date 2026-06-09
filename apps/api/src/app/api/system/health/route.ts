@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
+import { json } from '@/server/http/respond';
 import { OllamaClient } from '@/server/llm/ollama';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(): Promise<Response> {
   const started = Date.now();
   const ollama = await new OllamaClient().health();
-  return NextResponse.json({ server: 'up', uptimeMs: Date.now() - started, ollama });
+  return json({ server: 'up', uptimeMs: Date.now() - started, ollama });
 }
