@@ -391,33 +391,32 @@ export default function App() {
     if (!text.trim() || sending || !activeId) return;
     setSending(true); setStreaming('');
     let acc = '';
-    api.streamMessage(activeId, text, (ev: any) => {
-      const d = ev.data || {};
+    api.streamMessage(activeId, text, (ev) => {
       switch (ev.type) {
         case 'user_message_saved':
-          setMessages((m) => m.concat([{ id: d.messageId, from: 'user', text: text,
-            time: fmtTime(d.createdAt || Date.now()), correction: null }]));
+          setMessages((m) => m.concat([{ id: ev.data.messageId, from: 'user', text: text,
+            time: fmtTime(ev.data.createdAt || Date.now()), correction: null }]));
           break;
         case 'typing_start': setTyping(true); break;
-        case 'token': acc += d.delta || ''; setStreaming(acc); break;
+        case 'token': acc += ev.data.delta || ''; setStreaming(acc); break;
         case 'typing_end': setTyping(false); break;
         case 'message_complete':
           setStreaming('');
-          setMessages((m) => m.concat([{ id: d.messageId, from: 'npc',
-            text: d.fullText || acc, time: fmtTime(Date.now()), correction: null }]));
+          setMessages((m) => m.concat([{ id: ev.data.messageId, from: 'npc',
+            text: ev.data.fullText || acc, time: fmtTime(Date.now()), correction: null }]));
           setSending(false);  // re-enable composer once NPC has replied; done may still arrive later
           break;
         case 'correction':
-          setMessages((m) => m.map((x) => x.id === d.targetMessageId
-            ? Object.assign({}, x, { correction: d.correction }) : x));
+          setMessages((m) => m.map((x) => x.id === ev.data.targetMessageId
+            ? Object.assign({}, x, { correction: ev.data.correction }) : x));
           break;
-        case 'scenario_offer': setOffer(d); break;
+        case 'scenario_offer': setOffer(ev.data); break;
         case 'error':
           setTyping(false); setStreaming('');
           setMessages((m) => m.concat([{ id: 'err-' + Date.now(), from: 'npc', error: true,
-            text: (d.code === 'LLM_UNAVAILABLE'
+            text: (ev.data.code === 'LLM_UNAVAILABLE'
               ? 'Local model unavailable — start Ollama (qwen3.5:9b) and retry.'
-              : ('Error: ' + (d.message || d.code))), time: fmtTime(Date.now()), correction: null }]));
+              : ('Error: ' + (ev.data.message || ev.data.code))), time: fmtTime(Date.now()), correction: null }]));
           break;
         case 'done': setSending(false); break;
         default: break;

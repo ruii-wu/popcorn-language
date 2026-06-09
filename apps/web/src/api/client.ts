@@ -18,6 +18,8 @@ import type {
   SessionDetailResponse,
   AcceptSessionResponse,
   OkResponse,
+  ChatStreamEvent,
+  ScenarioStreamEvent,
 } from '@popcorn/shared';
 
 interface ApiError extends Error {
@@ -49,10 +51,10 @@ const apiPut = <T = unknown>(u: string, b?: unknown) => req<T>('PUT', u, b);
 
 // SSE over POST: EventSource cannot POST, so read the stream manually.
 // Calls onEvent({ type, data }) per `event:`/`data:` frame.
-async function streamPost(
+async function streamPost<E extends { type: string; data: unknown } = { type: string; data: unknown }>(
   url: string,
   body: unknown,
-  onEvent: (e: { type: string; data: unknown }) => void,
+  onEvent: (e: E) => void,
 ) {
   let res: Response;
   try {
@@ -62,13 +64,13 @@ async function streamPost(
       body: JSON.stringify(body),
     });
   } catch (e) {
-    onEvent({ type: 'error', data: { code: 'NETWORK', message: String(e) } });
+    onEvent({ type: 'error', data: { code: 'NETWORK', message: String(e) } } as E);
     return;
   }
   if (!res.ok || !res.body) {
     let data: { error?: unknown } | null = null;
     try { data = await res.json(); } catch (e) { /* ignore */ }
-    onEvent({ type: 'error', data: (data && data.error) || { code: 'HTTP_' + res.status, message: res.statusText } });
+    onEvent({ type: 'error', data: (data && data.error) || { code: 'HTTP_' + res.status, message: res.statusText } } as E);
     return;
   }
   const reader = res.body.getReader();
@@ -82,10 +84,10 @@ async function streamPost(
     while ((idx = buf.indexOf('\n\n')) >= 0) {
       const frame = buf.slice(0, idx);
       buf = buf.slice(idx + 2);
-      if (frame.trim()) onEvent(parseFrame(frame));
+      if (frame.trim()) onEvent(parseFrame(frame) as E);
     }
   }
-  if (buf.trim()) onEvent(parseFrame(buf));
+  if (buf.trim()) onEvent(parseFrame(buf) as E);
 }
 
 export function parseFrame(frame: string): { type: string; data: unknown } {
@@ -115,8 +117,8 @@ export const api = {
   npcs: (): Promise<NpcListItem[]> => apiGet<NpcListItem[]>('/api/npcs'),
   thread: (npcId: string, limit?: number): Promise<ThreadResponse> =>
     apiGet<ThreadResponse>('/api/threads/' + npcId + '/messages?limit=' + (limit || 50)),
-  streamMessage: (npcId: string, text: string, onEvent: (e: { type: string; data: unknown }) => void) =>
-    streamPost('/api/threads/' + npcId + '/messages', { text: text }, onEvent),
+  streamMessage: (npcId: string, text: string, onEvent: (e: ChatStreamEvent) => void) =>
+    streamPost<ChatStreamEvent>('/api/threads/' + npcId + '/messages', { text: text }, onEvent),
   // onboarding / journey / profile
   profile: (): Promise<ProfileResponse> => apiGet<ProfileResponse>('/api/profile'),
   saveProfile: (p: ProfileBody) => apiPut('/api/profile', p),
@@ -138,7 +140,7 @@ export const api = {
     apiPost<AcceptSessionResponse>('/api/scenarios/sessions/' + id + '/accept', {}),
   declineSession: (id: string, reason?: string): Promise<OkResponse> =>
     apiPost<OkResponse>('/api/scenarios/sessions/' + id + '/decline', reason ? { reason: reason } : {}),
-  streamChoose: (id: string, choiceId: string, onEvent: (e: { type: string; data: unknown }) => void, extra?: Record<string, unknown>) =>
-    streamPost('/api/scenarios/sessions/' + id + '/choose',
+  streamChoose: (id: string, choiceId: string, onEvent: (e: ScenarioStreamEvent) => void, extra?: Record<string, unknown>) =>
+    streamPost<ScenarioStreamEvent>('/api/scenarios/sessions/' + id + '/choose',
       Object.assign({ choiceId: choiceId }, extra || {}), onEvent),
 };
