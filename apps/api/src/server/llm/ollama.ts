@@ -72,12 +72,18 @@ export class OllamaClient {
 
   async *chat(
     messages: ChatMessage[],
-    opts: { model?: string; options?: Record<string, unknown> } = {},
+    opts: { model?: string; think?: boolean; options?: Record<string, unknown> } = {},
   ): AsyncGenerator<string> {
     const res = await this.fetchImpl(`${this.baseUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: opts.model ?? this.chatModel, messages, stream: true, options: opts.options }),
+      body: JSON.stringify({
+        model: opts.model ?? this.chatModel,
+        messages,
+        stream: true,
+        think: opts.think ?? false,
+        options: opts.options,
+      }),
     });
     if (!res.ok || !res.body) throw new OllamaError(`chat failed: HTTP ${res.status}`);
     const reader = res.body.getReader();
@@ -102,7 +108,7 @@ export class OllamaClient {
   async chatJson<T>(
     messages: ChatMessage[],
     schema: ZodType<T>,
-    opts: { model?: string; maxRetries?: number; options?: Record<string, unknown> } = {},
+    opts: { model?: string; think?: boolean; maxRetries?: number; options?: Record<string, unknown> } = {},
   ): Promise<T> {
     const maxRetries = opts.maxRetries ?? 3;
     let lastErr: unknown;
@@ -112,7 +118,12 @@ export class OllamaClient {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: opts.model ?? this.chatModel, messages, stream: false, format: 'json', options: opts.options,
+            model: opts.model ?? this.chatModel,
+            messages,
+            stream: false,
+            format: 'json',
+            think: opts.think ?? false,
+            options: opts.options,
           }),
         });
         if (!res.ok) { lastErr = new OllamaError(`chatJson HTTP ${res.status}`); continue; }
