@@ -565,7 +565,6 @@ function JourneyDashboard() {
         </div>
       </section>
 
-      <WebDock current="03 Onboarding & Journey" />
     </div>
   );
 }
@@ -701,7 +700,8 @@ function MemoryCard({ m }) {
 // ============================================================
 
 function App() {
-  const [view, setView] = useState('onboarding');
+  const initialView = window.location.hash === '#journey' ? 'journey' : 'onboarding';
+  const [view, setView] = useState(initialView);
   const [step, setStep] = useState(0);
 
   return (
@@ -728,10 +728,10 @@ function App() {
 
       {view === 'onboarding' && step === 0 && <WelcomeStep onNext={() => setStep(1)} />}
       {view === 'onboarding' && step === 1 && <ProfileStep onNext={() => setStep(2)} onBack={() => setStep(0)} />}
-      {view === 'onboarding' && step === 2 && <MeetStep    onNext={() => setView('journey')} onBack={() => setStep(1)} />}
+      {view === 'onboarding' && step === 2 && <MeetStep    onNext={() => window.location.assign('Web%20-%20Main%20App.html')} onBack={() => setStep(1)} />}
       {view === 'journey'    && <JourneyDashboard />}
 
-      <WebDock current="03 Onboarding & Journey" />
+      <WebDock current={view === 'journey' ? '04 Journey' : '01 Onboarding'} />
     </div>
   );
 }

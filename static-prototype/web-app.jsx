@@ -337,7 +337,7 @@ function App() {
 
       <RightPanel npc={npc} />
 
-      <WebDock current="01 Main App" />
+      <WebDock current="02 Main Chat" />
     </div>
   );
 }

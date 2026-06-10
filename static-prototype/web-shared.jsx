@@ -110,9 +110,10 @@ function WebRelationshipDots({ value, size = 5 }) {
 // Cross-file dock — bottom-right so it doesn't collide with state tabs
 function WebDock({ current }) {
   const items = [
-  { label: '01 Main App', href: 'Web - Main App.html' },
-  { label: '02 Scenario', href: 'Web - Scenario.html' },
-  { label: '03 Onboarding & Journey', href: 'Web - Onboarding and Journey.html' }];
+  { label: '01 Onboarding', href: 'Web - Onboarding and Journey.html' },
+  { label: '02 Main Chat', href: 'Web - Main App.html' },
+  { label: '03 Scenario', href: 'Web - Scenario.html#invitation' },
+  { label: '04 Journey', href: 'Web - Onboarding and Journey.html#journey' }];
 
   return (
     <div className="fixed bottom-3 right-3 z-50 flex items-center gap-1 p-1 rounded-full"
@@ -145,7 +146,7 @@ function WebDock({ current }) {
 function WebNavRail({ activeTop = 'chats' }) {
   const items = [
   { id: 'chats', label: 'Chats', icon: WebI.msgs, href: 'Web - Main App.html' },
-  { id: 'journey', label: 'Your Journey', icon: WebI.book, href: 'Web - Onboarding and Journey.html' },
+  { id: 'journey', label: 'Your Journey', icon: WebI.book, href: 'Web - Onboarding and Journey.html#journey' },
   { id: 'settings', label: 'Settings', icon: WebI.settings, href: '#' }];
 
   return (
@@ -286,10 +287,10 @@ function WebConversationsRail({ activeId, onSelect, intense }) {
       {/* Nav buttons */}
       <div className="px-4 py-3 flex items-center gap-2"
       style={{ borderTop: intense ? '1px solid var(--hairline-c)' : '1px solid var(--hairline)' }}>
-        <a href="Web - Onboarding and Journey.html"
+        <a href="Web - Scenario.html#invitation"
         className="flex-1 text-[11px] py-2 px-2.5 rounded-lg flex items-center gap-1.5 transition no-underline"
         style={{ color: 'var(--ink-2)', border: '1px solid var(--hairline)' }}>
-          <span className="w-3.5 h-3.5">{WebI.book}</span> Journey
+          <span className="w-3.5 h-3.5">{WebI.bldg}</span> Scenario
         </a>
         <button className="text-[11px] py-2 px-2.5 rounded-lg flex items-center transition"
         style={{ color: 'var(--muted)' }}>
