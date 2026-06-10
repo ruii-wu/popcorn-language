@@ -123,7 +123,7 @@ export async function* streamChat(deps: StreamChatDeps): AsyncGenerator<SseEvent
   // Achievement engine tick (guarded internally; returns [] on any failure).
   await runAchievementTick(prisma, userId);
 
-  await runPostTurnMemory({ prisma, ollama, userId, threadId: thread.id, userText: text, userMsgId: userMsg.id });
+  await runPostTurnMemory({ prisma, ollama, userId, threadId: thread.id, userText: text, userMsgId: userMsg.id, npcId });
 
   // B3 trigger: offer a scenario when the relationship + topic line up. Guarded — never breaks the chat turn.
   try {

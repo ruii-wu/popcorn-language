@@ -52,4 +52,27 @@ describe('extractAndStoreFacts', () => {
     const f = await prisma.memoryFact.findFirstOrThrow({ where: { userId: user.id, predicate: 'lives_near' } });
     expect(f.embedding).toBeNull();
   });
+
+  it('scopes new facts to the chatting NPC and merges on re-learn', async () => {
+    const U2 = '__w3_factscope_user__';
+    await prisma.user.deleteMany({ where: { username: U2 } });
+    const user = await prisma.user.create({ data: { username: U2, password: 'pw' } });
+    const ollama = {
+      chatJson: vi.fn().mockResolvedValue({ facts: [{ subject: 'user', predicate: 'likes', value: 'coffee', confidence: 0.9 }] }),
+      embed: vi.fn().mockResolvedValue([0.1]),
+    };
+
+    await extractAndStoreFacts({ prisma, ollama, userId: user.id, text: 'I like coffee', npcId: 'lily' });
+    let f = await prisma.memoryFact.findFirstOrThrow({ where: { userId: user.id, predicate: 'likes' } });
+    expect(JSON.parse(f.knownToNpcs)).toEqual(['lily']);
+
+    // same fact re-learned in a chat with chen → merge, no duplicate row
+    const n = await extractAndStoreFacts({ prisma, ollama, userId: user.id, text: 'I like coffee', npcId: 'chen' });
+    expect(n).toBe(0);
+    f = await prisma.memoryFact.findFirstOrThrow({ where: { userId: user.id, predicate: 'likes' } });
+    expect(JSON.parse(f.knownToNpcs).sort()).toEqual(['chen', 'lily']);
+    expect(await prisma.memoryFact.count({ where: { userId: user.id, predicate: 'likes' } })).toBe(1);
+
+    await prisma.user.deleteMany({ where: { username: U2 } });
+  });
 });
