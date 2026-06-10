@@ -13,6 +13,7 @@ import type {
   StreakResponse,
   Achievement,
   MemoryItem,
+  NpcDetail,
   SettingsResponse,
   ScenarioCatalogItem,
   SessionListItem,
@@ -128,7 +129,9 @@ export const api = {
   relationships: (): Promise<RelationshipCard[]> => apiGet<RelationshipCard[]>('/api/journey/relationships'),
   streak: (): Promise<StreakResponse> => apiGet<StreakResponse>('/api/journey/streak'),
   achievements: (): Promise<Achievement[]> => apiGet<Achievement[]>('/api/achievements'),
-  memories: (): Promise<MemoryItem[]> => apiGet<MemoryItem[]>('/api/memories'),
+  npcDetail: (id: string): Promise<NpcDetail> => apiGet<NpcDetail>('/api/npcs/' + id),
+  memories: (npcId?: string): Promise<MemoryItem[]> =>
+    apiGet<MemoryItem[]>('/api/memories' + (npcId ? '?npcId=' + npcId : '')),
   settings: (): Promise<SettingsResponse> => apiGet<SettingsResponse>('/api/settings'),
   saveSettings: (s: SettingsPatch) => apiPut('/api/settings', s),
   // scenario
