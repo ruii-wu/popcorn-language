@@ -89,6 +89,12 @@ async function flowChat(browser) {
     }, null, { timeout: 30000 });
     ok('composer re-enabled after send (no hang)');
   } catch { fail('composer stayed disabled after send'); }
+
+  // non-Lily NPC drives the right panel — Chen's own per-NPC fact, not hardcoded Lily
+  await page.locator('button', { hasText: 'Chen' }).first().click();
+  const showsChen = await page.waitForFunction(
+    () => document.body.innerText.includes('grow into a tech lead'), null, { timeout: 10000 }).then(() => true).catch(() => false);
+  assert(showsChen, "selecting Mr. Chen renders HIS per-NPC facts in the right panel (not hardcoded Lily)");
 }
 
 async function flowJourney(browser) {
