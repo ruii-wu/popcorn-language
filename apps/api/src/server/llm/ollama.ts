@@ -7,6 +7,10 @@ export interface OllamaOptions {
   baseUrl?: string;
   chatModel?: string;
   embedModel?: string;
+  /** Ollama `keep_alive`: how long to hold the model in VRAM after a request.
+   *  `-1` keeps it resident indefinitely (avoids the ~6s cold reload between turns);
+   *  a number is seconds, a string is a duration ("5m"). Defaults to -1. */
+  keepAlive?: number | string;
   fetchImpl?: typeof fetch;
 }
 
@@ -14,16 +18,27 @@ export class OllamaError extends Error {
   constructor(message: string) { super(message); this.name = 'OllamaError'; }
 }
 
+/** Parse OLLAMA_KEEP_ALIVE: a bare number is seconds, anything else (e.g. "5m") is a
+ *  duration string passed through verbatim. Empty/unset returns undefined (use default). */
+function parseKeepAlive(raw: string | undefined): number | string | undefined {
+  if (raw == null || raw.trim() === '') return undefined;
+  const t = raw.trim();
+  const n = Number(t);
+  return Number.isFinite(n) ? n : t;
+}
+
 export class OllamaClient {
   private baseUrl: string;
   private chatModel: string;
   private embedModel: string;
+  private keepAlive: number | string;
   private fetchImpl: typeof fetch;
 
   constructor(opts: OllamaOptions = {}) {
     this.baseUrl = opts.baseUrl ?? process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434';
     this.chatModel = opts.chatModel ?? process.env.OLLAMA_CHAT_MODEL ?? 'qwen3.5:9b';
     this.embedModel = opts.embedModel ?? process.env.OLLAMA_EMBED_MODEL ?? 'nomic-embed-text';
+    this.keepAlive = opts.keepAlive ?? parseKeepAlive(process.env.OLLAMA_KEEP_ALIVE) ?? -1;
     this.fetchImpl = opts.fetchImpl ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
   }
 
@@ -82,6 +97,7 @@ export class OllamaClient {
         messages,
         stream: true,
         think: opts.think ?? false,
+        keep_alive: this.keepAlive,
         options: opts.options,
       }),
     });
@@ -123,6 +139,7 @@ export class OllamaClient {
             stream: false,
             format: 'json',
             think: opts.think ?? false,
+            keep_alive: this.keepAlive,
             options: opts.options,
           }),
         });
@@ -141,7 +158,7 @@ export class OllamaClient {
     const res = await this.fetchImpl(`${this.baseUrl}/api/embeddings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: opts.model ?? this.embedModel, prompt: text }),
+      body: JSON.stringify({ model: opts.model ?? this.embedModel, prompt: text, keep_alive: this.keepAlive }),
     });
     if (!res.ok) throw new OllamaError(`embed HTTP ${res.status}`);
     const data = (await res.json()) as { embedding?: number[] };
