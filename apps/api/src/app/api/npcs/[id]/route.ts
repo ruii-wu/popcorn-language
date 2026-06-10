@@ -1,3 +1,4 @@
+import { NpcDetail } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
 import { listFacts } from '@/server/memory/recall';
@@ -10,14 +11,18 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
     const rel = await prisma.relationship.findUnique({ where: { userId_npcId: { userId, npcId: n.id } } });
     const messages = await prisma.message.count({ where: { thread: { userId, npcId: n.id } } });
 
-    return json({
+    const out: NpcDetail = {
       id: n.id,
       name: n.name,
       persona: n.shortBio,
+      avatar: { glyph: n.avatarGlyph, bg: n.avatarBg, ink: n.avatarInk },
       languageProfile: JSON.parse(n.languageProfile),
+      topicInterests: JSON.parse(n.topicInterests),
       relationship: rel?.stage ?? 'acquaintance',
-      knownFacts: await listFacts(prisma, userId, 8),
+      relationshipSince: rel?.createdAt ?? null,
+      knownFacts: await listFacts(prisma, userId, 8, n.id),
       chatStats: { messages, conversationCount: rel?.conversationCount ?? 0 },
-    });
+    };
+    return json(out);
   });
 }
