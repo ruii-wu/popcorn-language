@@ -177,3 +177,17 @@ export interface AcceptSessionResponse {
 export interface OkResponse {
   ok: boolean;
 }
+
+// GET /api/npcs/:id (the NPC persona panel)
+export interface NpcDetail {
+  id: string;
+  name: string;
+  persona: string; // shortBio
+  avatar: { glyph: string; bg: string; ink: string };
+  languageProfile: { primary: string; occasional: string[]; register: string };
+  topicInterests: string[];
+  relationship: string; // stage
+  relationshipSince: string | Date | null;
+  knownFacts: string[]; // per-NPC, factToText-formatted
+  chatStats: { messages: number; conversationCount: number };
+}
