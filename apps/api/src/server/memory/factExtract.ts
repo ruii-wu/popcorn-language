@@ -25,6 +25,7 @@ export interface FactExtractDeps {
   text: string;
   sourceMsgId?: string;
   context?: string;
+  npcId?: string;
 }
 
 // Extracts facts from the user's message and stores new ones (dedup by predicate+value). Returns count stored.
@@ -40,7 +41,18 @@ export async function extractAndStoreFacts(deps: FactExtractDeps): Promise<numbe
     const existing = await deps.prisma.memoryFact.findFirst({
       where: { userId: deps.userId, predicate: f.predicate, value: f.value },
     });
-    if (existing) continue;
+    if (existing) {
+      if (deps.npcId) {
+        const known = JSON.parse(existing.knownToNpcs) as string[];
+        if (!known.includes(deps.npcId)) {
+          await deps.prisma.memoryFact.update({
+            where: { id: existing.id },
+            data: { knownToNpcs: JSON.stringify([...known, deps.npcId]) },
+          });
+        }
+      }
+      continue;
+    }
 
     let embedding: string | null = null;
     try {
@@ -59,6 +71,7 @@ export async function extractAndStoreFacts(deps: FactExtractDeps): Promise<numbe
         confidence: f.confidence,
         embedding,
         sourceMsgId: deps.sourceMsgId ?? null,
+        knownToNpcs: deps.npcId ? JSON.stringify([deps.npcId]) : '[]',
       },
     });
     stored++;

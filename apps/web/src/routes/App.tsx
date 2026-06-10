@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
-import type { NpcListItem, ThreadMessage } from '@popcorn/shared';
+import type { ThreadMessage, NpcDetail, MemoryItem } from '@popcorn/shared';
 import {
   WebI,
   RELATIONSHIP_LABEL,
@@ -12,6 +12,7 @@ import {
   WebRelationshipDots,
   WebDock,
   WebConversationsRail,
+  npcView,
 } from '../components/shared';
 
 // ---------- Thread (Lily, casual) — kept for reference, no longer used ----------
@@ -37,19 +38,6 @@ const LILY_THREAD_WEB = [
 function fmtTime(iso: any) {
   const d = new Date(iso);
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function mapNpc(a: NpcListItem) {
-  return {
-    id: a.id, name: a.name,
-    avatarGlyph: a.avatar ? a.avatar.glyph : '?',
-    avatarBg: a.avatar ? a.avatar.bg : 'var(--surface-2)',
-    avatarInk: a.avatar ? a.avatar.ink : 'var(--ink)',
-    relationship: a.relationship, stageValue: a.stageValue,
-    status: a.status || '', lastPreview: a.lastMessage || '',
-    time: a.lastTime ? fmtTime(a.lastTime) : '',
-    hasSomething: !!a.hasSomething,
-  };
 }
 
 function mapMsg(m: ThreadMessage) {
@@ -241,97 +229,83 @@ function Composer({ onSend, disabled }: { onSend: (text: string) => void; disabl
 
 // ---------- Right context panel ----------
 
-function RightPanel({ npc }: { npc: any }) {
+function RightPanel({ detail, memories }: { detail: NpcDetail | null; memories: MemoryItem[] }) {
+  if (!detail) return <aside className="pane-right" />;
+  const lp = detail.languageProfile;
+  const langLabel = (c: string) => (({ en: 'EN', zh: '中文', ja: '日本語' } as Record<string, string>)[c] || c.toUpperCase());
+  const weeks = detail.relationshipSince
+    ? Math.max(1, Math.round((Date.now() - new Date(detail.relationshipSince).getTime()) / (7 * 86400000)))
+    : 0;
+  const dots = detail.relationship === 'close' ? 3 : detail.relationship === 'friend' ? 2 : 1;
+  const isCJK = /[一-龥]/.test(detail.avatar.glyph);
   return (
     <aside className="pane-right">
-      {/* Persona block */}
       <div className="px-5 pt-6 pb-4 text-center">
         <div className="flex justify-center mb-3">
           <div className="rounded-2xl grid place-items-center"
-               style={{
-                 width: 88, height: 88,
-                 background: npc.avatarBg,
-                 color: npc.avatarInk,
-                 fontSize: 44,
-               }}>
-            {npc.avatarGlyph}
+               style={{ width: 88, height: 88, background: detail.avatar.bg, color: detail.avatar.ink, fontSize: 44, fontFamily: isCJK ? "'Outfit', sans-serif" : 'inherit' }}>
+            {detail.avatar.glyph}
           </div>
         </div>
         <div className="flex items-center justify-center gap-1.5 mb-1">
-          <span className="text-[17px] font-medium">{npc.name}</span>
+          <span className="text-[17px] font-medium">{detail.name}</span>
           <span style={{ color: 'var(--plum)' }} className="ai-dot">{WebI.sparkleF}</span>
         </div>
         <div className="text-[11px] font-mono uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
-          AI · barista · Brooklyn
+          AI · {detail.persona}
         </div>
-        <p className="text-[12px] mt-3 leading-relaxed" style={{ color: 'var(--ink-2)' }}>
-          Friendly, casual, uses NYC slang. Knows a few Chinese words but answers in English.
-        </p>
       </div>
 
-      {/* Relationship */}
       <div className="px-5 py-4" style={{ borderTop: '1px solid var(--hairline)' }}>
-        <div className="text-[10px] font-mono uppercase tracking-[0.18em] mb-2"
-             style={{ color: 'var(--muted)' }}>
-          Relationship · 关系
-        </div>
+        <div className="text-[10px] font-mono uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--muted)' }}>Relationship · 关系</div>
         <div className="flex items-center gap-2 mb-2">
-          <WebRelationshipDots value={npc.stageValue} />
-          <span className="text-[13px] font-medium">{RELATIONSHIP_LABEL[npc.relationship]}</span>
+          <WebRelationshipDots value={dots} />
+          <span className="text-[13px] font-medium">{RELATIONSHIP_LABEL[detail.relationship] || detail.relationship}</span>
         </div>
         <p className="text-[11px] leading-relaxed" style={{ color: 'var(--muted)' }}>
-          You've chatted <span style={{ color: 'var(--ink-2)' }} className="font-medium">8 times</span> over
-          {' '}<span style={{ color: 'var(--ink-2)' }} className="font-medium">3 weeks</span>. She remembers you order oat milk lattes.
+          {detail.chatStats.conversationCount > 0
+            ? <>You've chatted <span style={{ color: 'var(--ink-2)' }} className="font-medium">{detail.chatStats.conversationCount} times</span>{weeks > 0 && <> over <span style={{ color: 'var(--ink-2)' }} className="font-medium">{weeks} week{weeks === 1 ? '' : 's'}</span></>}.</>
+            : 'You haven’t chatted yet.'}
         </p>
       </div>
 
-      {/* What Lily knows about you */}
       <div className="px-5 py-4" style={{ borderTop: '1px solid var(--hairline)' }}>
-        <div className="text-[10px] font-mono uppercase tracking-[0.18em] mb-2"
-             style={{ color: 'var(--muted)' }}>
-          What Lily knows about you
-        </div>
-        <ul className="space-y-1.5">
-          <KnowItem>You're studying for the GRE</KnowItem>
-          <KnowItem>You have a cat</KnowItem>
-          <KnowItem>You prefer oat milk, no sugar</KnowItem>
-          <KnowItem>You live near Murray's Bagels</KnowItem>
-        </ul>
+        <div className="text-[10px] font-mono uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--muted)' }}>What {detail.name} knows about you</div>
+        {detail.knownFacts.length > 0
+          ? <ul className="space-y-1.5">{detail.knownFacts.map((f, i) => <KnowItem key={i}>{f}</KnowItem>)}</ul>
+          : <p className="text-[11px]" style={{ color: 'var(--muted)' }}>Nothing yet — keep chatting.</p>}
       </div>
 
-      {/* Memories generated from this chat */}
       <div className="px-5 py-4" style={{ borderTop: '1px solid var(--hairline)' }}>
         <div className="flex items-center gap-1.5 mb-2">
           <span style={{ color: 'var(--plum)' }}>{WebI.sparkleF}</span>
-          <span className="text-[10px] font-mono uppercase tracking-[0.18em]" style={{ color: 'var(--plum-ink)' }}>
-            Memories from this chat
-          </span>
+          <span className="text-[10px] font-mono uppercase tracking-[0.18em]" style={{ color: 'var(--plum-ink)' }}>Memories from this chat</span>
         </div>
-        <div className="ai-border rounded-xl p-3">
-          <div className="font-serif text-[15px] leading-tight" style={{ color: 'var(--ink)', fontWeight: 700 }}>
-            Coffee Order Expert
-          </div>
-          <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'var(--ink-2)' }}>
-            You've ordered confidently in 3 different registers — casual, polite, apologetic.
-          </p>
-        </div>
+        {memories.length > 0
+          ? <div className="ai-border rounded-xl p-3">
+              <div className="font-serif text-[15px] leading-tight" style={{ color: 'var(--ink)', fontWeight: 700 }}>{memories[0].title}</div>
+              <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'var(--ink-2)' }}>{memories[0].body}</p>
+            </div>
+          : <p className="text-[11px]" style={{ color: 'var(--muted)' }}>No memories yet.</p>}
       </div>
 
-      {/* Languages used */}
       <div className="px-5 py-4" style={{ borderTop: '1px solid var(--hairline)' }}>
-        <div className="text-[10px] font-mono uppercase tracking-[0.18em] mb-2"
-             style={{ color: 'var(--muted)' }}>
-          Languages
-        </div>
+        <div className="text-[10px] font-mono uppercase tracking-[0.18em] mb-2" style={{ color: 'var(--muted)' }}>Languages</div>
         <div className="flex items-center gap-2 text-[12px]">
-          <span className="font-medium">EN</span>
-          <span style={{ color: 'var(--muted)' }}>·</span>
-          <span style={{ color: 'var(--muted)' }}>occasional 中文</span>
-          <span className="text-[9.5px] font-mono uppercase tracking-wider ml-auto px-1.5 py-0.5 rounded"
-                style={{ background: 'var(--bg-warm)', color: 'var(--muted)' }}>
-            EN-CN light
-          </span>
+          <span className="font-medium">{langLabel(lp.primary)}</span>
+          {lp.occasional.length > 0 && <>
+            <span style={{ color: 'var(--muted)' }}>·</span>
+            <span style={{ color: 'var(--muted)' }}>occasional {lp.occasional.map(langLabel).join(', ')}</span>
+          </>}
+          <span className="text-[9.5px] font-mono uppercase tracking-wider ml-auto px-1.5 py-0.5 rounded" style={{ background: 'var(--bg-warm)', color: 'var(--muted)' }}>{lp.register}</span>
         </div>
+        {detail.topicInterests.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {detail.topicInterests.map((t) => (
+              <span key={t} className="text-[10.5px] font-mono px-2 py-1 rounded" style={{ background: 'var(--bg-warm)', color: 'var(--ink-2)' }}>{t}</span>
+            ))}
+          </div>
+        )}
       </div>
     </aside>
   );
@@ -358,6 +332,8 @@ export default function App() {
   const [sending, setSending] = useState(false);
   const [expanded, setExpanded] = useState(-1);
   const [offer, setOffer] = useState<any>(null);          // scenario_offer payload
+  const [detail, setDetail] = useState<NpcDetail | null>(null);
+  const [memories, setMemories] = useState<MemoryItem[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // auth gate + initial NPC load
@@ -365,7 +341,7 @@ export default function App() {
     api.me()
       .then(() => api.npcs())
       .then((list) => {
-        const mapped = list.map(mapNpc);
+        const mapped = list.map(npcView);
         setNpcs(mapped);
         setActiveId((cur) => cur || (mapped[0] && mapped[0].id));
       })
@@ -377,10 +353,12 @@ export default function App() {
   // load thread when active NPC changes
   useEffect(() => {
     if (!activeId) return;
-    setOffer(null); setStreaming(''); setTyping(false);
+    setOffer(null); setStreaming(''); setTyping(false); setDetail(null); setMemories([]);
     api.thread(activeId)
       .then((r) => setMessages((r.messages || []).map(mapMsg)))
       .catch(() => setMessages([]));
+    api.npcDetail(activeId).then(setDetail).catch(() => setDetail(null));
+    api.memories(activeId).then(setMemories).catch(() => setMemories([]));
   }, [activeId]);
 
   useEffect(() => {
@@ -462,7 +440,7 @@ export default function App() {
         </div>
         <Composer onSend={send} disabled={sending} />
       </section>
-      <RightPanel npc={npc} />
+      <RightPanel detail={detail} memories={memories} />
       <WebDock current="01 Main App" />
     </div>
   );

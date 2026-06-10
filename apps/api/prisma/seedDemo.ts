@@ -36,12 +36,14 @@ export async function seedDemo(
   ];
   let lilyThreadId = '';
   for (const { npcId, stage, stageValue, points } of stages) {
+    const ageDays = npcId === 'lily' ? 21 : npcId === 'chen' ? 14 : 7;
     const rel = await prisma.relationship.create({
       data: {
         userId: user.id, npcId, stage, stageValue,
         relationshipPoints: points,
         conversationCount: stageValue * 4,
         scenarioCount: npcId === 'lily' ? 1 : 0,
+        createdAt: new Date(now - ageDays * DAY),
         lastInteractionAt: new Date(now - DAY),
       },
     });
@@ -57,17 +59,28 @@ export async function seedDemo(
     await prisma.message.create({ data: { threadId: thread.id, userId: null, role: 'npc', text: 'Hey! Always good to chat with you.', createdAt: new Date(now - DAY) } });
   }
 
-  const facts: [string, string][] = [
-    ['has_pet', 'cat'],
-    ['works_as', 'software engineer'],
-    ['likes', 'hiking'],
-    ['lives_near', 'Clementi'],
+  // predicate, value, and which NPCs know it (per-NPC scoping)
+  const facts: { predicate: string; value: string; npcs: string[] }[] = [
+    { predicate: 'likes', value: 'oat milk lattes', npcs: ['lily'] },
+    { predicate: 'lives_near', value: "Murray's Bagels", npcs: ['lily'] },
+    { predicate: 'works_as', value: 'software engineer', npcs: ['chen'] },
+    { predicate: 'goal', value: 'grow into a tech lead', npcs: ['chen'] },
+    { predicate: 'has_pet', value: 'a cat named Mochi', npcs: ['emma', 'lily'] },
+    { predicate: 'likes', value: 'indie music', npcs: ['emma'] },
   ];
-  for (const [predicate, value] of facts) {
-    await prisma.memoryFact.create({ data: { userId: user.id, predicate, value, knownToNpcs: JSON.stringify(['lily', 'chen', 'emma']) } });
+  for (const f of facts) {
+    await prisma.memoryFact.create({
+      data: { userId: user.id, predicate: f.predicate, value: f.value, knownToNpcs: JSON.stringify(f.npcs) },
+    });
   }
   await prisma.memory.create({
     data: { userId: user.id, title: 'Cat-loving hiker', body: 'You often bring up weekend hikes and your cat — a warm, outdoorsy vibe.', npcId: 'lily', sourceType: 'chat_pattern' },
+  });
+  await prisma.memory.create({
+    data: { userId: user.id, title: 'Career-focused', body: 'You talk about projects and growing into a lead role.', npcId: 'chen', sourceType: 'chat_pattern' },
+  });
+  await prisma.memory.create({
+    data: { userId: user.id, title: 'Cat parent', body: 'Mochi comes up a lot — clearly a cat person.', npcId: 'emma', sourceType: 'chat_pattern' },
   });
 
   // one completed, graded scenario with Lily (mock_interview)

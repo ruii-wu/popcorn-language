@@ -3,8 +3,16 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=1440, initial-scale=1" />
+<meta http-equiv="Cache-Control" content="no-store" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
 <title>Popcorn Language — Web · Main App</title>
-<link rel="stylesheet" href="web-tokens.css">
+<script>
+  if (!location.search.includes('v=flow-20260610b')) {
+    location.replace(location.pathname + '?v=flow-20260610b' + location.hash);
+  }
+</script>
+<link rel="stylesheet" href="web-tokens.css?v=flow-20260610b">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
@@ -12,7 +20,7 @@
 </head>
 <body style="background-color: #EEF1F4">
   <div id="root"></div>
-  <script type="text/babel" src="web-shared.jsx"></script>
-  <script type="text/babel" src="web-app.jsx"></script>
+  <script type="text/babel" src="web-shared.jsx?v=flow-20260610b"></script>
+  <script type="text/babel" src="web-app.jsx?v=flow-20260610b"></script>
 </body>
 </html>

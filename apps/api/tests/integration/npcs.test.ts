@@ -40,6 +40,10 @@ describe('npc routes', () => {
     expect(d.name).toBe('Lily');
     expect(d.languageProfile.primary).toBe('en');
     expect(Array.isArray(d.knownFacts)).toBe(true);
+    expect(d.avatar.glyph).toBe('☕');
+    expect(Array.isArray(d.topicInterests)).toBe(true);
+    expect('relationshipSince' in d).toBe(true);
+    expect(typeof d.chatStats.conversationCount).toBe('number');
     expect((await detail(req(user.id), { params: { id: 'nope' } })).status).toBe(404);
   });
 

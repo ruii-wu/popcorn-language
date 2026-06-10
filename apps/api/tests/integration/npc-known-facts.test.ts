@@ -15,14 +15,14 @@ afterAll(async () => {
 const req = (uid: string) => new Request('http://x/', { headers: { cookie: `${SESSION_COOKIE}=${uid}` } });
 
 describe('npc detail knownFacts', () => {
-  it('returns the user known facts as formatted strings', async () => {
+  it('returns only the facts this NPC knows', async () => {
     await prisma.user.deleteMany({ where: { username: U } });
     const user = await prisma.user.create({ data: { username: U, password: 'pw' } });
-    await prisma.memoryFact.create({ data: { userId: user.id, predicate: 'has_pet', value: 'a cat named Mochi' } });
-    await prisma.memoryFact.create({ data: { userId: user.id, predicate: 'works_as', value: 'engineer' } });
+    await prisma.memoryFact.create({ data: { userId: user.id, predicate: 'has_pet', value: 'a cat named Mochi', knownToNpcs: JSON.stringify(['lily']) } });
+    await prisma.memoryFact.create({ data: { userId: user.id, predicate: 'works_as', value: 'engineer', knownToNpcs: JSON.stringify(['chen']) } });
 
     const d = await (await detail(req(user.id), { params: { id: 'lily' } })).json();
     expect(d.knownFacts).toContain('has pet: a cat named Mochi');
-    expect(d.knownFacts).toContain('works as: engineer');
+    expect(d.knownFacts).not.toContain('works as: engineer'); // chen-only fact absent for lily
   });
 });

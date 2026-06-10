@@ -11,6 +11,7 @@ export interface PostTurnDeps {
   threadId: string;
   userText: string;
   userMsgId: string;
+  npcId?: string;
 }
 
 // Runs after the NPC reply: extract new facts from the user's turn + maybe summarize the thread.
@@ -23,6 +24,7 @@ export async function runPostTurnMemory(deps: PostTurnDeps): Promise<void> {
       userId: deps.userId,
       text: deps.userText,
       sourceMsgId: deps.userMsgId,
+      npcId: deps.npcId,
     });
   } catch (e) {
     console.error('[memory] factExtract failed', e);

@@ -172,7 +172,7 @@ function DayDivider({ label }) {
 }
 
 // ---------- Message bubbles ----------
-function ScenMessage({ msg, intense }) {
+function ScenMessage({ msg, intense, onAcceptScenario, onDeclineScenario }) {
   if (msg.from === 'system') {
     return (
       <div className="text-center my-3 fade-up">
@@ -184,7 +184,7 @@ function ScenMessage({ msg, intense }) {
     );
   }
   if (msg.from === 'summary') return <ScenarioSummaryCard />;
-  if (msg.from === 'npc-invitation') return <InvitationCard msg={msg} />;
+  if (msg.from === 'npc-invitation') return <InvitationCard msg={msg} onAccept={onAcceptScenario} onDecline={onDeclineScenario} />;
 
   const isUser = msg.from === 'user';
   const isLinda = msg.from === 'npc-c';
@@ -218,7 +218,7 @@ function ScenMessage({ msg, intense }) {
 }
 
 // ---------- Invitation card ----------
-function InvitationCard({ msg }) {
+function InvitationCard({ msg, onAccept, onDecline }) {
   const npc = NPCS_WEB[0];
   return (
     <div className="flex items-start gap-2 mb-3 fade-up">
@@ -246,11 +246,13 @@ function InvitationCard({ msg }) {
             {msg.detail}
           </p>
           <div className="flex items-center gap-2">
-            <button className="rounded-full px-5 py-2.5 text-[13px] font-medium transition"
+            <button onClick={onAccept}
+                    className="rounded-full px-5 py-2.5 text-[13px] font-medium transition"
                     style={{ background: 'var(--coral)', color: '#fff', boxShadow: '0 1px 0 oklch(1 0 0 / 0.3) inset' }}>
               Yeah, let's do it
             </button>
-            <button className="rounded-full px-4 py-2 text-[12.5px] transition hover:bg-[var(--bg-warm)]"
+            <button onClick={onDecline}
+                    className="rounded-full px-4 py-2 text-[12.5px] transition hover:bg-[var(--bg-warm)]"
                     style={{ color: 'var(--ink-2)', border: '1px solid var(--hairline-strong)' }}>
               Maybe later
             </button>
@@ -312,9 +314,11 @@ function ScenarioSummaryCard() {
         <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
           ✨ AI · qwen2.5:7b · local
         </span>
-        <button className="text-[11px] font-mono uppercase tracking-wider transition" style={{ color: 'var(--coral-ink)' }}>
-          View transcript →
-        </button>
+        <a href="Web - Onboarding and Journey.html#journey"
+           className="text-[11px] font-mono uppercase tracking-wider transition no-underline"
+           style={{ color: 'var(--coral-ink)' }}>
+          View in Journey →
+        </a>
       </div>
     </div>
   );
@@ -378,7 +382,7 @@ function CasualComposer({ state }) {
   );
 }
 
-function ChoiceComposer() {
+function ChoiceComposer({ onComplete }) {
   return (
     <div className="px-6 pb-4 pt-3" style={{ background: 'linear-gradient(180deg, transparent, var(--bg-warm-c) 40%)' }}>
       <div className="max-w-[820px] mx-auto">
@@ -392,17 +396,17 @@ function ChoiceComposer() {
           </button>
         </div>
         <div className="grid grid-cols-3 gap-2.5">
-          {CHOICES.map((c, i) => <ChoiceCard key={i} index={i} choice={c} />)}
+          {CHOICES.map((c, i) => <ChoiceCard key={i} index={i} choice={c} onSelect={onComplete} />)}
         </div>
       </div>
     </div>
   );
 }
 
-function ChoiceCard({ index, choice }) {
+function ChoiceCard({ index, choice, onSelect }) {
   const [hover, setHover] = useState(false);
   return (
-    <button onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+    <button onClick={onSelect} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
             className="text-left rounded-xl p-3.5 transition fade-up"
             style={{
               animationDelay: `${0.06 + index * 0.04}s`,
@@ -601,7 +605,13 @@ const STATES = [
 ];
 
 function App() {
-  const [state, setState] = useState('a');
+  const initialState = {
+    '#casual': 'a',
+    '#invitation': 'b',
+    '#active': 'c',
+    '#aftermath': 'd',
+  }[window.location.hash] || 'a';
+  const [state, setState] = useState(initialState);
   const intense = state === 'c';
   const scrollRef = useRef(null);
   const thread = state === 'a' ? THREAD_A_WEB
@@ -640,10 +650,18 @@ function App() {
                 </span>
               </div>
             )}
-            {thread.map((m, i) => <ScenMessage key={i} msg={m} intense={intense} />)}
+            {thread.map((m, i) => (
+              <ScenMessage
+                key={i}
+                msg={m}
+                intense={intense}
+                onAcceptScenario={() => setState('c')}
+                onDeclineScenario={() => setState('a')}
+              />
+            ))}
           </div>
         </div>
-        {intense ? <ChoiceComposer /> : <CasualComposer state={state} />}
+        {intense ? <ChoiceComposer onComplete={() => setState('d')} /> : <CasualComposer state={state} />}
       </section>
 
       <RightPanel state={state} />
@@ -665,7 +683,7 @@ function App() {
         ))}
       </div>
 
-      <WebDock current="02 Scenario" />
+      <WebDock current="03 Scenario" />
     </div>
   );
 }

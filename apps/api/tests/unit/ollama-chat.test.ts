@@ -25,5 +25,6 @@ describe('OllamaClient.chat', () => {
     const out: string[] = [];
     for await (const tok of client.chat([{ role: 'user', content: 'hi' }])) out.push(tok);
     expect(out.join('')).toBe('hello!');
+    expect(JSON.parse(fetchImpl.mock.calls[0][1]?.body as string).think).toBe(false);
   });
 });
