@@ -17,7 +17,9 @@ describe('OllamaClient.chatJson', () => {
     const out = await client.chatJson([{ role: 'user', content: 'x' }], schema, { maxRetries: 3 });
     expect(out).toEqual({ fixed: 'I am going', tag: 'Grammar' });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
-    expect(JSON.parse(fetchImpl.mock.calls[0][1]?.body as string).think).toBe(false);
+    const body = JSON.parse(fetchImpl.mock.calls[0][1]?.body as string);
+    expect(body.think).toBe(false);
+    expect(body.keep_alive).toBe(-1);
   });
 
   it('throws OllamaError after exhausting retries', async () => {
