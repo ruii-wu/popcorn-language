@@ -7,7 +7,7 @@ import { api } from '../api/client';
 import type { SessionDetailResponse, ScenarioTranscriptItem, AcceptSessionResponse } from '@popcorn/shared';
 import {
   WebI,
-  NPCS_WEB,
+  npcView,
   RELATIONSHIP_LABEL,
   WebAvatar,
   WebRelationshipDots,
@@ -17,8 +17,7 @@ import {
 
 // ---------- Chat header ----------
 
-function ScenChatHeader({ intense, session, hudState }: { intense: boolean; session: any; hudState: any }) {
-  const npc = NPCS_WEB[0]; // Lily
+function ScenChatHeader({ intense, session, hudState, npc }: { intense: boolean; session: any; hudState: any; npc: any }) {
   const turnsLeft = hudState ? hudState.turnsLeft : 0;
   const titleLabel = session ? session.scenarioTitle : '';
   return (
@@ -32,7 +31,7 @@ function ScenChatHeader({ intense, session, hudState }: { intense: boolean; sess
         <div className="leading-tight">
           <div className="flex items-center gap-1.5">
             <span className="text-[15px] font-medium">
-              {intense ? <>Lily <span className="font-mono text-[11px]" style={{ color: 'var(--muted)' }}>as</span> NPC</> : 'Lily'}
+              {intense ? <>{npc.name} <span className="font-mono text-[11px]" style={{ color: 'var(--muted)' }}>as</span> NPC</> : npc.name}
             </span>
             <span style={{ color: 'var(--plum)' }}>
               <svg viewBox="0 0 24 24" className="w-3 h-3 ai-dot" fill="currentColor">
@@ -143,7 +142,7 @@ function DayDivider({ label }: { label: string }) {
 }
 
 // ---------- Message bubbles ----------
-function ScenMessage({ msg, intense }: { msg: any; intense: boolean }) {
+function ScenMessage({ msg, intense, npc }: { msg: any; intense: boolean; npc: any }) {
   if (msg.from === 'system') {
     return (
       <div className="text-center my-3 fade-up">
@@ -157,7 +156,6 @@ function ScenMessage({ msg, intense }: { msg: any; intense: boolean }) {
 
   const isUser = msg.from === 'user';
   const isNpc = msg.from === 'npc' || msg.from === 'npc-c';
-  const npc = NPCS_WEB[0];
 
   return (
     <div className={`flex items-end gap-2 mb-2.5 fade-up ${isUser ? 'justify-end' : ''}`}>
@@ -183,8 +181,7 @@ function ScenMessage({ msg, intense }: { msg: any; intense: boolean }) {
 }
 
 // ---------- Invitation card ----------
-function InvitationCard({ session, onAccept, onDecline }: { session: any; onAccept: () => void; onDecline: () => void }) {
-  const npc = NPCS_WEB[0];
+function InvitationCard({ session, onAccept, onDecline, npc }: { session: any; onAccept: () => void; onDecline: () => void; npc: any }) {
   const title = session ? session.scenarioTitle : 'Scenario';
   return (
     <div className="flex items-start gap-2 mb-3 fade-up">
@@ -572,6 +569,7 @@ export default function Scenario() {
   const [npcTyping, setNpcTyping] = useState(false);
   // finalSummary: when scenario_end received during active play
   const [finalSummary, setFinalSummary] = useState<any>(null);
+  const [npcsById, setNpcsById] = useState<Record<string, ReturnType<typeof npcView>>>({});
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -591,6 +589,11 @@ export default function Scenario() {
   // Mount: load sessions, pick best session to show
   useEffect(() => {
     setLoading(true);
+    api.npcs().then((list) => {
+      const map: Record<string, ReturnType<typeof npcView>> = {};
+      for (const n of list) map[n.id] = npcView(n);
+      setNpcsById(map);
+    }).catch(() => {});
     api.me()
       .then(() => api.sessions())
       .then((list) => {
@@ -724,6 +727,9 @@ export default function Scenario() {
   // Effective summary for the summary card
   const effectiveSummary = finalSummary || summaryData;
   const effectiveSession = detailSession || session;
+  const scenarioNpc =
+    (effectiveSession && npcsById[effectiveSession.npcId]) ||
+    { name: 'NPC', avatarGlyph: '?', avatarBg: 'var(--surface-2)', avatarInk: 'var(--ink)', status: '', stageValue: 1, relationship: 'acquaintance' };
 
   return (
     <div className="app-shell chat-bg"
@@ -731,7 +737,7 @@ export default function Scenario() {
       <WebConversationsRail activeId="lily" intense={intense} />
 
       <section className="pane-main">
-        <ScenChatHeader intense={intense} session={effectiveSession} hudState={hudState} />
+        <ScenChatHeader intense={intense} session={effectiveSession} hudState={hudState} npc={scenarioNpc} />
         {intense && <ScenarioHUD session={effectiveSession} hudState={hudState} />}
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6">
@@ -751,6 +757,7 @@ export default function Scenario() {
                   session={session}
                   onAccept={handleAccept}
                   onDecline={handleDecline}
+                  npc={scenarioNpc}
                 />
               </>
             )}
@@ -763,10 +770,10 @@ export default function Scenario() {
                     Roleplay started
                   </span>
                 </div>
-                {messages.map((m, i) => <ScenMessage key={i} msg={m} intense={true} />)}
+                {messages.map((m, i) => <ScenMessage key={i} msg={m} intense={true} npc={scenarioNpc} />)}
                 {npcTyping && (
                   <div className="flex items-end gap-2 mb-2.5 fade-up">
-                    <WebAvatar npc={NPCS_WEB[0]} size={26} />
+                    <WebAvatar npc={scenarioNpc} size={26} />
                     <div className="px-3.5 py-2.5 text-[14px]"
                          style={{ background: 'var(--bubble-received)', color: 'var(--bubble-received-ink)',
                                   border: '1px solid var(--hairline)', borderRadius: '16px 16px 16px 4px' }}>

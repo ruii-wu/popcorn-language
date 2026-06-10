@@ -4,7 +4,24 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-import type { JourneySummaryResponse } from '@popcorn/shared';
+import type { JourneySummaryResponse, NpcListItem } from '@popcorn/shared';
+
+// API NpcListItem → the flat view-model the avatar/header components consume.
+export function npcView(item: NpcListItem) {
+  return {
+    id: item.id,
+    name: item.name,
+    avatarGlyph: item.avatar ? item.avatar.glyph : '?',
+    avatarBg: item.avatar ? item.avatar.bg : 'var(--surface-2)',
+    avatarInk: item.avatar ? item.avatar.ink : 'var(--ink)',
+    relationship: item.relationship,
+    stageValue: item.stageValue,
+    status: item.status || '',
+    lastPreview: item.lastMessage || '',
+    time: item.lastTime ? new Date(item.lastTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+    hasSomething: !!item.hasSomething,
+  };
+}
 
 const Icon = ({ d, className = "w-5 h-5", strokeWidth = 1.6 }: { d: ReactNode; className?: string; strokeWidth?: number }) =>
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth}
@@ -33,39 +50,6 @@ export const WebI = {
   sparkleF: <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5"><path d="M12 2l1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5z" /></svg>,
   checkF: <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3"><path d="M9.5 16.5 4 11l1.4-1.4 4.1 4.1L18.6 4.5 20 5.9z" /></svg>
 };
-
-export const NPCS_WEB = [
-{
-  id: 'lily', name: 'Lily', avatarGlyph: '☕',
-  avatarBg: '#D5F2DC', avatarInk: '#15784A',
-  relationship: 'friend', stageValue: 2,
-  status: 'Usually replies quickly',
-  lastPreview: "wait you've NEVER had a bagel here?? we have to fix this",
-  lastPreviewZh: null,
-  time: '2m',
-  hasSomething: true
-},
-{
-  id: 'chen', name: 'Mr. Chen', avatarGlyph: '陈',
-  avatarBg: 'oklch(0.93 0.02 250)', avatarInk: 'oklch(0.40 0.06 250)',
-  relationship: 'acquaintance', stageValue: 1,
-  status: 'Active earlier',
-  lastPreview: "Let me know when you have a moment to sync.",
-  lastPreviewZh: '有空时告诉我一声，我们对一下。',
-  time: '1h',
-  hasSomething: false
-},
-{
-  id: 'emma', name: 'Emma', avatarGlyph: 'E',
-  avatarBg: 'oklch(0.93 0.04 340)', avatarInk: 'oklch(0.48 0.10 340)',
-  relationship: 'close', stageValue: 3,
-  status: 'Usually replies quickly',
-  lastPreview: "okok send me a pic of your cat RIGHT NOW i need serotonin",
-  lastPreviewZh: null,
-  time: '5h',
-  hasSomething: false
-}];
-
 
 export const RELATIONSHIP_LABEL: Record<string, string> = {
   acquaintance: 'Acquaintance',
