@@ -147,4 +147,8 @@ export const api = {
   streamChoose: (id: string, choiceId: string, onEvent: (e: ScenarioStreamEvent) => void, extra?: Record<string, unknown>) =>
     streamPost<ScenarioStreamEvent>('/api/scenarios/sessions/' + id + '/choose',
       Object.assign({ choiceId: choiceId }, extra || {}), onEvent),
+  streamFreetype: (id: string, text: string, onEvent: (e: ScenarioStreamEvent) => void) =>
+    streamPost<ScenarioStreamEvent>('/api/scenarios/sessions/' + id + '/freetype', { text: text }, onEvent),
+  abortSession: (id: string): Promise<OkResponse> =>
+    apiPost<OkResponse>('/api/scenarios/sessions/' + id + '/abort', {}),
 };
