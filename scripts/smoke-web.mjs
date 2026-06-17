@@ -95,6 +95,41 @@ async function flowChat(browser) {
   const showsChen = await page.waitForFunction(
     () => document.body.innerText.includes('grow into a tech lead'), null, { timeout: 10000 }).then(() => true).catch(() => false);
   assert(showsChen, "selecting Mr. Chen renders HIS per-NPC facts in the right panel (not hardcoded Lily)");
+
+  // ---- inline scenario: invitation renders in the SAME conversation (no new page) ----
+  await page.locator('button', { hasText: 'Lily' }).first().click();
+  // warm up the thread + name the topic so judgeScenarioTrigger fires.
+  // Guarded: if Lily already has an active/invited scenario the text composer is hidden —
+  // skip the send rather than crash, and let the assertions below report the real state.
+  for (const line of ['I have a job interview tomorrow', 'can we practice', 'let us do a mock interview']) {
+    if (await box.count() === 0) break; // composer replaced by choice cards — already in a scenario
+    await box.fill(line).catch(() => {});
+    await page.locator('button', { hasText: 'Send' }).click().catch(() => {});
+    await page.waitForFunction((t) => document.body.innerText.includes(t), line.slice(0, 12), { timeout: 30000 }).catch(() => {});
+    await page.waitForFunction(() => {
+      const b = [...document.querySelectorAll('button')].find((x) => /Send/.test(x.textContent));
+      return b && !b.disabled;
+    }, null, { timeout: 30000 }).catch(() => {});
+  }
+  const invited = await page.waitForFunction(
+    () => /Scenario invitation|Yeah, let's do it/i.test(document.body.innerText),
+    null, { timeout: 30000 }).then(() => true).catch(() => false);
+  assert(invited, 'scenario invitation card renders inline in the chat');
+  assert(new URL(page.url()).pathname === '/', 'still on the main app route "/" — no navigation to a new page');
+  const railStillThere = await page.locator('button', { hasText: /Lily|Emma|Chen/ }).count();
+  assert(railStillThere >= 3, 'left conversation rail is still present during the invitation');
+
+  const acceptBtn = page.locator('button', { hasText: /Yeah, let's do it/i }).first();
+  if (await acceptBtn.count()) {
+    await acceptBtn.click();
+    const roleplay = await page.waitForFunction(
+      () => /Choose your response|Roleplay started|Roleplay ·/i.test(document.body.innerText),
+      null, { timeout: 30000 }).then(() => true).catch(() => false);
+    assert(roleplay, 'accepting starts the roleplay inline (choice cards / roleplay header)');
+    assert(new URL(page.url()).pathname === '/', 'roleplay runs on "/" — never left the conversation');
+  } else {
+    ok('accept button not present (offer may not have fired this run) — skipped accept assertion');
+  }
 }
 
 async function flowJourney(browser) {
