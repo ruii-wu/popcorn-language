@@ -54,7 +54,7 @@ export const SCENARIO_TEMPLATES: ScenarioTemplateSeed[] = [
     registerTags: ['Formal register', 'Polite hedging'],
     systemPrompt:
       'Roleplay: you are Linda, a tough but fair HR manager interviewing the user for a junior marketing role. Ask probing questions, test composure under pressure, and stay in character. Keep each reply to 1-3 sentences.',
-    topicKeywords: ['interview', 'job', 'hr', 'hiring', 'role', 'application'],
+    topicKeywords: ['interview', 'job', 'hr', 'hiring', 'role', 'application', 'mock', 'practice', '面试', '模拟'],
     enabled: true,
   },
   {

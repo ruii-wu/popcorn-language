@@ -36,6 +36,21 @@ describe('judgeScenarioTrigger', () => {
     expect(hit).toBeNull();
   });
 
+  it('hits when a topic keyword appears earlier in the recent window, not just the current message', async () => {
+    // Reproduces the live UAT failure: the user mentions "interview" a turn before they
+    // are warmed up, then their warm-up-completing message ("let's mock") has no keyword.
+    await prisma.user.deleteMany({ where: { username: U } });
+    const user = await prisma.user.create({ data: { username: U, password: 'pw' } });
+    const thread = await prisma.thread.create({ data: { userId: user.id, npcId: 'lily' } });
+    await prisma.relationship.create({ data: { userId: user.id, npcId: 'lily', stage: 'friend', stageValue: 2 } });
+    await prisma.message.create({ data: { threadId: thread.id, userId: user.id, role: 'user', text: 'hi there' } });
+    await prisma.message.create({ data: { threadId: thread.id, userId: user.id, role: 'user', text: 'i have an interview tomorrow' } });
+    await prisma.message.create({ data: { threadId: thread.id, userId: user.id, role: 'user', text: '我们可以来mock一下吗' } });
+    const hit = await judgeScenarioTrigger({ prisma, userId: user.id, npcId: 'lily', threadId: thread.id, text: '我们可以来mock一下吗' });
+    expect(hit?.template.id).toBe('mock_interview');
+    expect(hit?.rationale.topicMatch).toBe('interview');
+  });
+
   it('misses with too few user turns, or no keyword match', async () => {
     const a = await freshThread('friend', 2, 1);
     expect(await judgeScenarioTrigger({ prisma, userId: a.user.id, npcId: 'lily', threadId: a.thread.id, text: 'interview' })).toBeNull();
