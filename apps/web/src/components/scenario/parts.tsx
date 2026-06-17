@@ -5,7 +5,7 @@ import { WebI, WebAvatar, WebRelationshipDots, RELATIONSHIP_LABEL } from '../sha
 
 // ---------- Chat header ----------
 
-export function ScenChatHeader({ intense, session, hudState, npc }: { intense: boolean; session: any; hudState: any; npc: any }) {
+export function ScenChatHeader({ intense, session, hudState, npc, onEnd }: { intense: boolean; session: any; hudState: any; npc: any; onEnd?: () => void }) {
   const turnsLeft = hudState ? hudState.turnsLeft : 0;
   const titleLabel = session ? session.scenarioTitle : '';
   return (
@@ -43,9 +43,10 @@ export function ScenChatHeader({ intense, session, hudState, npc }: { intense: b
       </div>
       <div className="flex items-center gap-2">
         {intense ? (
-          <button className="px-3 py-1.5 rounded-full text-[11px] font-mono uppercase tracking-wider transition"
+          <button onClick={onEnd}
+                  className="px-3 py-1.5 rounded-full text-[11px] font-mono uppercase tracking-wider transition hover:bg-[var(--bg-warm)]"
                   style={{ background: 'var(--surface)', border: '1px solid var(--hairline-strong)', color: 'var(--coral-ink)' }}>
-            <span className="inline-flex items-center gap-1.5">{WebI.pause} Pause roleplay</span>
+            <span className="inline-flex items-center gap-1.5">{WebI.pause} End roleplay</span>
           </button>
         ) : (
           <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
@@ -162,6 +163,31 @@ export function ScenMessage({ msg, intense, npc }: { msg: any; intense: boolean;
             <span className="text-[10px] font-mono" style={{ color: 'var(--muted)' }}>{msg.time}</span>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ---------- Resume banner (an in-progress scenario, shown in casual chat) ----------
+export function ScenarioResumeBanner({ session, onResume, onEnd }: { session: any; onResume: () => void; onEnd: () => void }) {
+  const title = session ? session.scenarioTitle : 'Scenario';
+  return (
+    <div className="my-3 px-3.5 py-2.5 rounded-xl flex items-center justify-between gap-3 fade-up"
+         style={{ background: 'var(--coral-soft)', border: '1px solid var(--coral)' }}>
+      <span className="text-[12.5px]" style={{ color: 'var(--coral-ink)' }}>
+        🎭 <strong>{title}</strong> in progress
+      </span>
+      <div className="flex items-center gap-2 shrink-0">
+        <button onClick={onResume}
+                className="rounded-full px-3.5 py-1.5 text-[12px] font-medium transition"
+                style={{ background: 'var(--coral)', color: '#fff' }}>
+          Resume
+        </button>
+        <button onClick={onEnd}
+                className="rounded-full px-3 py-1.5 text-[12px] transition hover:bg-[var(--surface)]"
+                style={{ color: 'var(--ink-2)', border: '1px solid var(--hairline-strong)' }}>
+          End
+        </button>
       </div>
     </div>
   );

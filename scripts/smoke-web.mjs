@@ -127,6 +127,15 @@ async function flowChat(browser) {
       null, { timeout: 30000 }).then(() => true).catch(() => false);
     assert(roleplay, 'accepting starts the roleplay inline (choice cards / roleplay header)');
     assert(new URL(page.url()).pathname === '/', 'roleplay runs on "/" — never left the conversation');
+
+    // ---- exit: "End roleplay" aborts back to casual chat ----
+    const endBtn = page.locator('button', { hasText: /End roleplay/i }).first();
+    assert(await endBtn.count() > 0, 'roleplay shows an "End roleplay" button (exit exists)');
+    await endBtn.click();
+    const backToCasual = await page.waitForFunction(
+      () => !/Choose your response/i.test(document.body.innerText) && !!document.querySelector('textarea'),
+      null, { timeout: 15000 }).then(() => true).catch(() => false);
+    assert(backToCasual, 'ending the roleplay returns to casual chat (text composer, no choice cards)');
   } else {
     ok('accept button not present (offer may not have fired this run) — skipped accept assertion');
   }

@@ -21,6 +21,7 @@ import {
   DayDivider as ScenDayDivider,
   ScenMessage,
   InvitationCard,
+  ScenarioResumeBanner,
   ScenarioSummaryCard,
   ChoiceComposer,
   ScenarioRightPanel,
@@ -430,7 +431,7 @@ export default function App() {
       <WebConversationsRail npcs={npcs} activeId={activeId ?? undefined} onSelect={setActiveId} />
       <section className="pane-main">
         {scen.status === 'active'
-          ? <ScenChatHeader intense={true} session={scen.session} hudState={scen.hudState} npc={npc} />
+          ? <ScenChatHeader intense={true} session={scen.session} hudState={scen.hudState} npc={npc} onEnd={scen.abort} />
           : <WebChatHeader npc={npc} />}
         {scen.status === 'active' && <ScenarioHUD session={scen.session} hudState={scen.hudState} />}
 
@@ -458,6 +459,9 @@ export default function App() {
                 {streaming && <MessageRow npc={npc} msg={{ from: 'npc', text: streaming, time: '' }}
                                           showCorrection={false} onToggle={() => {}} />}
                 {typing && <Typing npc={npc} />}
+                {scen.resumable && (
+                  <ScenarioResumeBanner session={scen.resumable} onResume={scen.resume} onEnd={scen.abort} />
+                )}
                 {scen.status === 'invited' && (
                   <InvitationCard session={scen.session} npc={npc}
                                   onAccept={scen.accept} onDecline={scen.decline} />
@@ -473,9 +477,16 @@ export default function App() {
           </div>
         </div>
 
-        {scen.status === 'active' && scen.choices.length > 0
-          ? <ChoiceComposer choices={scen.choices} onChoose={(c: ScenarioChoice) => scen.choose(c)} disabled={scen.choiceDisabled} />
-          : <Composer onSend={send} disabled={sending} />}
+        {scen.status === 'active' ? (
+          <>
+            {scen.choices.length > 0 && (
+              <ChoiceComposer choices={scen.choices} onChoose={(c: ScenarioChoice) => scen.choose(c)} disabled={scen.choiceDisabled} />
+            )}
+            <Composer onSend={(t: string) => scen.freetype(t)} disabled={scen.choiceDisabled} />
+          </>
+        ) : (
+          <Composer onSend={send} disabled={sending} />
+        )}
       </section>
       {scen.status
         ? <ScenarioRightPanel status={scen.status} session={scen.session} summaryData={scen.summary} hudState={scen.hudState} />
