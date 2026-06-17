@@ -49,6 +49,13 @@ export function buildSystemPrompt(ctx: PromptContext): string {
   if (ctx.mode === 'scenario' && ctx.scenario) {
     blocks.push(`ROLEPLAY: you are now playing "${ctx.scenario.roleName}". ${ctx.scenario.instructions}`);
     blocks.push(JSON_CONTRACT);
+  } else {
+    // Casual chat: keep it texting-length. The scenario template sets its own length,
+    // so only add this when not in roleplay.
+    blocks.push(
+      'Keep your replies short and natural, the way people actually text — usually one or two sentences. ' +
+        'Do not lecture, bullet-point, or over-explain; if there is more to say, let them ask. Match their energy and length.',
+    );
   }
 
   return blocks.join('\n\n');

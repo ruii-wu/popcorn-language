@@ -41,4 +41,15 @@ describe('buildSystemPrompt', () => {
     const p = buildSystemPrompt({ ...base, userLanguage: 'en-US' });
     expect(p).not.toContain('native Chinese speaker');
   });
+
+  it('instructs casual replies to stay short and text-message-like', () => {
+    const p = buildSystemPrompt(base).toLowerCase();
+    expect(p).toContain('keep your replies short');
+    expect(p).toContain('one or two sentences');
+  });
+
+  it('does not add the casual brevity note in scenario mode (the template sets its own length)', () => {
+    const p = buildSystemPrompt({ ...base, mode: 'scenario', scenario: { roleName: 'Linda', instructions: 'Act as a tough HR manager.' } });
+    expect(p.toLowerCase()).not.toContain('keep your replies short');
+  });
 });
