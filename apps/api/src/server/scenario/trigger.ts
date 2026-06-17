@@ -3,6 +3,7 @@ import type { PrismaClient, ScenarioTemplate } from '@prisma/client';
 
 export const STAGE_VALUE: Record<string, number> = { acquaintance: 1, friend: 2, close: 3 };
 export const MIN_USER_TURNS = 3; // user must have warmed up the thread before any offer
+export const RECENT_WINDOW = 8; // how many recent user messages to scan for a topic keyword
 
 export interface TriggerRationale {
   topicMatch: string;
@@ -40,7 +41,18 @@ export async function judgeScenarioTrigger(
   const userTurns = await prisma.message.count({ where: { threadId, role: 'user' } });
   if (userTurns < MIN_USER_TURNS) return null;
 
-  const lower = text.toLowerCase();
+  // Match topic keywords across the recent user-message window, not just the current
+  // message. Users name the topic once — often a turn or two before they've warmed up
+  // to MIN_USER_TURNS — and rarely repeat it, so a current-message-only scan misses it.
+  // The current message is already persisted by streamChat, but include `text` too so a
+  // caller passing an unsaved message still matches.
+  const recentUserMsgs = await prisma.message.findMany({
+    where: { threadId, role: 'user' },
+    orderBy: { createdAt: 'desc' },
+    take: RECENT_WINDOW,
+    select: { text: true },
+  });
+  const lower = [text, ...recentUserMsgs.map((m) => m.text)].join('\n').toLowerCase();
   for (const t of templates) {
     if (stageValue < (STAGE_VALUE[t.minStage] ?? 99)) continue;
     const declined = await prisma.scenarioSession.findFirst({
