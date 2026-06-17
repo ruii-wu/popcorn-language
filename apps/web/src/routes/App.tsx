@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
-import type { ThreadMessage, NpcDetail, MemoryItem } from '@popcorn/shared';
+import type { ThreadMessage, NpcDetail, MemoryItem, ScenarioChoice } from '@popcorn/shared';
 import {
   WebI,
   RELATIONSHIP_LABEL,
@@ -14,6 +14,17 @@ import {
   WebConversationsRail,
   npcView,
 } from '../components/shared';
+import { useScenarioSession } from '../components/scenario/useScenarioSession';
+import {
+  ScenChatHeader,
+  ScenarioHUD,
+  DayDivider as ScenDayDivider,
+  ScenMessage,
+  InvitationCard,
+  ScenarioSummaryCard,
+  ChoiceComposer,
+  ScenarioRightPanel,
+} from '../components/scenario/parts';
 
 // ---------- Thread (Lily, casual) — kept for reference, no longer used ----------
 const LILY_THREAD_WEB = [
@@ -331,10 +342,10 @@ export default function App() {
   const [streaming, setStreaming] = useState('');   // live NPC token buffer
   const [sending, setSending] = useState(false);
   const [expanded, setExpanded] = useState(-1);
-  const [offer, setOffer] = useState<any>(null);          // scenario_offer payload
   const [detail, setDetail] = useState<NpcDetail | null>(null);
   const [memories, setMemories] = useState<MemoryItem[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const scen = useScenarioSession(activeId);
 
   // auth gate + initial NPC load
   useEffect(() => {
@@ -353,7 +364,7 @@ export default function App() {
   // load thread when active NPC changes
   useEffect(() => {
     if (!activeId) return;
-    setOffer(null); setStreaming(''); setTyping(false); setDetail(null); setMemories([]);
+    setStreaming(''); setTyping(false); setDetail(null); setMemories([]);
     api.thread(activeId)
       .then((r) => setMessages((r.messages || []).map(mapMsg)))
       .catch(() => setMessages([]));
@@ -388,7 +399,11 @@ export default function App() {
           setMessages((m) => m.map((x) => x.id === ev.data.targetMessageId
             ? Object.assign({}, x, { correction: ev.data.correction }) : x));
           break;
-        case 'scenario_offer': setOffer(ev.data); break;
+        case 'scenario_offer': {
+          const draft = (ev.data as any).draft || {};
+          scen.offerSession(ev.data.sessionId, draft.title || 'Scenario');
+          break;
+        }
         case 'error':
           setTyping(false); setStreaming('');
           setMessages((m) => m.concat([{ id: 'err-' + Date.now(), from: 'npc', error: true,
@@ -414,33 +429,57 @@ export default function App() {
     <div className="app-shell" data-screen-label="01 Web · Main App">
       <WebConversationsRail npcs={npcs} activeId={activeId ?? undefined} onSelect={setActiveId} />
       <section className="pane-main">
-        <WebChatHeader npc={npc} />
+        {scen.status === 'active'
+          ? <ScenChatHeader intense={true} session={scen.session} hudState={scen.hudState} npc={npc} />
+          : <WebChatHeader npc={npc} />}
+        {scen.status === 'active' && <ScenarioHUD session={scen.session} hudState={scen.hudState} />}
+
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6">
           <div className="max-w-[820px] mx-auto py-2">
-            <DayDivider label="Today · 今天" />
-            {messages.map((m, i) => (
-              <MessageRow key={m.id || i} npc={npc} msg={m}
-                          showCorrection={!!m.correction && expanded === i}
-                          onToggle={() => setExpanded(expanded === i ? -1 : i)} />
-            ))}
-            {streaming && <MessageRow npc={npc} msg={{ from: 'npc', text: streaming, time: '' }}
-                                      showCorrection={false} onToggle={() => {}} />}
-            {typing && <Typing npc={npc} />}
-            {offer && (
-              <div className="my-3 p-3 rounded-xl" style={{ background: 'var(--plum-soft)', border: '1px solid var(--plum)' }}>
-                <div className="text-[12.5px] font-medium" style={{ color: 'var(--plum-ink)' }}>
-                  ✨ {offer.title || 'A scenario is available'}
+            {scen.status === 'active' ? (
+              <>
+                <div className="text-center my-2 fade-up">
+                  <span className="text-[10px] font-mono uppercase tracking-[0.16em] px-2.5 py-1 rounded-full"
+                        style={{ background: 'var(--surface-2c)', color: 'var(--muted)', border: '1px solid var(--hairline-c)' }}>
+                    Roleplay started
+                  </span>
                 </div>
-                <a href={'/scenario'} className="text-[11px] underline" style={{ color: 'var(--plum-ink)' }}>
-                  Open scenario →
-                </a>
-              </div>
+                {scen.messages.map((m, i) => <ScenMessage key={i} msg={m} intense={true} npc={npc} />)}
+                {scen.npcTyping && <Typing npc={npc} />}
+              </>
+            ) : (
+              <>
+                <DayDivider label="Today · 今天" />
+                {messages.map((m, i) => (
+                  <MessageRow key={m.id || i} npc={npc} msg={m}
+                              showCorrection={!!m.correction && expanded === i}
+                              onToggle={() => setExpanded(expanded === i ? -1 : i)} />
+                ))}
+                {streaming && <MessageRow npc={npc} msg={{ from: 'npc', text: streaming, time: '' }}
+                                          showCorrection={false} onToggle={() => {}} />}
+                {typing && <Typing npc={npc} />}
+                {scen.status === 'invited' && (
+                  <InvitationCard session={scen.session} npc={npc}
+                                  onAccept={scen.accept} onDecline={scen.decline} />
+                )}
+                {scen.status === 'completed' && (
+                  <>
+                    <ScenDayDivider label="Completed scenario · 已完成" />
+                    <ScenarioSummaryCard session={scen.session} transcript={scen.transcript} summaryData={scen.summary} />
+                  </>
+                )}
+              </>
             )}
           </div>
         </div>
-        <Composer onSend={send} disabled={sending} />
+
+        {scen.status === 'active' && scen.choices.length > 0
+          ? <ChoiceComposer choices={scen.choices} onChoose={(c: ScenarioChoice) => scen.choose(c)} disabled={scen.choiceDisabled} />
+          : <Composer onSend={send} disabled={sending} />}
       </section>
-      <RightPanel detail={detail} memories={memories} />
+      {scen.status
+        ? <ScenarioRightPanel status={scen.status} session={scen.session} summaryData={scen.summary} hudState={scen.hudState} />
+        : <RightPanel detail={detail} memories={memories} />}
       <WebDock current="01 Main App" />
     </div>
   );
