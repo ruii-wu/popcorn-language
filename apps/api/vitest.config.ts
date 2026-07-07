@@ -1,6 +1,8 @@
 import { defineConfig, configDefaults } from 'vitest/config';
 import { fileURLToPath } from 'node:url';
 
+process.env.DATABASE_URL ??= 'file:./dev.db';
+
 // The web/ Vite app has its own vitest run (npm --prefix web run test).
 // Keep the root backend suite from collecting web/ test files.
 export default defineConfig({

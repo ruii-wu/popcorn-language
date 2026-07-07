@@ -2,13 +2,13 @@
 import { AcceptSessionResponse } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
-import { OllamaClient } from '@/server/llm/ollama';
+import { ollamaForUser } from '@/server/llm/userClient';
 import { acceptScenario, ScenarioError } from '@/server/scenario/accept';
 
 export async function POST(req: Request, { params }: { params: { id: string } }): Promise<Response> {
   return withUser(req, async (userId) => {
     try {
-      const result = await acceptScenario({ prisma, ollama: new OllamaClient(), userId, sessionId: params.id });
+      const result = await acceptScenario({ prisma, ollama: await ollamaForUser(prisma, userId), userId, sessionId: params.id });
       const out: AcceptSessionResponse = result;
       return json(out);
     } catch (e) {

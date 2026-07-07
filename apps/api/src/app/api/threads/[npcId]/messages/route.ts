@@ -5,7 +5,7 @@ import { requireUser } from '@/server/auth/requireUser';
 import { mapMessageToApi } from '@/server/chat/threads';
 import { sseResponse } from '@/server/sse/events';
 import { streamChat } from '@/server/chat/streamChat';
-import { OllamaClient } from '@/server/llm/ollama';
+import { ollamaForUser } from '@/server/llm/userClient';
 
 export async function GET(req: Request, { params }: { params: { npcId: string } }): Promise<Response> {
   return withUser(req, async (userId) => {
@@ -47,7 +47,7 @@ export async function POST(req: Request, { params }: { params: { npcId: string }
 
   const gen = streamChat({
     prisma,
-    ollama: new OllamaClient(),
+    ollama: await ollamaForUser(prisma, userId),
     userId,
     npcId: params.npcId,
     text: parsed.data.text,

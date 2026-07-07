@@ -18,7 +18,14 @@ describe('recallForPrompt', () => {
       data: { username: U, password: 'pw', settings: { create: { memoryStrategy: 'recency' } } },
     });
     const thread = await prisma.thread.create({ data: { userId: user.id, npcId: 'lily' } });
-    await prisma.memoryFact.create({ data: { userId: user.id, predicate: 'has_pet', value: 'a cat named Mochi' } });
+    await prisma.memoryFact.create({
+      data: {
+        userId: user.id,
+        predicate: 'has_pet',
+        value: 'a cat named Mochi',
+        knownToNpcs: JSON.stringify(['lily']),
+      },
+    });
     await prisma.conversationSummary.create({ data: { threadId: thread.id, fromMsgId: 'a', toMsgId: 'b', summary: 'discussed cats' } });
 
     const ollama = { embed: vi.fn() };
@@ -41,5 +48,40 @@ describe('recallForPrompt', () => {
     const facts = await listFacts(prisma, user.id, 8);
     expect(facts).toContain('works as: engineer');
     expect(facts).toContain('has pet: a cat named Mochi');
+  });
+
+  it('only recalls facts known to the active NPC', async () => {
+    const U2 = `${U}_npc_scope`;
+    await prisma.user.deleteMany({ where: { username: U2 } });
+    const user = await prisma.user.create({
+      data: { username: U2, password: 'pw', settings: { create: { memoryStrategy: 'recency' } } },
+    });
+    await prisma.memoryFact.create({
+      data: {
+        userId: user.id,
+        predicate: 'likes',
+        value: 'espresso',
+        knownToNpcs: JSON.stringify(['lily']),
+      },
+    });
+    await prisma.memoryFact.create({
+      data: {
+        userId: user.id,
+        predicate: 'works_as',
+        value: 'engineer',
+        knownToNpcs: JSON.stringify(['chen']),
+      },
+    });
+
+    const out = await recallForPrompt({
+      prisma,
+      ollama: { embed: vi.fn() },
+      userId: user.id,
+      npcId: 'lily',
+      queryText: 'what do you remember?',
+    });
+
+    expect(out.facts).toContain('likes: espresso');
+    expect(out.facts).not.toContain('works as: engineer');
   });
 });

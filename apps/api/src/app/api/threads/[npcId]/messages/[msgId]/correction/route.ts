@@ -1,6 +1,6 @@
 import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
-import { OllamaClient } from '@/server/llm/ollama';
+import { ollamaForUser } from '@/server/llm/userClient';
 import { correctGrammar } from '@/server/correction/grammar';
 
 export async function POST(
@@ -15,7 +15,7 @@ export async function POST(
     });
     if (!msg) return errorJson(404, 'NOT_FOUND', 'Message not found');
 
-    const correction = await correctGrammar({ ollama: new OllamaClient(), userText: msg.text });
+    const correction = await correctGrammar({ ollama: await ollamaForUser(prisma, userId), userText: msg.text });
     if (!correction) return json({ correction: null });
 
     const payload = { fixed: correction.fixed, noteZh: correction.noteZh, tag: correction.tag };

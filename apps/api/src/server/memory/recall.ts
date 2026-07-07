@@ -19,6 +19,15 @@ export interface RecallDeps {
   k?: number;
 }
 
+function isKnownToNpc(raw: string, npcId: string): boolean {
+  try {
+    const ids = JSON.parse(raw) as unknown;
+    return Array.isArray(ids) && (ids.length === 0 || ids.includes(npcId));
+  } catch {
+    return false;
+  }
+}
+
 // High-level recall used by the chat pipeline and the NPC panel.
 // Reads UserSettings.memoryStrategy (default 'hybrid'); never throws (recall must not break a chat turn).
 export async function recallForPrompt(deps: RecallDeps): Promise<RecalledForPrompt> {
@@ -51,7 +60,7 @@ export async function listFacts(
 ): Promise<string[]> {
   const facts = await prisma.memoryFact.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } });
   const scoped = npcId
-    ? facts.filter((f) => (JSON.parse(f.knownToNpcs) as string[]).includes(npcId))
+    ? facts.filter((f) => isKnownToNpc(f.knownToNpcs, npcId))
     : facts;
   return scoped.slice(0, limit).map((f) => factToText(f.predicate, f.value));
 }

@@ -4,7 +4,7 @@ import { prisma } from '@/server/db/client';
 import { errorJson } from '@/server/http/respond';
 import { requireUser } from '@/server/auth/requireUser';
 import { sseResponse } from '@/server/sse/events';
-import { OllamaClient } from '@/server/llm/ollama';
+import { ollamaForUser } from '@/server/llm/userClient';
 import { runScenarioTurn } from '@/server/scenario/turn';
 
 export async function POST(req: Request, { params }: { params: { id: string } }): Promise<Response> {
@@ -13,5 +13,5 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const parsed = FreetypeBody.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return errorJson(400, 'BAD_REQUEST', 'text is required');
 
-  return sseResponse(runScenarioTurn({ prisma, ollama: new OllamaClient(), userId, sessionId: params.id, text: parsed.data.text }));
+  return sseResponse(runScenarioTurn({ prisma, ollama: await ollamaForUser(prisma, userId), userId, sessionId: params.id, text: parsed.data.text }));
 }

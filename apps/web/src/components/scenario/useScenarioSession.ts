@@ -20,6 +20,13 @@ export interface LiveSession {
   grade?: string | null;
 }
 
+export function choiceToTurnPayload(choice: ScenarioChoice): { text?: string; tone?: string } {
+  return {
+    ...(choice.text ? { text: choice.text } : {}),
+    ...(choice.tone ? { tone: choice.tone } : {}),
+  };
+}
+
 function nowTime() {
   return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
@@ -148,7 +155,7 @@ export function useScenarioSession(npcId: string | null) {
     const sid = session.id;
     setChoiceDisabled(true);
     setMessages((prev) => prev.concat({ from: 'user', text: choice.text, time: nowTime() }));
-    api.streamChoose(sid, choice.id, turnHandler(sid));
+    api.streamChoose(sid, choice.id, turnHandler(sid), choiceToTurnPayload(choice));
   }
 
   function freetype(text: string) {

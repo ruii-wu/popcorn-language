@@ -2,7 +2,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Vite serves the SPA on :5173 and proxies /api to the Next.js backend on :3100.
+// Vite serves the SPA on :5173 and proxies /api to the Hono backend on :3100.
 // Same-origin from the browser's view -> pop_uid cookie + SSE-over-POST pass through.
 export default defineConfig({
   plugins: [react()],

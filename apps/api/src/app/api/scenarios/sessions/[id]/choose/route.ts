@@ -4,7 +4,7 @@ import { prisma } from '@/server/db/client';
 import { errorJson } from '@/server/http/respond';
 import { requireUser } from '@/server/auth/requireUser';
 import { sseResponse } from '@/server/sse/events';
-import { OllamaClient } from '@/server/llm/ollama';
+import { ollamaForUser } from '@/server/llm/userClient';
 import { runScenarioTurn } from '@/server/scenario/turn';
 
 export async function POST(req: Request, { params }: { params: { id: string } }): Promise<Response> {
@@ -15,7 +15,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   return sseResponse(
     runScenarioTurn({
-      prisma, ollama: new OllamaClient(), userId, sessionId: params.id,
+      prisma, ollama: await ollamaForUser(prisma, userId), userId, sessionId: params.id,
       choiceId: parsed.data.choiceId, tone: parsed.data.tone, text: parsed.data.text,
     }),
   );

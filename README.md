@@ -1,18 +1,23 @@
 # Popcorn Language
 
-NUS Master of Computing capstone — a **local-LLM-powered, bilingual (中→EN) language-learning platform** with persistent AI NPCs and embedded scenario gameplay. Built on Next.js 14 + TypeScript + Prisma/SQLite + Ollama. See [`docs/context.md`](docs/context.md) for background.
+NUS Master of Computing capstone — a **local-LLM-powered, bilingual (中→EN) language-learning platform** with persistent AI NPCs and embedded scenario gameplay. Built on Hono + Vite/React + TypeScript + Prisma/SQLite + Ollama. See [`docs/context.md`](docs/context.md) for background.
 
 > ⚠️ **Local demo only.** Authentication is intentionally minimal (see [A note on auth](#a-note-on-auth)). **Never deploy this beyond localhost.**
 
-> **Project status: backend complete (W1–W8) + web client wired (W10).** Chat (SSE streaming), the pluggable memory engine + ablation harness, scenario gameplay, grammar correction, relationships/progression, achievements (static + dynamic), the Journey dashboard, Settings, and system/reset are all implemented and tested. 225 Vitest cases pass; `typecheck` is clean. The frontend is now a **Vite + React + TypeScript SPA** (`web/`) that proxies `/api` to the Next.js backend — open `http://localhost:5173/` to use the product end-to-end. The chat model is `qwen3.5:9b`.
+> **Project status: backend complete (W1–W8) + web client wired (W10).** Chat (SSE streaming), the pluggable memory engine + ablation harness, scenario gameplay, grammar correction, relationships/progression, achievements (static + dynamic), the Journey dashboard, Settings, and system/reset are all implemented and tested. 233 API Vitest cases pass; `typecheck` is clean. The frontend is a **Vite + React + TypeScript SPA** (`apps/web/`) that proxies `/api` to the Hono backend — open `http://localhost:5173/` to use the product end-to-end. The chat model is `qwen3.5:9b`.
 
 ---
 
 ## Prerequisites
 
-- **Node.js 20+** (`node -v`). Tested on Node 24.
-- **Ollama** — *optional* for development. The app boots and all tests pass without it. For live AI:
+- **Node.js 24 LTS** (`node -v`). The repo is pinned with `.nvmrc` and
+  `engines.node` so everyone runs the same toolchain. With `nvm`:
+  ```bash
+  nvm install
+  nvm use
   ```
+- **Ollama** — *optional* for development. The app boots and all tests pass without it. For live AI:
+  ```bash
   ollama pull qwen3.5:9b
   ollama pull nomic-embed-text
   ```
@@ -22,21 +27,28 @@ NUS Master of Computing capstone — a **local-LLM-powered, bilingual (中→EN)
 
 ## Setup
 
-```powershell
+```bash
+nvm use                            # or otherwise switch to Node 24 LTS
 npm install
-Copy-Item .env.example .env        # macOS/Linux: cp .env.example .env
+cp apps/api/.env.example apps/api/.env
 npm run db:migrate                 # creates the SQLite schema (prisma/dev.db)
 npm run db:seed                    # base seed: 3 NPCs, 2 scenarios, 6 achievements
 npm run db:seed:demo               # optional: a rich `demo`/`demo` user for demos
 ```
 
-## Run
+PowerShell equivalent for the env file:
 
 ```powershell
+Copy-Item apps/api/.env.example apps/api/.env
+```
+
+## Run
+
+```bash
 npm run dev                        # API on :3100, Vite UI on :5173
 ```
 Then open the web client at **`http://localhost:5173/`** (the Vite SPA proxies `/api/*` to the
-Next.js backend on :3100, so the session cookie and API calls just work).
+Hono backend on :3100, so the session cookie and API calls just work).
 
 Health check:
 ```
@@ -47,7 +59,7 @@ GET http://localhost:3100/api/system/health
 
 ## Test & typecheck
 
-```powershell
+```bash
 npm run test          # vitest: unit (no DB/Ollama) + integration (SQLite, mocked Ollama)
 npm run typecheck     # tsc --noEmit
 npm run report:ablation   # regenerate docs/reports/memory-ablation.md (deterministic)
@@ -57,7 +69,8 @@ No test calls a live model.
 
 ## Demo
 
-```powershell
+```bash
+nvm use
 npm run db:seed && npm run db:seed:demo
 npm run dev
 ```
@@ -66,6 +79,18 @@ onboarding page at `http://localhost:5173/onboarding` has the login form; new ac
 by running its wizard) — a learner pre-populated with three relationships (Lily = close, Chen =
 friend, Emma = acquaintance), memory facts + a memory card, one completed graded scenario,
 unlocked achievements, and a multi-day streak. `db:seed:demo` is additive and idempotent.
+
+For a reliable course demo, check these before presenting:
+
+```bash
+node -v                            # should print v24.x
+npm run typecheck
+npm run test
+curl http://localhost:3100/api/system/health
+```
+
+If Ollama is not running, the health response will show `"reachable": false`; the app still opens,
+but live chat/scenario generation needs Ollama running with the configured chat model installed.
 
 A headless end-to-end smoke of the wired UI (drives the installed Edge against a running dev
 server) lives at `npm run smoke:web` (`node scripts/smoke-web.mjs <api|chat|journey|scenario|all>`).
@@ -104,7 +129,7 @@ All business routes require the `pop_uid` session cookie (via `withUser`) and ar
 ## Project structure
 
 ```
-src/app/api/.../route.ts    # Next.js App Router handlers (REST + SSE), 34 routes
+apps/api/src/app/api/.../route.ts # Web-standard route handlers mounted by Hono
 src/server/
   auth/                     # minimal session cookie (pop_uid) + requireUser / withUser
   llm/ollama.ts             # Ollama client: health / chat (stream) / chatJson (+Zod retry) / embed
@@ -121,8 +146,8 @@ prisma/
 tests/ unit/ integration/   # pure-logic + SQLite-backed tests (mocked Ollama)
 scripts/smoke-web.mjs       # headless Edge end-to-end smoke of the wired UI
 docs/                       # background, specs, plans, and reports (figures)
-web/                        # Vite + React + TypeScript SPA; proxies /api/* to Next.js on :3100
-public/app/                 # legacy dev tool only (design-canvas.html), still served by Next at /app
+apps/web/                   # Vite + React + TypeScript SPA; proxies /api/* to Hono on :3100
+public/app/                 # legacy static prototype/dev-tool reference
 ```
 
 ## Roadmap, design & report docs
@@ -135,17 +160,16 @@ public/app/                 # legacy dev tool only (design-canvas.html), still s
 
 ## Web client
 
-The frontend is a **Vite + React + TypeScript SPA** (`web/`) that proxies `/api/*` to the
-Next.js backend on :3100, so the `pop_uid` cookie and API calls work with no CORS configuration
+The frontend is a **Vite + React + TypeScript SPA** (`apps/web/`) that proxies `/api/*` to the
+Hono backend on :3100, so the `pop_uid` cookie and API calls work with no CORS configuration
 needed. `npm run dev` starts both the API server and the Vite dev server together. Open:
 
 - **Main app (chat):** `http://localhost:5173/`
 - **Onboarding / Journey:** `http://localhost:5173/onboarding`
 - **Scenario:** `http://localhost:5173/scenario`
 
-The three screens cross-link via the bottom-right dock. `public/app/` retains only the
-legacy `design-canvas.html` dev tool, still reachable at
-`http://localhost:3100/app/design-canvas.html`.
+The app screens cross-link via the bottom-right dock. `public/app/` retains legacy prototype files
+as a design reference, but the product runtime is the Vite SPA.
 
 ## A note on auth
 

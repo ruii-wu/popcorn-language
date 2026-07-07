@@ -67,12 +67,14 @@ async function streamPost<E extends { type: string; data: unknown } = { type: st
     });
   } catch (e) {
     onEvent({ type: 'error', data: { code: 'NETWORK', message: String(e) } } as E);
+    onEvent({ type: 'done', data: {} } as E);
     return;
   }
   if (!res.ok || !res.body) {
     let data: { error?: unknown } | null = null;
     try { data = await res.json(); } catch (e) { /* ignore */ }
     onEvent({ type: 'error', data: (data && data.error) || { code: 'HTTP_' + res.status, message: res.statusText } } as E);
+    onEvent({ type: 'done', data: {} } as E);
     return;
   }
   const reader = res.body.getReader();

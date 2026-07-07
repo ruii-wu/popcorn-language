@@ -3,8 +3,17 @@ import type { PrismaClient } from '@prisma/client';
 import type { Candidate } from './types';
 import { factToText, parseEmbedding } from './format';
 
-// Loads a user's recallable memory items. Facts are not npc-filtered in P0
-// (every fact is known to all NPCs); summaries are scoped to the npc's thread when npcId is given.
+function isKnownToNpc(raw: string, npcId: string): boolean {
+  try {
+    const ids = JSON.parse(raw) as unknown;
+    return Array.isArray(ids) && (ids.length === 0 || ids.includes(npcId));
+  } catch {
+    return false;
+  }
+}
+
+// Loads a user's recallable memory items. Facts are scoped to what the active
+// NPC knows; summaries are scoped to the npc's thread when npcId is given.
 export async function loadCandidates(
   prisma: PrismaClient,
   userId: string,
@@ -17,7 +26,7 @@ export async function loadCandidates(
     }),
   ]);
   const out: Candidate[] = [];
-  for (const f of facts) {
+  for (const f of facts.filter((fact) => !npcId || isKnownToNpc(fact.knownToNpcs, npcId))) {
     out.push({
       id: f.id,
       kind: 'fact',

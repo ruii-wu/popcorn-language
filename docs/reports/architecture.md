@@ -7,11 +7,11 @@
 
 ```mermaid
 flowchart TB
-  subgraph Client["Web client (public/app) — served same-origin, wired to /api"]
+  subgraph Client["Vite React SPA (apps/web) — proxies /api to :3100"]
     UI["Main chat · Scenario · Onboarding/Journey"]
   end
-  subgraph Next["Next.js 14 App Router (src/app/api/*)"]
-    Routes["REST + SSE route handlers"]
+  subgraph Next["Hono API server (apps/api/src/http/app.ts)"]
+    Routes["REST + SSE route handlers from src/app/api/*"]
     Gate["withUser → requireUser (pop_uid cookie)"]
   end
   subgraph Server["Service layer (src/server)"]
@@ -26,7 +26,7 @@ flowchart TB
     M9["M9 Dynamic Achievements (P1, shipped W8)"]
   end
   DB[("Prisma + SQLite — every query scoped by userId")]
-  Ollama[["Ollama HTTP API<br/>qwen2.5:7b-instruct + nomic-embed-text"]]
+  Ollama[["Ollama HTTP API<br/>qwen3.5:9b + nomic-embed-text"]]
 
   UI --> Routes --> Gate
   Gate --> M2 & M3 & M4 & M5 & M6 & M7 & M9

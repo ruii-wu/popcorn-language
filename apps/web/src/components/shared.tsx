@@ -133,7 +133,7 @@ export function WebNavRail({ activeTop = 'chats' }: { activeTop?: string }) {
   const items = [
   { id: 'chats', label: 'Chats', icon: WebI.msgs, href: '/' },
   { id: 'journey', label: 'Your Journey', icon: WebI.book, href: '/onboarding' },
-  { id: 'settings', label: 'Settings', icon: WebI.settings, href: '#' }];
+  { id: 'settings', label: 'Settings', icon: WebI.settings, href: '/settings' }];
 
   return (
     <nav className="pane-nav flex flex-col h-full">
