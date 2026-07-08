@@ -61,11 +61,10 @@ export function useScenarioSession(npcId: string | null) {
     setSummary(null); setTranscript([]); setChoiceDisabled(false); setNpcTyping(false);
     if (!npcId) return;
     let cancelled = false;
-    api.sessions().then((list) => {
+    api.sessions('?npcId=' + encodeURIComponent(npcId)).then((list) => {
       if (cancelled) return;
-      const mine = list.filter((s) => s.npcId === npcId);
-      const invited = mine.find((s) => s.status === 'invited');
-      const active = mine.find((s) => s.status === 'active');
+      const invited = list.find((s) => s.status === 'invited');
+      const active = list.find((s) => s.status === 'active');
       if (invited) {
         setSession({ id: invited.id, status: 'invited', scenarioTitle: invited.scenarioTitle, npcId, grade: invited.grade });
       } else if (active) {

@@ -28,6 +28,15 @@ export interface FactExtractDeps {
   npcId?: string;
 }
 
+function parseKnownToNpcs(raw: string): string[] | null {
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : null;
+  } catch {
+    return null;
+  }
+}
+
 // Extracts facts from the user's message and stores new ones (dedup by predicate+value). Returns count stored.
 export async function extractAndStoreFacts(deps: FactExtractDeps): Promise<number> {
   const messages: ChatMessage[] = [
@@ -43,14 +52,13 @@ export async function extractAndStoreFacts(deps: FactExtractDeps): Promise<numbe
     });
     if (existing) {
       if (deps.npcId) {
-        let known: string[];
-        try {
-          const parsed = JSON.parse(existing.knownToNpcs);
-          known = Array.isArray(parsed) ? parsed : [];
-        } catch {
-          known = [];
-        }
-        if (!known.includes(deps.npcId)) {
+        const known = parseKnownToNpcs(existing.knownToNpcs);
+        if (known === null) {
+          await deps.prisma.memoryFact.update({
+            where: { id: existing.id },
+            data: { knownToNpcs: JSON.stringify([deps.npcId]) },
+          });
+        } else if (known.length > 0 && !known.includes(deps.npcId)) {
           await deps.prisma.memoryFact.update({
             where: { id: existing.id },
             data: { knownToNpcs: JSON.stringify([...known, deps.npcId]) },

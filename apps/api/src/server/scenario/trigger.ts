@@ -5,6 +5,45 @@ export const STAGE_VALUE: Record<string, number> = { acquaintance: 1, friend: 2,
 export const MIN_USER_TURNS = 3; // user must have warmed up the thread before any offer
 export const RECENT_WINDOW = 8; // how many recent user messages to scan for a topic keyword
 
+interface KeywordMatcher {
+  keyword: string;
+  test: (lowerText: string) => boolean;
+}
+
+const keywordMatcherCache = new Map<string, KeywordMatcher[]>();
+const ASCII_PRINTABLE_RE = /^[\x20-\x7e]+$/;
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function keywordMatchers(rawKeywords: string): KeywordMatcher[] {
+  const cached = keywordMatcherCache.get(rawKeywords);
+  if (cached) return cached;
+
+  let keywords: string[];
+  try {
+    keywords = JSON.parse(rawKeywords) as string[];
+  } catch {
+    keywordMatcherCache.set(rawKeywords, []);
+    return [];
+  }
+
+  const matchers = keywords
+    .filter((k): k is string => typeof k === 'string' && k.length > 0)
+    .map((keyword) => {
+      const kLower = keyword.toLowerCase();
+      if (ASCII_PRINTABLE_RE.test(keyword)) {
+        const re = new RegExp(`\\b${escapeRegExp(kLower)}\\b`);
+        return { keyword, test: (lowerText: string) => re.test(lowerText) };
+      }
+      return { keyword, test: (lowerText: string) => lowerText.includes(kLower) };
+    });
+
+  keywordMatcherCache.set(rawKeywords, matchers);
+  return matchers;
+}
+
 export interface TriggerRationale {
   topicMatch: string;
   turnCount: number;
@@ -59,20 +98,7 @@ export async function judgeScenarioTrigger(
       where: { userId, npcId, templateId: t.id, status: 'declined' },
     });
     if (declined) continue; // don't nag after a decline (re-offer tuning deferred)
-    let keywords: string[];
-    try {
-      keywords = JSON.parse(t.topicKeywords) as string[];
-    } catch {
-      continue; // skip a template with a corrupt topicKeywords value
-    }
-    const matched = keywords.find((k) => {
-      const kLower = k.toLowerCase();
-      // Use word boundary for ASCII keywords; plain includes for CJK
-      if (/^[\x20-\x7e]+$/.test(k)) {
-        return new RegExp(`\\b${kLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(lower);
-      }
-      return lower.includes(kLower);
-    });
+    const matched = keywordMatchers(t.topicKeywords).find((matcher) => matcher.test(lower))?.keyword;
     if (!matched) continue;
     return { template: t, rationale: { topicMatch: matched, turnCount: userTurns, stage: rel?.stage ?? 'acquaintance' } };
   }

@@ -76,6 +76,31 @@ describe('extractAndStoreFacts', () => {
     await prisma.user.deleteMany({ where: { username: U2 } });
   });
 
+  it('keeps universal facts universal when re-learned in an NPC chat', async () => {
+    const U4 = '__w3_factuniversal_user__';
+    await prisma.user.deleteMany({ where: { username: U4 } });
+    const user = await prisma.user.create({ data: { username: U4, password: 'pw' } });
+
+    await prisma.memoryFact.create({
+      data: { userId: user.id, predicate: 'likes', value: 'coffee', knownToNpcs: '[]', confidence: 0.9 },
+    });
+
+    const ollama = {
+      chatJson: vi.fn().mockResolvedValue({
+        facts: [{ subject: 'user', predicate: 'likes', value: 'coffee', confidence: 0.9 }],
+      }),
+      embed: vi.fn().mockResolvedValue([0.1]),
+    };
+
+    const n = await extractAndStoreFacts({ prisma, ollama, userId: user.id, text: 'I like coffee', npcId: 'lily' });
+    expect(n).toBe(0);
+    const f = await prisma.memoryFact.findFirstOrThrow({ where: { userId: user.id, predicate: 'likes' } });
+    expect(JSON.parse(f.knownToNpcs)).toEqual([]);
+    expect(await prisma.memoryFact.count({ where: { userId: user.id, predicate: 'likes' } })).toBe(1);
+
+    await prisma.user.deleteMany({ where: { username: U4 } });
+  });
+
   it('survives corrupted knownToNpcs and still processes remaining facts', async () => {
     const U3 = '__w3_factcorrupt_user__';
     await prisma.user.deleteMany({ where: { username: U3 } });

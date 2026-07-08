@@ -327,7 +327,13 @@ export default function App() {
   const [detail, setDetail] = useState<NpcDetail | null>(null);
   const [memories, setMemories] = useState<MemoryItem[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const activeIdRef = useRef<string | null>(activeId);
+  const chatStreamSeqRef = useRef(0);
   const scen = useScenarioSession(activeId);
+
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
 
   // auth gate + initial NPC load
   useEffect(() => {
@@ -347,7 +353,8 @@ export default function App() {
   useEffect(() => {
     if (!activeId) return;
     let cancelled = false;
-    setStreaming(''); setTyping(false); setMessages([]); setDetail(null); setMemories([]);
+    chatStreamSeqRef.current += 1;
+    setStreaming(''); setTyping(false); setSending(false); setMessages([]); setDetail(null); setMemories([]);
     api.thread(activeId)
       .then((r) => { if (!cancelled) setMessages((r.messages || []).map(mapMsg)); })
       .catch(() => { if (!cancelled) setMessages([]); });
@@ -366,9 +373,12 @@ export default function App() {
 
   function send(text: string) {
     if (!text.trim() || sending || !activeId) return;
+    const sendNpcId = activeId;
+    const streamSeq = ++chatStreamSeqRef.current;
     setSending(true); setStreaming('');
     let acc = '';
-    api.streamMessage(activeId, text, (ev) => {
+    api.streamMessage(sendNpcId, text, (ev) => {
+      if (activeIdRef.current !== sendNpcId || chatStreamSeqRef.current !== streamSeq) return;
       switch (ev.type) {
         case 'user_message_saved':
           setMessages((m) => m.concat([{ id: ev.data.messageId, from: 'user', text: text,
@@ -402,7 +412,9 @@ export default function App() {
         case 'done': setSending(false); break;
         default: break;
       }
-    }).catch(() => setSending(false));
+    }).catch(() => {
+      if (activeIdRef.current === sendNpcId && chatStreamSeqRef.current === streamSeq) setSending(false);
+    });
   }
 
   const npc = npcs.find((n) => n.id === activeId);

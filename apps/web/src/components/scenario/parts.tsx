@@ -1,6 +1,5 @@
 // Scenario presentational components — extracted from routes/Scenario.tsx so both the
 // inline experience (App.tsx) and the (now redirect) /scenario route share one source.
-import { useState } from 'react';
 import { WebI, WebAvatar, WebRelationshipDots, RELATIONSHIP_LABEL } from '../shared';
 
 // ---------- Chat header ----------
@@ -246,6 +245,18 @@ export function ScenarioSummaryCard({ session, transcript, summaryData }: { sess
   const languageNote = summaryData && summaryData.languageNote;
   const pragmaticsNote = summaryData && summaryData.pragmaticsNote;
   const relationshipNote = summaryData && summaryData.relationshipNote;
+  const hasNotes = languageNote || pragmaticsNote || relationshipNote;
+  const summaryBlocks = hasNotes
+    ? [
+        languageNote && { icon: '🗣️', label: 'Language', body: languageNote },
+        pragmaticsNote && { icon: '🧠', label: 'Pragmatics', body: pragmaticsNote },
+        relationshipNote && { icon: '❤️', label: 'Relationship', body: relationshipNote },
+      ].filter(Boolean)
+    : [
+        { icon: '🗣️', label: 'Language', body: 'Performance summary is not available for this session.' },
+        { icon: '🧠', label: 'Pragmatics', body: 'Pragmatics notes are not available.' },
+        { icon: '❤️', label: 'Relationship', body: 'Relationship notes are not available.' },
+      ];
 
   return (
     <div className="my-3 rounded-2xl p-5 fade-up"
@@ -272,37 +283,13 @@ export function ScenarioSummaryCard({ session, transcript, summaryData }: { sess
         </span>
       </div>
 
-      {(languageNote || pragmaticsNote || relationshipNote) ? (
-        <div className="grid grid-cols-3 gap-3">
-          {languageNote && (
-            <SummaryBlock icon="🗣️" label="Language">
-              {languageNote}
-            </SummaryBlock>
-          )}
-          {pragmaticsNote && (
-            <SummaryBlock icon="🧠" label="Pragmatics">
-              {pragmaticsNote}
-            </SummaryBlock>
-          )}
-          {relationshipNote && (
-            <SummaryBlock icon="❤️" label="Relationship">
-              {relationshipNote}
-            </SummaryBlock>
-          )}
-        </div>
-      ) : (
-        <div className="grid grid-cols-3 gap-3">
-          <SummaryBlock icon="🗣️" label="Language">
-            Performance summary is not available for this session.
+      <div className="grid grid-cols-3 gap-3">
+        {summaryBlocks.map((block) => (
+          <SummaryBlock key={block.label} icon={block.icon} label={block.label}>
+            {block.body}
           </SummaryBlock>
-          <SummaryBlock icon="🧠" label="Pragmatics">
-            Pragmatics notes are not available.
-          </SummaryBlock>
-          <SummaryBlock icon="❤️" label="Relationship">
-            Relationship notes are not available.
-          </SummaryBlock>
-        </div>
-      )}
+        ))}
+      </div>
 
       {transcript && transcript.length > 0 && (
         <div className="mt-4 pt-3" style={{ borderTop: '1px dashed var(--hairline-2)' }}>
@@ -376,20 +363,13 @@ export function ChoiceComposer({ choices, onChoose, disabled }: { choices: any[]
 }
 
 function ChoiceCard({ index, choice, onChoose, disabled }: { index: number; choice: any; onChoose: (choice: any) => void; disabled: boolean }) {
-  const [hover, setHover] = useState(false);
   return (
     <button
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
       onClick={() => !disabled && onChoose(choice)}
       disabled={disabled}
-      className="text-left rounded-xl p-3.5 transition fade-up"
+      className="text-left rounded-xl p-3.5 transition fade-up border border-[var(--hairline-c)] bg-[var(--surface-c)] enabled:cursor-pointer enabled:hover:bg-[#F4F9F5] enabled:hover:border-[var(--coral)] disabled:cursor-not-allowed disabled:opacity-50"
       style={{
         animationDelay: `${0.06 + index * 0.04}s`,
-        background: hover && !disabled ? '#F4F9F5' : 'var(--surface-c)',
-        border: '1px solid ' + (hover && !disabled ? 'var(--coral)' : 'var(--hairline-c)'),
-        opacity: disabled ? 0.5 : 1,
-        cursor: disabled ? 'not-allowed' : 'pointer',
       }}>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">

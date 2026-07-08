@@ -47,3 +47,29 @@ Notes:
 
 - `npm install` and `npm run db:generate` were run before this fix pass.
 - `prisma/dev.db` was initialized locally for testing and remains git-ignored.
+
+## Round 2 Review Fixes - 2026-07-08
+
+Fixed the follow-up review findings:
+
+- Existing universal `MemoryFact.knownToNpcs: []` facts now remain universal when the same fact is re-extracted during an NPC-scoped chat. Corrupted `knownToNpcs` values are still repaired to the current NPC.
+- Casual chat stream callbacks are guarded by active NPC id and stream sequence so a late `scenario_offer` from a previous NPC cannot appear in the newly selected NPC panel.
+- Scenario session loading now calls `GET /api/scenarios/sessions?npcId=...` instead of fetching every session and filtering client-side.
+- Scenario trigger keyword matchers are cached by raw keyword JSON so ASCII boundary regexes are not recompiled per keyword on every chat turn.
+- `ChoiceCard` hover styling now uses CSS hover classes instead of React state updates on every enter/leave.
+- `ScenarioSummaryCard` now renders one shared grid layout for both real notes and fallback copy.
+
+Regression coverage added:
+
+- `apps/api/tests/integration/fact-extract.test.ts`
+  - verifies re-learning a universal fact in an NPC chat keeps `knownToNpcs` as `[]`.
+- `apps/api/tests/integration/scenario-read-routes.test.ts`
+  - verifies `?npcId=lily` returns only Lily scenario sessions and excludes another NPC's session.
+
+Verification commands run from `<repo>`:
+
+- `PATH="/opt/homebrew/opt/node@24/bin:$PATH" npm test` - passed, 88 API test files / 240 tests.
+- `PATH="/opt/homebrew/opt/node@24/bin:$PATH" npm run typecheck` - passed for API and Web.
+- `PATH="/opt/homebrew/opt/node@24/bin:$PATH" npm run build:web` - passed.
+
+Note: root `npm run build` is not defined in this repo; the available frontend build command is `npm run build:web`.

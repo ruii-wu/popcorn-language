@@ -27,12 +27,21 @@ describe('scenario read routes', () => {
     const session = await prisma.scenarioSession.create({
       data: { userId: user.id, npcId: 'lily', threadId: thread.id, templateId: 'mock_interview', status: 'invited' },
     });
+    const emmaThread = await prisma.thread.create({ data: { userId: user.id, npcId: 'emma' } });
+    const emmaSession = await prisma.scenarioSession.create({
+      data: { userId: user.id, npcId: 'emma', threadId: emmaThread.id, templateId: 'flat_viewing', status: 'active' },
+    });
 
     const catalog = (await (await catalogGET(reqAs(user.id))).json()) as { id: string; eligible: boolean }[];
     expect(catalog.find((c) => c.id === 'mock_interview')?.eligible).toBe(true);
 
     const list = (await (await listGET(reqAs(user.id))).json()) as { id: string; scenarioTitle: string }[];
     expect(list.some((s) => s.id === session.id && s.scenarioTitle === 'Mock Interview')).toBe(true);
+
+    const lilyList = (await (await listGET(reqAs(user.id, 'http://test/local?npcId=lily'))).json()) as { id: string; npcId: string }[];
+    expect(lilyList.every((s) => s.npcId === 'lily')).toBe(true);
+    expect(lilyList.some((s) => s.id === session.id)).toBe(true);
+    expect(lilyList.some((s) => s.id === emmaSession.id)).toBe(false);
 
     const detailRes = await detailGET(reqAs(user.id), { params: { id: session.id } });
     expect(detailRes.status).toBe(200);
