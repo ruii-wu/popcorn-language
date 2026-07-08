@@ -1,16 +1,7 @@
 // src/server/memory/candidates.ts
 import type { PrismaClient } from '@prisma/client';
 import type { Candidate } from './types';
-import { factToText, parseEmbedding } from './format';
-
-function isKnownToNpc(raw: string, npcId: string): boolean {
-  try {
-    const ids = JSON.parse(raw) as unknown;
-    return Array.isArray(ids) && (ids.length === 0 || ids.includes(npcId));
-  } catch {
-    return false;
-  }
-}
+import { factToText, parseEmbedding, isKnownToNpc } from './format';
 
 // Loads a user's recallable memory items. Facts are scoped to what the active
 // NPC knows; summaries are scoped to the npc's thread when npcId is given.

@@ -27,25 +27,6 @@ import {
   ScenarioRightPanel,
 } from '../components/scenario/parts';
 
-// ---------- Thread (Lily, casual) — kept for reference, no longer used ----------
-const LILY_THREAD_WEB = [
-  { from: 'npc',  text: "morning! you're earlier than usual today ☕", time: '9:02' },
-  { from: 'user', text: "Yes, today I am go to library early.", time: '9:03',
-    correction: {
-      fixed: "Today I'm going to the library early.",
-      noteZh: "「am go」把 be 动词和实义动词叠在了一起。表示\"正在进行/即将进行\"用现在进行时：am/is/are + V-ing。另外 library 前要加 the。",
-      tag: 'Grammar · Tense'
-    }
-  },
-  { from: 'npc',  text: "ohh study mode 📚 what's your usual order? i'll have it ready when you come back tomorrow", time: '9:03' },
-  { from: 'user', text: "An oat milk latte, not too sweet. 谢谢!", time: '9:05' },
-  { from: 'npc',  text: "bù yòng xiè 😄 oat latte, low sweet — got it.", time: '9:06' },
-  { from: 'npc',  text: "hey random question — you're basically a brooklyn regular now. have you tried the everything bagel from murray's yet?", time: '9:06' },
-  { from: 'user', text: "What is 'everything bagel'?", time: '9:07' },
-  { from: 'npc',  text: "haha okay so — \"everything\" is the flavor. poppy seeds, sesame, garlic, onion, salt — basically everything on top. NYC classic.", time: '9:07' },
-  { from: 'npc',  text: "wait you've NEVER had a bagel here?? we have to fix this", time: '9:08', isLatest: true },
-];
-
 // ---------- Mappers ----------
 function fmtTime(iso: any) {
   const d = new Date(iso);
@@ -365,12 +346,18 @@ export default function App() {
   // load thread when active NPC changes
   useEffect(() => {
     if (!activeId) return;
+    let cancelled = false;
     setStreaming(''); setTyping(false); setDetail(null); setMemories([]);
     api.thread(activeId)
-      .then((r) => setMessages((r.messages || []).map(mapMsg)))
-      .catch(() => setMessages([]));
-    api.npcDetail(activeId).then(setDetail).catch(() => setDetail(null));
-    api.memories(activeId).then(setMemories).catch(() => setMemories([]));
+      .then((r) => { if (!cancelled) setMessages((r.messages || []).map(mapMsg)); })
+      .catch(() => { if (!cancelled) setMessages([]); });
+    api.npcDetail(activeId)
+      .then((r) => { if (!cancelled) setDetail(r); })
+      .catch(() => { if (!cancelled) setDetail(null); });
+    api.memories(activeId)
+      .then((r) => { if (!cancelled) setMemories(r); })
+      .catch(() => { if (!cancelled) setMemories([]); });
+    return () => { cancelled = true; };
   }, [activeId]);
 
   useEffect(() => {

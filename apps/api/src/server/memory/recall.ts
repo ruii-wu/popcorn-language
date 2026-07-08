@@ -3,7 +3,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { OllamaClient } from '@/server/llm/ollama';
 import type { RecalledItem } from './types';
 import { getMemoryStrategy } from './getStrategy';
-import { factToText } from './format';
+import { factToText, isKnownToNpc } from './format';
 
 export interface RecalledForPrompt {
   facts: string[];
@@ -17,15 +17,6 @@ export interface RecallDeps {
   npcId?: string;
   queryText: string;
   k?: number;
-}
-
-function isKnownToNpc(raw: string, npcId: string): boolean {
-  try {
-    const ids = JSON.parse(raw) as unknown;
-    return Array.isArray(ids) && (ids.length === 0 || ids.includes(npcId));
-  } catch {
-    return false;
-  }
 }
 
 // High-level recall used by the chat pipeline and the NPC panel.

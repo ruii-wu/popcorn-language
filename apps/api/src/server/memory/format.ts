@@ -12,3 +12,12 @@ export function parseEmbedding(raw: string | null): number[] | null {
     return null;
   }
 }
+
+export function isKnownToNpc(raw: string, npcId: string): boolean {
+  try {
+    const ids = JSON.parse(raw) as unknown;
+    return Array.isArray(ids) && (ids.length === 0 || ids.includes(npcId));
+  } catch {
+    return false;
+  }
+}

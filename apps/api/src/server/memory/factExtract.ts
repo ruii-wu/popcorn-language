@@ -43,7 +43,13 @@ export async function extractAndStoreFacts(deps: FactExtractDeps): Promise<numbe
     });
     if (existing) {
       if (deps.npcId) {
-        const known = JSON.parse(existing.knownToNpcs) as string[];
+        let known: string[];
+        try {
+          const parsed = JSON.parse(existing.knownToNpcs);
+          known = Array.isArray(parsed) ? parsed : [];
+        } catch {
+          known = [];
+        }
         if (!known.includes(deps.npcId)) {
           await deps.prisma.memoryFact.update({
             where: { id: existing.id },

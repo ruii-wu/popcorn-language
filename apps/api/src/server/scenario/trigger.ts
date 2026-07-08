@@ -65,7 +65,14 @@ export async function judgeScenarioTrigger(
     } catch {
       continue; // skip a template with a corrupt topicKeywords value
     }
-    const matched = keywords.find((k) => lower.includes(k.toLowerCase()));
+    const matched = keywords.find((k) => {
+      const kLower = k.toLowerCase();
+      // Use word boundary for ASCII keywords; plain includes for CJK
+      if (/^[\x20-\x7e]+$/.test(k)) {
+        return new RegExp(`\\b${kLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(lower);
+      }
+      return lower.includes(kLower);
+    });
     if (!matched) continue;
     return { template: t, rationale: { topicMatch: matched, turnCount: userTurns, stage: rel?.stage ?? 'acquaintance' } };
   }
