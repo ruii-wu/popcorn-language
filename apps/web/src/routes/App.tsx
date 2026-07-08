@@ -347,7 +347,7 @@ export default function App() {
   useEffect(() => {
     if (!activeId) return;
     let cancelled = false;
-    setStreaming(''); setTyping(false); setDetail(null); setMemories([]);
+    setStreaming(''); setTyping(false); setMessages([]); setDetail(null); setMemories([]);
     api.thread(activeId)
       .then((r) => { if (!cancelled) setMessages((r.messages || []).map(mapMsg)); })
       .catch(() => { if (!cancelled) setMessages([]); });

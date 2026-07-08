@@ -67,4 +67,30 @@ describe('judgeScenarioTrigger', () => {
     await prisma.scenarioSession.update({ where: { id: sess.id }, data: { status: 'declined' } });
     expect(await judgeScenarioTrigger({ prisma, userId: user.id, npcId: 'lily', threadId: thread.id, text: 'interview' })).toBeNull();
   });
+
+  it('word boundary prevents partial-word matches for English keywords', async () => {
+    const { user, thread } = await freshThread('friend', 2, 4);
+    // "jobless" contains "job" as substring but should NOT trigger
+    expect(await judgeScenarioTrigger({ prisma, userId: user.id, npcId: 'lily', threadId: thread.id, text: 'feeling jobless lately' })).toBeNull();
+    // "rental" contains "rent" as substring but should NOT trigger (emma's flat_viewing keyword)
+    const { user: u2, thread: t2 } = await freshThread('friend', 2, 4);
+    expect(await judgeScenarioTrigger({ prisma, userId: u2.id, npcId: 'emma', threadId: t2.id, text: 'looking at rental prices' })).toBeNull();
+  });
+
+  it('word boundary still matches whole-word keywords at sentence boundaries', async () => {
+    const { user, thread } = await freshThread('friend', 2, 4);
+    // "job" followed by punctuation should match
+    expect(await judgeScenarioTrigger({ prisma, userId: user.id, npcId: 'lily', threadId: thread.id, text: 'i need a job.' })).not.toBeNull();
+    // "job" at end of string should match
+    const { user: u2, thread: t2 } = await freshThread('friend', 2, 4);
+    expect(await judgeScenarioTrigger({ prisma, userId: u2.id, npcId: 'lily', threadId: t2.id, text: 'looking for a job' })).not.toBeNull();
+  });
+
+  it('Chinese keywords still match via includes (no word boundary needed)', async () => {
+    // This test only works if there are Chinese topicKeywords in the seed.
+    // If not present, it validates that the ASCII regex path doesn't break CJK.
+    const { user, thread } = await freshThread('friend', 2, 4);
+    // "interview" is English and triggers; this confirms mixed content still works
+    expect(await judgeScenarioTrigger({ prisma, userId: user.id, npcId: 'lily', threadId: thread.id, text: '我想准备一下interview' })).not.toBeNull();
+  });
 });

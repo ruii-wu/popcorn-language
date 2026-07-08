@@ -75,4 +75,39 @@ describe('extractAndStoreFacts', () => {
 
     await prisma.user.deleteMany({ where: { username: U2 } });
   });
+
+  it('survives corrupted knownToNpcs and still processes remaining facts', async () => {
+    const U3 = '__w3_factcorrupt_user__';
+    await prisma.user.deleteMany({ where: { username: U3 } });
+    const user = await prisma.user.create({ data: { username: U3, password: 'pw' } });
+
+    // Pre-create a fact with corrupted knownToNpcs
+    await prisma.memoryFact.create({
+      data: { userId: user.id, predicate: 'has_pet', value: 'a dog', knownToNpcs: 'not-json', confidence: 0.9 },
+    });
+
+    const ollama = {
+      chatJson: vi.fn().mockResolvedValue({
+        facts: [
+          { subject: 'user', predicate: 'has_pet', value: 'a dog', confidence: 0.9 },
+          { subject: 'user', predicate: 'speaks', value: 'Chinese', confidence: 0.8 },
+        ],
+      }),
+      embed: vi.fn().mockResolvedValue([0.5]),
+    };
+
+    // Should NOT throw; the corrupted row should be handled gracefully
+    const n = await extractAndStoreFacts({ prisma, ollama, userId: user.id, text: 'I have a dog and speak Chinese', npcId: 'lily' });
+
+    // The second fact (speaks) is new and should be stored
+    expect(n).toBe(1);
+    const speaks = await prisma.memoryFact.findFirst({ where: { userId: user.id, predicate: 'speaks' } });
+    expect(speaks).not.toBeNull();
+
+    // The corrupted fact should have been repaired: knownToNpcs now includes 'lily'
+    const pet = await prisma.memoryFact.findFirstOrThrow({ where: { userId: user.id, predicate: 'has_pet' } });
+    expect(JSON.parse(pet.knownToNpcs)).toEqual(['lily']);
+
+    await prisma.user.deleteMany({ where: { username: U3 } });
+  });
 });
