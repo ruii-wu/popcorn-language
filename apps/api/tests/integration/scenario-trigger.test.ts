@@ -87,10 +87,8 @@ describe('judgeScenarioTrigger', () => {
   });
 
   it('Chinese keywords still match via includes (no word boundary needed)', async () => {
-    // This test only works if there are Chinese topicKeywords in the seed.
-    // If not present, it validates that the ASCII regex path doesn't break CJK.
     const { user, thread } = await freshThread('friend', 2, 4);
-    // "interview" is English and triggers; this confirms mixed content still works
-    expect(await judgeScenarioTrigger({ prisma, userId: user.id, npcId: 'lily', threadId: thread.id, text: '我想准备一下interview' })).not.toBeNull();
+    // "面试" is a Chinese topicKeyword in the seed — exercises the CJK includes path
+    expect(await judgeScenarioTrigger({ prisma, userId: user.id, npcId: 'lily', threadId: thread.id, text: '我想准备一下面试' })).not.toBeNull();
   });
 });
