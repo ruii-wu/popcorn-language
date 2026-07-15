@@ -17,6 +17,7 @@ export function sseResponse(gen: AsyncIterable<SseEvent>): Response {
         controller.enqueue(
           encoder.encode(encodeSseEvent({ event: 'error', data: { code: 'STREAM_ERROR', message: String(err) } })),
         );
+        controller.enqueue(encoder.encode(encodeSseEvent({ event: 'done', data: {} })));
       } finally {
         controller.close();
       }

@@ -391,7 +391,6 @@ export default function App() {
           setStreaming('');
           setMessages((m) => m.concat([{ id: ev.data.messageId, from: 'npc',
             text: ev.data.fullText || acc, time: fmtTime(Date.now()), correction: null }]));
-          setSending(false);  // re-enable composer once NPC has replied; done may still arrive later
           break;
         case 'correction':
           setMessages((m) => m.map((x) => x.id === ev.data.targetMessageId
@@ -403,7 +402,7 @@ export default function App() {
           break;
         }
         case 'error':
-          setTyping(false); setStreaming('');
+          setTyping(false); setStreaming(''); setSending(false);
           setMessages((m) => m.concat([{ id: 'err-' + Date.now(), from: 'npc', error: true,
             text: (ev.data.code === 'LLM_UNAVAILABLE'
               ? 'Local model unavailable — start Ollama (qwen3.5:9b) and retry.'

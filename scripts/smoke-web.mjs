@@ -155,14 +155,15 @@ async function flowJourney(browser) {
 }
 
 async function flowScenario(browser) {
-  console.log('[scenario] /scenario renders the seeded session');
+  console.log('[scenario] /scenario redirects to / (inline experience)');
   const page = await newPage(browser);
   await login(page, 'demo', 'demo');
   await gotoRoute(page, '/scenario');
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(1000);
+  const url = page.url();
+  assert(!url.includes('/scenario'), '/scenario redirected away from /scenario');
   const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
-  assert(/A-|Mock Interview|Summary|Grade/i.test(body),
-    'scenario view renders the seeded session summary');
+  assert(/Lily|Chen|Emma/i.test(body), 'redirected view shows an NPC name');
 }
 
 const FLOWS = { api: flowApi, chat: flowChat, journey: flowJourney, scenario: flowScenario };

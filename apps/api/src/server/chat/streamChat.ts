@@ -54,7 +54,7 @@ export async function* streamChat(deps: StreamChatDeps): AsyncGenerator<SseEvent
   const [profile, user, recent, recalled] = await Promise.all([
     prisma.userProfile.findUnique({ where: { userId } }),
     prisma.user.findUnique({ where: { id: userId } }),
-    prisma.message.findMany({ where: { threadId: thread.id }, orderBy: { createdAt: 'desc' }, take: RECENT_BUFFER }),
+    prisma.message.findMany({ where: { threadId: thread.id, scenarioSessionId: null }, orderBy: { createdAt: 'desc' }, take: RECENT_BUFFER }),
     recallForPrompt({ prisma, ollama, userId, npcId, queryText: text }),
   ]);
   const history = recent.reverse();
