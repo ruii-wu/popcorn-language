@@ -36,6 +36,7 @@ export const WebI = {
   more: <Icon d={<><circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" /></>} />,
   arrowR: <Icon d={<><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></>} />,
   arrowL: <Icon d={<><path d="M19 12H5" /><path d="m12 19-7-7 7-7" /></>} />,
+  recall: <Icon d={<><path d="M9 7 4 12l5 5" /><path d="M4 12h9a6 6 0 1 1-4.2 10.2" /></>} />,
   chev: <Icon d={<><path d="m6 9 6 6 6-6" /></>} />,
   chevR: <Icon d={<><path d="m9 6 6 6-6 6" /></>} />,
   flame: <Icon d={<><path d="M12 3s4 4 4 8a4 4 0 0 1-8 0c0-1.5.5-2.5 1.5-3.5C10 6 12 3 12 3Z" /><path d="M9.5 14.5c0 2 1 3.5 2.5 3.5s2.5-1.5 2.5-3.5" /></>} />,
@@ -93,34 +94,6 @@ export function WebRelationshipDots({ value, size = 5 }: { value: number; size?:
       }} />
       )}
     </span>);
-
-}
-
-// Cross-file dock — bottom-right so it doesn't collide with state tabs
-export function WebDock({ current }: { current?: string }) {
-  const items = [
-  { label: '01 Main App', href: '/' },
-  { label: '02 Scenario', href: '/scenario' },
-  { label: '03 Onboarding & Journey', href: '/onboarding' }];
-
-  return (
-    <div className="fixed bottom-3 right-3 z-50 flex items-center gap-1 p-1 rounded-full"
-    style={{ background: 'oklch(0.18 0.01 55 / 0.92)', backdropFilter: 'blur(8px)' }}>
-      <span className="px-2 text-[9.5px] font-mono uppercase tracking-[0.18em]"
-      style={{ color: 'oklch(0.62 0.03 55)' }}>
-        Web demo
-      </span>
-      {items.map((i) =>
-      <Link key={i.label} to={i.href}
-      className="px-3 py-1.5 rounded-full text-[10.5px] font-mono uppercase tracking-wider transition no-underline"
-      style={{
-        background: i.label === current ? '#fff' : 'transparent',
-        color: i.label === current ? '#1F1B16' : 'oklch(0.78 0.02 60)'
-      }}>
-          {i.label}
-        </Link>
-      )}
-    </div>);
 
 }
 

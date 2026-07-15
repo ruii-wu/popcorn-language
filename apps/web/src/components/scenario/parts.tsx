@@ -193,7 +193,7 @@ export function ScenarioResumeBanner({ session, onResume, onEnd }: { session: an
 }
 
 // ---------- Invitation card ----------
-export function InvitationCard({ session, onAccept, onDecline, npc }: { session: any; onAccept: () => void; onDecline: () => void; npc: any }) {
+export function InvitationCard({ session, onAccept, onDecline, npc, accepting = false }: { session: any; onAccept: () => void; onDecline: () => void; npc: any; accepting?: boolean }) {
   const title = session ? session.scenarioTitle : 'Scenario';
   return (
     <div className="flex items-start gap-2 mb-3 fade-up">
@@ -221,17 +221,18 @@ export function InvitationCard({ session, onAccept, onDecline, npc }: { session:
             You have been invited to a <strong>{title}</strong> scenario. Accept to start the roleplay session.
           </p>
           <div className="flex items-center gap-2">
-            <button onClick={onAccept}
-                    className="rounded-full px-5 py-2.5 text-[13px] font-medium transition"
+            <button onClick={onAccept} disabled={accepting}
+                    className="rounded-full px-5 py-2.5 text-[13px] font-medium transition disabled:opacity-70"
                     style={{ background: 'var(--coral)', color: '#fff', boxShadow: '0 1px 0 oklch(1 0 0 / 0.3) inset' }}>
-              Yeah, let's do it
+              {accepting ? <span className="inline-flex items-center gap-2"><span className="w-3 h-3 rounded-full border-2 border-white/40 border-t-white animate-spin" /> Preparing scenario…</span> : "Yeah, let's do it"}
             </button>
-            <button onClick={onDecline}
-                    className="rounded-full px-4 py-2 text-[12.5px] transition hover:bg-[var(--bg-warm)]"
+            <button onClick={onDecline} disabled={accepting}
+                    className="rounded-full px-4 py-2 text-[12.5px] transition hover:bg-[var(--bg-warm)] disabled:opacity-50"
                     style={{ color: 'var(--ink-2)', border: '1px solid var(--hairline-strong)' }}>
               Maybe later
             </button>
           </div>
+          {accepting && <p className="mt-2.5 text-[11.5px]" style={{ color: 'var(--muted)' }} aria-live="polite">Lily is getting the roleplay ready…</p>}
         </div>
       </div>
     </div>

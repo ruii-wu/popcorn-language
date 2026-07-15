@@ -45,6 +45,8 @@ describe('streamChat scenario offer', () => {
     const offer = events.find((e) => e.event === 'scenario_offer');
     expect(offer).toBeTruthy();
     expect((offer!.data as { draft: { title: string } }).draft.title).toBe('Mock Interview');
+    expect(events.find((e) => e.event === 'message_complete')).toBeUndefined();
+    expect(events.findIndex((e) => e.event === 'scenario_offer')).toBeLessThan(events.findIndex((e) => e.event === 'done'));
     expect(events[events.length - 1].event).toBe('done');
   });
 });

@@ -20,7 +20,7 @@ async function main() {
   for (const s of SCENARIO_TEMPLATES) {
     await prisma.scenarioTemplate.upsert({
       where: { id: s.id },
-      update: {},
+      update: { minStage: s.minStage },
       create: {
         id: s.id, title: s.title, titleZh: s.titleZh, npcId: s.npcId, rolePlayedBy: s.rolePlayedBy,
         minStage: s.minStage, estimatedMinutes: s.estimatedMinutes, estimatedTurns: s.estimatedTurns,

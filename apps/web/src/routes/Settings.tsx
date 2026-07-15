@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
-import { WebDock, WebNavRail } from '../components/shared';
+import { WebNavRail } from '../components/shared';
 import type { SettingsPatch, SettingsResponse } from '@popcorn/shared';
 
 const MEMORY_OPTIONS = [
@@ -137,7 +137,6 @@ export default function Settings() {
           </div>
         </div>
       </section>
-      <WebDock current="Settings" />
     </div>
   );
 }

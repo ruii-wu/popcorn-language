@@ -4,7 +4,7 @@ NUS Master of Computing capstone — a **local-LLM-powered, bilingual (中→EN)
 
 > ⚠️ **Local demo only.** Authentication is intentionally minimal (see [A note on auth](#a-note-on-auth)). **Never deploy this beyond localhost.**
 
-> **Project status: backend complete (W1–W8) + web client wired (W10).** Chat (SSE streaming), the pluggable memory engine + ablation harness, scenario gameplay, grammar correction, relationships/progression, achievements (static + dynamic), the Journey dashboard, Settings, and system/reset are all implemented and tested. 233 API Vitest cases pass; `typecheck` is clean. The frontend is a **Vite + React + TypeScript SPA** (`apps/web/`) that proxies `/api` to the Hono backend — open `http://localhost:5173/` to use the product end-to-end. The chat model is `qwen3.5:9b`.
+> **Project status: backend complete (W1–W8) + web client wired (W10).** Chat (SSE streaming), the pluggable memory engine + ablation harness, scenario gameplay, grammar correction, relationships/progression, achievements (static + dynamic), the Journey dashboard, Settings, system/reset, and reversible message recall are implemented and tested. 243 API Vitest cases and 6 Web tests pass; `typecheck` is clean. The frontend is a **Vite + React + TypeScript SPA** (`apps/web/`) that proxies `/api` to the Hono backend — open `http://localhost:5173/` to use the product end-to-end. The chat model is `qwen3.5:9b`.
 
 ---
 
@@ -95,7 +95,7 @@ but live chat/scenario generation needs Ollama running with the configured chat 
 A headless end-to-end smoke of the wired UI (drives the installed Edge against a running dev
 server) lives at `npm run smoke:web` (`node scripts/smoke-web.mjs <api|chat|journey|scenario|all>`).
 
-## API surface (34 routes)
+## API surface (36 routes)
 
 All business routes require the `pop_uid` session cookie (via `withUser`) and are scoped by `userId`. Errors use a uniform `{ error: { code, message } }` envelope.
 
@@ -104,7 +104,7 @@ All business routes require the `pop_uid` session cookie (via `withUser`) and ar
 | **Auth** | `POST /api/auth/register` · `POST /api/auth/login` · `POST /api/auth/logout` · `GET /api/auth/me` |
 | **Profile / Onboarding** | `GET·PUT /api/profile` · `POST /api/onboarding/complete` |
 | **NPCs** | `GET /api/npcs` · `GET /api/npcs/:id` |
-| **Threads / Messages** | `GET·POST /api/threads/:npcId/messages` (POST = **SSE**) · `DELETE /api/threads/:npcId` · `POST /api/threads/:npcId/messages/:msgId/correction` |
+| **Threads / Messages** | `GET·POST /api/threads/:npcId/messages` (POST = **SSE**) · `DELETE /api/threads/:npcId` · `DELETE /api/threads/:npcId/messages/:msgId` · `POST /api/threads/:npcId/messages/:msgId/restore` · `POST /api/threads/:npcId/messages/:msgId/correction` |
 | **Scenarios** | `GET /api/scenarios/catalog` · `GET /api/scenarios/sessions` · `GET /api/scenarios/sessions/:id` · `POST …/{accept,decline,pause,resume,abort}` · `POST …/{choose,freetype}` (**SSE**) |
 | **Memories** | `GET /api/memories` · `GET /api/memories/recent` · `DELETE /api/memories/:id` |
 | **Journey** | `GET /api/journey/{summary,relationships,streak}` |
@@ -116,6 +116,21 @@ All business routes require the `pop_uid` session cookie (via `withUser`) and ar
 
 `POST /api/threads/:npcId/messages` and the scenario `choose`/`freetype` routes stream:
 `user_message_saved · typing_start/end · token · message_complete · correction · suggestions_update · scenario_offer · state_update · choices · scenario_end · error · done`.
+
+### Scenario trigger and recall behavior
+
+The casual chat stream runs the deterministic scenario trigger before ordinary NPC generation.
+When the relationship stage, visible user-turn count, and topic keyword all match, the API
+creates an invited session and emits `scenario_offer` without first saving an ordinary NPC reply.
+If the user declines, the same triggering user turn continues through the normal chat stream.
+Declined scenarios may be offered again after a later direct topic mention; an old keyword in the
+recent-message window alone does not re-trigger an offer.
+
+Message recall is a reversible rollback. `DELETE .../:msgId` marks the ordinary user message as
+retracted, hides every later message and still-open scenario session, and keeps the original data
+in SQLite. `POST .../:msgId/restore` clears the rollback and restores the hidden thread history
+and scenario session. The UI shows `Message retracted`, offers `Edit` to refill the composer, and
+offers `Undo recall` to restore the later content.
 
 ## Environment variables (`.env`)
 
@@ -156,7 +171,7 @@ public/app/                 # legacy static prototype/dev-tool reference
 - **Master plan (W1–W9):** [`docs/superpowers/plans/2026-05-25-backend-overall-plan.md`](docs/superpowers/plans/2026-05-25-backend-overall-plan.md)
 - **Per-phase plans:** `docs/superpowers/plans/2026-05-*-backend-w{1..9}-*.md`
 - **Report figures:** [`docs/reports/memory-ablation.md`](docs/reports/memory-ablation.md) · [`docs/reports/architecture.md`](docs/reports/architecture.md)
-- **UAT SOP:** [`docs/uat-sop.md`](docs/uat-sop.md) — manual user-acceptance-test procedure for the web client (15 test cases keyed to the demo seed)
+- **UAT SOP:** [`docs/uat-sop.md`](docs/uat-sop.md) — manual user-acceptance-test procedure for the web client (17 test cases keyed to the demo seed)
 
 ## Web client
 
@@ -168,8 +183,9 @@ needed. `npm run dev` starts both the API server and the Vite dev server togethe
 - **Onboarding / Journey:** `http://localhost:5173/onboarding`
 - **Scenario:** `http://localhost:5173/scenario`
 
-The app screens cross-link via the bottom-right dock. `public/app/` retains legacy prototype files
-as a design reference, but the product runtime is the Vite SPA.
+Use the in-app navigation and direct routes above to move between screens. The old bottom-right
+web-demo dock is no longer part of the product UI. `public/app/` retains legacy prototype files as
+a design reference, but the product runtime is the Vite SPA.
 
 ## A note on auth
 

@@ -1,0 +1,83 @@
+import { prisma } from '@/server/db/client';
+import { withUser, json, errorJson } from '@/server/http/respond';
+
+// Retract a user's ordinary chat message and hide the later thread history.
+// Scenario turns are never directly retractable, but future open sessions are
+// hidden with the same rollback and can be restored.
+export async function DELETE(req: Request, { params }: { params: { npcId: string; msgId: string } }): Promise<Response> {
+  return withUser(req, async (userId) => {
+    const message = await prisma.message.findFirst({
+      where: {
+        id: params.msgId,
+        thread: { userId, npcId: params.npcId },
+        userId,
+        role: 'user',
+        scenarioSessionId: null,
+        hiddenAt: null,
+      },
+      select: { id: true, threadId: true, createdAt: true },
+    });
+    if (!message) return errorJson(404, 'NOT_FOUND', 'Message not found');
+
+    const now = new Date();
+    const result = await prisma.$transaction(async (tx) => {
+      await tx.message.update({
+        where: { id: message.id },
+        data: { retractedAt: now, correction: null },
+      });
+      const hidden = await tx.message.updateMany({
+        where: { threadId: message.threadId, createdAt: { gt: message.createdAt }, hiddenAt: null },
+        data: { hiddenAt: now },
+      });
+      await tx.scenarioSession.updateMany({
+        where: {
+          threadId: message.threadId,
+          invitedAt: { gt: message.createdAt },
+          status: { in: ['invited', 'accepted', 'active', 'paused'] },
+        },
+        data: { hiddenAt: now },
+      });
+      await tx.thread.update({ where: { id: message.threadId }, data: { lastMsgAt: message.createdAt } });
+      return hidden.count;
+    });
+    return json({ ok: true, removedAfter: result });
+  });
+}
+
+export async function POST(req: Request, { params }: { params: { npcId: string; msgId: string } }): Promise<Response> {
+  return withUser(req, async (userId) => {
+    const message = await prisma.message.findFirst({
+      where: {
+        id: params.msgId,
+        thread: { userId, npcId: params.npcId },
+        userId,
+        role: 'user',
+        scenarioSessionId: null,
+        hiddenAt: null,
+        retractedAt: { not: null },
+      },
+      select: { id: true, threadId: true, createdAt: true },
+    });
+    if (!message) return errorJson(404, 'NOT_FOUND', 'Retracted message not found');
+
+    const restored = await prisma.$transaction(async (tx) => {
+      await tx.message.update({ where: { id: message.id }, data: { retractedAt: null } });
+      const visible = await tx.message.updateMany({
+        where: { threadId: message.threadId, createdAt: { gt: message.createdAt }, hiddenAt: { not: null } },
+        data: { hiddenAt: null },
+      });
+      await tx.scenarioSession.updateMany({
+        where: { threadId: message.threadId, invitedAt: { gt: message.createdAt }, hiddenAt: { not: null } },
+        data: { hiddenAt: null },
+      });
+      const last = await tx.message.findFirst({
+        where: { threadId: message.threadId, hiddenAt: null },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      });
+      await tx.thread.update({ where: { id: message.threadId }, data: { lastMsgAt: last?.createdAt ?? null } });
+      return visible.count;
+    });
+    return json({ ok: true, restoredAfter: restored });
+  });
+}

@@ -9,6 +9,7 @@ export interface OfferDeps {
   npcId: string;
   threadId: string;
   text: string;
+  userMsgId?: string;
 }
 
 export interface ScenarioOffer {
@@ -29,7 +30,11 @@ export async function maybeOfferScenario(deps: OfferDeps): Promise<ScenarioOffer
       threadId: deps.threadId,
       templateId: hit.template.id,
       status: 'invited',
-      triggerRationale: JSON.stringify(hit.rationale),
+      triggerRationale: JSON.stringify({
+        ...hit.rationale,
+        deferredText: deps.text,
+        ...(deps.userMsgId ? { deferredMessageId: deps.userMsgId } : {}),
+      }),
     },
   });
   await deps.prisma.message.create({

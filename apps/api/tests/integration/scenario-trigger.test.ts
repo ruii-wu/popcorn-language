@@ -11,11 +11,11 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-async function freshThread(stage: string, stageValue: number, userTurns: number) {
+async function freshThread(stage: string, stageValue: number, userTurns: number, npcId = 'lily') {
   await prisma.user.deleteMany({ where: { username: U } });
   const user = await prisma.user.create({ data: { username: U, password: 'pw' } });
-  const thread = await prisma.thread.create({ data: { userId: user.id, npcId: 'lily' } });
-  await prisma.relationship.create({ data: { userId: user.id, npcId: 'lily', stage, stageValue } });
+  const thread = await prisma.thread.create({ data: { userId: user.id, npcId } });
+  await prisma.relationship.create({ data: { userId: user.id, npcId, stage, stageValue } });
   for (let i = 0; i < userTurns; i++) {
     await prisma.message.create({ data: { threadId: thread.id, userId: user.id, role: 'user', text: `m${i}` } });
   }
@@ -30,10 +30,16 @@ describe('judgeScenarioTrigger', () => {
     expect(hit?.rationale.topicMatch).toBe('interview');
   });
 
-  it('misses below the stage threshold even with a topic match', async () => {
-    const { user, thread } = await freshThread('acquaintance', 1, 4);
-    const hit = await judgeScenarioTrigger({ prisma, userId: user.id, npcId: 'lily', threadId: thread.id, text: 'interview please' });
+  it('misses below the stage threshold for scenarios that require friendship', async () => {
+    const { user, thread } = await freshThread('acquaintance', 1, 4, 'emma');
+    const hit = await judgeScenarioTrigger({ prisma, userId: user.id, npcId: 'emma', threadId: thread.id, text: 'can we view the apartment?' });
     expect(hit).toBeNull();
+  });
+
+  it('allows Lily to offer the interview scenario during the early relationship stage', async () => {
+    const { user, thread } = await freshThread('acquaintance', 1, 3);
+    const hit = await judgeScenarioTrigger({ prisma, userId: user.id, npcId: 'lily', threadId: thread.id, text: 'i have an interview tomorrow' });
+    expect(hit?.template.id).toBe('mock_interview');
   });
 
   it('hits when a topic keyword appears earlier in the recent window, not just the current message', async () => {
@@ -58,14 +64,17 @@ describe('judgeScenarioTrigger', () => {
     expect(await judgeScenarioTrigger({ prisma, userId: b.user.id, npcId: 'lily', threadId: b.thread.id, text: 'nice coffee today' })).toBeNull();
   });
 
-  it('does not re-offer when an open or declined session already exists', async () => {
+  it('does not re-offer while open, but allows a fresh direct topic after decline', async () => {
     const { user, thread } = await freshThread('friend', 2, 4);
     const sess = await prisma.scenarioSession.create({
       data: { userId: user.id, npcId: 'lily', threadId: thread.id, templateId: 'mock_interview', status: 'invited' },
     });
     expect(await judgeScenarioTrigger({ prisma, userId: user.id, npcId: 'lily', threadId: thread.id, text: 'interview' })).toBeNull();
+    await prisma.scenarioSession.update({ where: { id: sess.id }, data: { hiddenAt: new Date() } });
+    expect(await judgeScenarioTrigger({ prisma, userId: user.id, npcId: 'lily', threadId: thread.id, text: 'interview' })).not.toBeNull();
     await prisma.scenarioSession.update({ where: { id: sess.id }, data: { status: 'declined' } });
-    expect(await judgeScenarioTrigger({ prisma, userId: user.id, npcId: 'lily', threadId: thread.id, text: 'interview' })).toBeNull();
+    expect(await judgeScenarioTrigger({ prisma, userId: user.id, npcId: 'lily', threadId: thread.id, text: 'nice coffee today' })).toBeNull();
+    expect(await judgeScenarioTrigger({ prisma, userId: user.id, npcId: 'lily', threadId: thread.id, text: 'can we do another interview?' })).not.toBeNull();
   });
 
   it('word boundary prevents partial-word matches for English keywords', async () => {

@@ -40,6 +40,8 @@ export interface ThreadMessage {
   from: string; // 'user' | 'npc', widened by the mapper
   correction: unknown; // parsed JSON, or null
   lang: string | null;
+  retracted: boolean;
+  retractedText: string | null;
   createdAt: string | Date;
 }
 export interface ThreadResponse {

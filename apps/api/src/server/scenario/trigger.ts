@@ -48,6 +48,8 @@ export interface TriggerRationale {
   topicMatch: string;
   turnCount: number;
   stage: string;
+  deferredText?: string;
+  deferredMessageId?: string;
 }
 
 export interface TriggerDeps {
@@ -73,11 +75,11 @@ export async function judgeScenarioTrigger(
 
   // never double-offer: any non-terminal session for this NPC blocks a new offer
   const open = await prisma.scenarioSession.findFirst({
-    where: { userId, npcId, status: { in: ['invited', 'accepted', 'active', 'paused'] } },
+    where: { userId, npcId, hiddenAt: null, status: { in: ['invited', 'accepted', 'active', 'paused'] } },
   });
   if (open) return null;
 
-  const userTurns = await prisma.message.count({ where: { threadId, role: 'user' } });
+  const userTurns = await prisma.message.count({ where: { threadId, role: 'user', retractedAt: null, hiddenAt: null } });
   if (userTurns < MIN_USER_TURNS) return null;
 
   // Match topic keywords across the recent user-message window, not just the current
@@ -86,20 +88,25 @@ export async function judgeScenarioTrigger(
   // The current message is already persisted by streamChat, but include `text` too so a
   // caller passing an unsaved message still matches.
   const recentUserMsgs = await prisma.message.findMany({
-    where: { threadId, role: 'user' },
+    where: { threadId, role: 'user', retractedAt: null, hiddenAt: null },
     orderBy: { createdAt: 'desc' },
     take: RECENT_WINDOW,
     select: { text: true },
   });
   const lower = [text, ...recentUserMsgs.map((m) => m.text)].join('\n').toLowerCase();
+  const currentLower = text.toLowerCase();
   for (const t of templates) {
     if (stageValue < (STAGE_VALUE[t.minStage] ?? 99)) continue;
     const declined = await prisma.scenarioSession.findFirst({
       where: { userId, npcId, templateId: t.id, status: 'declined' },
     });
-    if (declined) continue; // don't nag after a decline (re-offer tuning deferred)
-    const matched = keywordMatchers(t.topicKeywords).find((matcher) => matcher.test(lower))?.keyword;
+    const matchers = keywordMatchers(t.topicKeywords);
+    const matched = matchers.find((matcher) => matcher.test(lower))?.keyword;
     if (!matched) continue;
+    // A decline ends this offer, but it should not permanently disable the scenario.
+    // Require a fresh direct topic mention before offering again so an old keyword in
+    // the recent window does not immediately nag the user during unrelated chat.
+    if (declined && !matchers.some((matcher) => matcher.test(currentLower))) continue;
     return { template: t, rationale: { topicMatch: matched, turnCount: userTurns, stage: rel?.stage ?? 'acquaintance' } };
   }
   return null;

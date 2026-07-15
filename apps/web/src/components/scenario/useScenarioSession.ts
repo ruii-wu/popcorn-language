@@ -51,29 +51,39 @@ export function useScenarioSession(npcId: string | null) {
   const [transcript, setTranscript] = useState<ScenarioTranscriptItem[]>([]);
   const [choiceDisabled, setChoiceDisabled] = useState(false);
   const [npcTyping, setNpcTyping] = useState(false);
+  const [accepting, setAccepting] = useState(false);
+  const [declining, setDeclining] = useState(false);
+  const [declinedReply, setDeclinedReply] = useState<ScenarioMessage | null>(null);
 
   // Guards stale stream writes after the user switches NPC mid-stream.
   const liveSidRef = useRef<string | null>(null);
+  const declineSeqRef = useRef(0);
+  const sessionsSeqRef = useRef(0);
   liveSidRef.current = session ? session.id : null;
+
+  function refreshSessions() {
+    if (!npcId) return Promise.resolve();
+    const requestId = ++sessionsSeqRef.current;
+    return api.sessions('?npcId=' + encodeURIComponent(npcId)).then((list) => {
+      if (requestId !== sessionsSeqRef.current) return;
+      const invited = list.find((s) => s.status === 'invited');
+      const active = list.find((s) => s.status === 'active');
+      setSession(invited
+        ? { id: invited.id, status: 'invited', scenarioTitle: invited.scenarioTitle, npcId, grade: invited.grade }
+        : null);
+      setResumable(!invited && active
+        ? { id: active.id, status: 'active', scenarioTitle: active.scenarioTitle, npcId, grade: active.grade }
+        : null);
+    }).catch(() => {});
+  }
 
   useEffect(() => {
     setSession(null); setResumable(null); setMessages([]); setChoices([]); setHudState(null);
-    setSummary(null); setTranscript([]); setChoiceDisabled(false); setNpcTyping(false);
+    setSummary(null); setTranscript([]); setChoiceDisabled(false); setNpcTyping(false); setAccepting(false);
+    setDeclining(false); setDeclinedReply(null); declineSeqRef.current += 1;
     if (!npcId) return;
-    let cancelled = false;
-    api.sessions('?npcId=' + encodeURIComponent(npcId)).then((list) => {
-      if (cancelled) return;
-      const invited = list.find((s) => s.status === 'invited');
-      const active = list.find((s) => s.status === 'active');
-      if (invited) {
-        setSession({ id: invited.id, status: 'invited', scenarioTitle: invited.scenarioTitle, npcId, grade: invited.grade });
-      } else if (active) {
-        // Don't auto-enter roleplay — surface it as a resume/end banner in casual chat.
-        setResumable({ id: active.id, status: 'active', scenarioTitle: active.scenarioTitle, npcId, grade: active.grade });
-      }
-      // completed sessions: stay casual; the summary was shown when it finished.
-    }).catch(() => {});
-    return () => { cancelled = true; };
+    refreshSessions();
+    return () => { sessionsSeqRef.current += 1; };
   }, [npcId]);
 
   // Shared SSE handler for choose/freetype turns.
@@ -103,12 +113,14 @@ export function useScenarioSession(npcId: string | null) {
   function offerSession(sessionId: string, title: string) {
     if (!npcId) return;
     setSummary(null); setMessages([]); setChoices([]); setHudState(null); setResumable(null);
+    setAccepting(false); setDeclining(false); setDeclinedReply(null);
     setSession({ id: sessionId, status: 'invited', scenarioTitle: title, npcId });
   }
 
   function accept() {
-    if (!session) return;
+    if (!session || accepting || choiceDisabled) return;
     const sid = session.id;
+    setAccepting(true);
     setChoiceDisabled(true);
     api.acceptSession(sid).then((result: AcceptSessionResponse) => {
       if (liveSidRef.current !== sid) return;
@@ -116,13 +128,43 @@ export function useScenarioSession(npcId: string | null) {
       if (result.openingMessage) setMessages([{ from: 'npc-c', text: result.openingMessage.text, time: nowTime() }]);
       if (result.choices) setChoices(result.choices as ScenarioChoice[]);
       if (result.state) setHudState(result.state as HudState);
+      setAccepting(false);
       setChoiceDisabled(false);
-    }).catch(() => setChoiceDisabled(false));
+    }).catch(() => {
+      if (liveSidRef.current !== sid) return;
+      setAccepting(false);
+      setChoiceDisabled(false);
+      setMessages((prev) => prev.concat({ from: 'system', text: 'Could not start the scenario. Please try again.' }));
+    });
   }
 
   function decline() {
-    if (!session) return;
-    api.declineSession(session.id).then(() => setSession(null)).catch(() => {});
+    if (!session || accepting || declining) return;
+    const requestId = ++declineSeqRef.current;
+    setDeclining(true);
+    setNpcTyping(true);
+    setChoices([]);
+    setSession(null);
+    api.streamDeclineSession(session.id, undefined, (event) => {
+      if (declineSeqRef.current !== requestId) return;
+      if (event.type === 'typing_start') setNpcTyping(true);
+      else if (event.type === 'typing_end') setNpcTyping(false);
+      else if (event.type === 'message_complete') {
+        setNpcTyping(false);
+        setDeclinedReply({ from: 'npc-c', text: event.data.fullText, time: nowTime() });
+      } else if (event.type === 'error') {
+        setNpcTyping(false);
+        setDeclinedReply({ from: 'system', text: 'Could not continue the chat. Please try again.' });
+      } else if (event.type === 'done') {
+        setNpcTyping(false);
+        setDeclining(false);
+      }
+    }).catch(() => {
+      if (declineSeqRef.current !== requestId) return;
+      setNpcTyping(false);
+      setDeclining(false);
+      setDeclinedReply({ from: 'system', text: 'Could not continue the chat. Please try again.' });
+    });
   }
 
   // Enter an in-progress scenario from the resume banner. Choices aren't persisted
@@ -149,10 +191,16 @@ export function useScenarioSession(npcId: string | null) {
     setSession(null); setResumable(null); setMessages([]); setChoices([]); setHudState(null); setSummary(null);
   }
 
+  function clearForRecall() {
+    setSession(null); setResumable(null); setMessages([]); setChoices([]); setHudState(null); setSummary(null);
+    setTranscript([]); setNpcTyping(false); setDeclinedReply(null);
+  }
+
   function choose(choice: ScenarioChoice) {
     if (!session || choiceDisabled) return;
     const sid = session.id;
     setChoiceDisabled(true);
+    setChoices([]);
     setMessages((prev) => prev.concat({ from: 'user', text: choice.text, time: nowTime() }));
     api.streamChoose(sid, choice.id, turnHandler(sid), choiceToTurnPayload(choice));
   }
@@ -169,6 +217,7 @@ export function useScenarioSession(npcId: string | null) {
   const status: ScenarioStatus = session ? session.status : null;
   return {
     session, status, resumable, messages, choices, hudState, summary, transcript,
-    choiceDisabled, npcTyping, offerSession, accept, decline, resume, abort, choose, freetype,
+    choiceDisabled, accepting, declining, declinedReply, npcTyping, offerSession, accept, decline, resume, abort,
+    clearForRecall, refreshSessions, choose, freetype,
   };
 }

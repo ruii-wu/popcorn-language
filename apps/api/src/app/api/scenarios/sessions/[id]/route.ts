@@ -13,7 +13,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
     if (!session) return errorJson(404, 'NOT_FOUND', 'Scenario session not found');
 
     const messages = await prisma.message.findMany({
-      where: { scenarioSessionId: session.id },
+      where: { scenarioSessionId: session.id, hiddenAt: null },
       orderBy: { createdAt: 'asc' },
     });
     const out: SessionDetailResponse = mapSessionDetail(session, messages);

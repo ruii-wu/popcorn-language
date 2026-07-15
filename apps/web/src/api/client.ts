@@ -121,6 +121,10 @@ export const api = {
   npcs: (): Promise<NpcListItem[]> => apiGet<NpcListItem[]>('/api/npcs'),
   thread: (npcId: string, limit?: number): Promise<ThreadResponse> =>
     apiGet<ThreadResponse>('/api/threads/' + npcId + '/messages?limit=' + (limit || 50)),
+  recallMessage: (npcId: string, messageId: string): Promise<OkResponse> =>
+    req<OkResponse>('DELETE', '/api/threads/' + npcId + '/messages/' + messageId),
+  restoreRecalledMessage: (npcId: string, messageId: string): Promise<OkResponse> =>
+    apiPost<OkResponse>('/api/threads/' + npcId + '/messages/' + messageId + '/restore', {}),
   streamMessage: (npcId: string, text: string, onEvent: (e: ChatStreamEvent) => void) =>
     streamPost<ChatStreamEvent>('/api/threads/' + npcId + '/messages', { text: text }, onEvent),
   // onboarding / journey / profile
@@ -144,8 +148,8 @@ export const api = {
     apiGet<SessionDetailResponse>('/api/scenarios/sessions/' + id),
   acceptSession: (id: string): Promise<AcceptSessionResponse> =>
     apiPost<AcceptSessionResponse>('/api/scenarios/sessions/' + id + '/accept', {}),
-  declineSession: (id: string, reason?: string): Promise<OkResponse> =>
-    apiPost<OkResponse>('/api/scenarios/sessions/' + id + '/decline', reason ? { reason: reason } : {}),
+  streamDeclineSession: (id: string, reason: string | undefined, onEvent: (e: ChatStreamEvent) => void) =>
+    streamPost<ChatStreamEvent>('/api/scenarios/sessions/' + id + '/decline', reason ? { reason: reason } : {}, onEvent),
   streamChoose: (id: string, choiceId: string, onEvent: (e: ScenarioStreamEvent) => void, extra?: Record<string, unknown>) =>
     streamPost<ScenarioStreamEvent>('/api/scenarios/sessions/' + id + '/choose',
       Object.assign({ choiceId: choiceId }, extra || {}), onEvent),

@@ -19,8 +19,8 @@ This SOP defines a repeatable procedure for **User Acceptance Testing** of the P
 Language web client. UAT confirms that the product, as experienced through the browser UI at
 `http://localhost:5173/`, behaves correctly against the **live backend** and satisfies the
 intended learner workflows: onboarding, persistent NPC chat, the Journey dashboard, scenario
-gameplay, and settings. The frontend is the Vite SPA (`web/`); `/api` requests are proxied to
-the Next.js backend on :3100.
+gameplay, and settings. The frontend is the Vite SPA (`apps/web/`); `/api` requests are proxied to
+the Hono backend on :3100.
 
 UAT here is **acceptance-level, manual, black-box** testing performed by an evaluator acting as
 an end user. It is distinct from the automated `vitest` suite (developer-level) and the
@@ -31,7 +31,8 @@ an end user. It is distinct from the automated `vitest` suite (developer-level) 
 **In scope** — end-to-end user-facing flows via the web client:
 
 - Account onboarding (wizard) and login
-- Chat: NPC list, relationship stages, thread history, streaming replies, grammar correction
+- Chat: NPC list, relationship stages, thread history, streaming replies, grammar correction,
+  reversible message recall
 - Journey dashboard: streak, relationships, achievements, memories
 - Scenario gameplay: invitation → accept/decline → turn-by-turn play → graded summary
 - Settings: memory strategy, grammar-correction toggle, model name
@@ -69,7 +70,7 @@ an end user. It is distinct from the automated `vitest` suite (developer-level) 
 | Requirement | Value |
 |---|---|
 | OS | Windows 11 (reference machine) / macOS / Linux |
-| Node.js | 20+ (`node -v`) |
+| Node.js | 24 LTS (`node -v`) |
 | Browser | Microsoft Edge or Google Chrome (Chromium) |
 | Ollama | Running locally with `qwen3.5:9b` **and** `nomic-embed-text` pulled — required for **live AI** test cases |
 | Network | Localhost only; no internet required (the Vite UI is a locally-built bundle) |
@@ -194,6 +195,8 @@ All cases start from `http://localhost:5173/` in a fresh browser context unless 
 | TC-13 | Cross-screen navigation | Core | | | |
 | TC-14 | Logout & session re-gate | Core | | | |
 | TC-15 | System health & resilience | Core | | | |
+| TC-16 | Recall, edit, and restore chat history | Core | | | |
+| TC-17 | Scenario re-offer after decline | AI | | | |
 
 ---
 
@@ -304,10 +307,10 @@ field shows `qwen3.5:9b`.
 
 ### TC-13 — Cross-screen navigation  **[Core]**
 **Precondition:** logged in as demo. **Steps:**
-1. From each screen, use the bottom-right dock to move between Main app ↔ Onboarding/Journey ↔
-   Scenario.
-**Expected:** all links navigate to the correct same-origin page; the session persists (no
-re-login); each target renders its live data.
+1. From the main app, use the available in-app navigation and open the Journey, Settings, and
+   Scenario routes directly when needed.
+**Expected:** each route loads the correct same-origin page; the session persists (no re-login);
+each target renders its live data. The removed bottom-right web-demo dock is not expected.
 **Result:** ☐ Pass ☐ Fail — _notes:_
 
 ### TC-14 — Logout & session re-gate  **[Core]**
@@ -323,6 +326,28 @@ protected `/api/*` calls return 401. After logging back in, access is restored.
 **Expected:** `server: up` in both; `ollama.reachable` flips `true`/`false` accordingly with
 `model: qwen3.5:9b`. The UI keeps loading and the app stays usable for non-AI actions when Ollama
 is down (corroborates TC-06).
+**Result:** ☐ Pass ☐ Fail — _notes:_
+
+### TC-16 — Recall, edit, and restore chat history  **[Core]**
+**Precondition:** logged in with at least one ordinary user message followed by an NPC reply;
+Ollama is not required. **Steps:**
+1. Hover a user message and click the recall control.
+2. Confirm that the UI shows **Message retracted**, followed by **Edit** and **Undo recall**.
+3. Click **Edit** and confirm that the original text is restored in the composer with focus.
+4. Click **Undo recall** instead and confirm that the recalled message and every later message return.
+**Expected:** recall hides the later thread history without deleting it; Edit only refills the
+composer; Undo recall restores the complete visible history and any hidden invitation state.
+**Result:** ☐ Pass ☐ Fail — _notes:_
+
+### TC-17 — Scenario re-offer after decline  **[AI]**
+**Precondition:** logged in with Lily at acquaintance stage or higher, at least three visible user
+turns, and Ollama up. **Steps:**
+1. Send a message containing an interview topic such as "Can we do a mock interview?".
+2. Confirm that the scenario invitation appears without an ordinary NPC reply before it.
+3. Click **Maybe later** and confirm that the same turn continues as a normal streamed chat reply.
+4. Later send a new message that directly mentions `interview`, `job`, or `mock`.
+**Expected:** the first matching turn emits the invitation directly; declining does not strand the
+chat; a later direct topic mention can produce a new invitation, while unrelated chat does not.
 **Result:** ☐ Pass ☐ Fail — _notes:_
 
 ## 12. Defect logging & severity
@@ -371,4 +396,4 @@ Do **not** raise these — they are intentional and documented:
 | Facilitator | | | | |
 | Sign-off authority | | | | |
 
-**Summary:** ____ / 15 cases passed · Critical/High open: ____ · Disposition: ____________________
+**Summary:** ____ / 17 cases passed · Critical/High open: ____ · Disposition: ____________________

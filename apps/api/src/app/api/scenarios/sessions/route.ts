@@ -11,7 +11,7 @@ export async function GET(req: Request): Promise<Response> {
     const status = url.searchParams.get('status') ?? undefined;
 
     const rows = await prisma.scenarioSession.findMany({
-      where: { userId, ...(npcId ? { npcId } : {}), ...(status ? { status } : {}) },
+      where: { userId, hiddenAt: null, ...(npcId ? { npcId } : {}), ...(status ? { status } : {}) },
       include: { template: true, summary: true },
       orderBy: { invitedAt: 'desc' },
     });

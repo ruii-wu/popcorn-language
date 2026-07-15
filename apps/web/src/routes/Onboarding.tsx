@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import type { JourneySummaryResponse, RelationshipCard, Achievement } from '@popcorn/shared';
-import { WebI, RELATIONSHIP_LABEL, WebRelationshipDots, WebDock, WebNavRail } from '../components/shared';
+import { WebI, RELATIONSHIP_LABEL, WebRelationshipDots, WebNavRail } from '../components/shared';
 
 // ============================================================
 // ONBOARDING — full-bleed, 3 steps
@@ -661,7 +661,6 @@ function JourneyDashboard() {
         </div>
       </section>
 
-      <WebDock current="03 Onboarding & Journey" />
     </div>
   );
 }
@@ -795,7 +794,6 @@ export default function Onboarding() {
     return (
       <div className="min-h-screen">
         <JourneyDashboard />
-        <WebDock current="03 Onboarding & Journey" />
       </div>
     );
   }
@@ -817,7 +815,6 @@ export default function Onboarding() {
         />
       )}
       {step === 0 && <LoginForm />}
-      <WebDock current="03 Onboarding & Journey" />
     </div>
   );
 }

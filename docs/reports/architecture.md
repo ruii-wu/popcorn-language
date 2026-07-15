@@ -52,21 +52,22 @@ sequenceDiagram
   U->>R: { text }
   R->>DB: persist user Message
   R-->>U: event: user_message_saved
-  par async correction
-    R->>LLM: correctGrammar(text)
-    LLM-->>R: { hasIssue, fixed, noteZh, tag }
-    R-->>U: event: correction
-  and main reply
+  R->>R: judgeScenarioTrigger(stage + visible turns + topic)
+  alt scenario trigger HIT
+    R->>DB: create invited ScenarioSession + invitation Message
+    R-->>U: event: scenario_offer
+    R->>R: bump relationship + ActivityEvent
+  else ordinary chat
     R->>Mem: recall(userId, npcId) [strategy from settings]
     Mem-->>R: recalled facts/summary
     R->>LLM: chat(prompt)
     LLM-->>R: token stream
     R-->>U: event: token … message_complete
     R->>DB: persist NPC Message, bump relationship, ActivityEvent
-    R->>R: achievement tick · maybe summarize · extract facts · trigger judge
-    opt scenario triggered
-      R-->>U: event: scenario_offer
-    end
+    R->>LLM: correctGrammar(text)
+    LLM-->>R: { hasIssue, fixed, noteZh, tag }
+    R-->>U: event: correction
+    R->>R: achievement tick · memory post-turn work
   end
   R-->>U: event: done
 ```
@@ -80,7 +81,7 @@ sequenceDiagram
   participant LLM as Ollama
   participant DB as SQLite
 
-  Note over S: trigger judge HIT (stage ≥ minStage, ≥3 user turns, topic match)
+  Note over S: trigger judge HIT (stage ≥ minStage, ≥3 visible user turns, topic match)
   S->>DB: ScenarioSession(status=invited, triggerRationale)
   S-->>U: event: scenario_offer
   U->>S: POST accept
@@ -97,4 +98,42 @@ sequenceDiagram
   S->>LLM: summary (grade + 3 notes)
   S->>DB: ScenarioSummary · Memory card · applyScenarioOutcome (maybe stage-up) · achievement tick
   S-->>U: event: scenario_end
+
+  opt user declines the invitation
+    U->>S: POST decline (SSE)
+    S->>DB: session=declined
+    S->>LLM: deferred triggering turn as ordinary chat
+    S-->>U: token → message_complete → done
+  end
 ```
+
+## Workflow C — reversible message recall
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant R as Message routes
+  participant DB as SQLite
+  participant UI as Chat UI
+
+  U->>R: DELETE /threads/:npcId/messages/:msgId
+  R->>DB: verify owned ordinary user message
+  R->>DB: set Message.retractedAt
+  R->>DB: set hiddenAt on all later messages
+  R->>DB: set hiddenAt on later open ScenarioSessions
+  R->>DB: move Thread.lastMsgAt to recall point
+  R-->>UI: { ok, removedAfter }
+  UI-->>U: Message retracted · Edit · Undo recall
+
+  U->>R: POST /threads/:npcId/messages/:msgId/restore
+  R->>DB: clear retractedAt on target
+  R->>DB: clear hiddenAt on later messages and sessions
+  R->>DB: recompute Thread.lastMsgAt from visible history
+  R-->>UI: { ok, restoredAfter }
+  UI-->>U: restore full history and scenario invitation state
+```
+
+Recall is a soft rollback rather than destructive deletion. `Message.hiddenAt` and
+`ScenarioSession.hiddenAt` keep the hidden future available for `Undo recall`, while normal
+history, NPC previews, scenario lists, prompt context, and trigger decisions only read visible
+records. `Message.retractedAt` preserves the target message's original text for `Edit`.

@@ -24,7 +24,7 @@ export async function GET(req: Request, { params }: { params: { npcId: string } 
     }
 
     const rows = await prisma.message.findMany({
-      where: { threadId: thread.id, ...(beforeCreatedAt ? { createdAt: { lt: beforeCreatedAt } } : {}) },
+      where: { threadId: thread.id, hiddenAt: null, ...(beforeCreatedAt ? { createdAt: { lt: beforeCreatedAt } } : {}) },
       orderBy: { createdAt: 'desc' },
       take: limit + 1,
     });

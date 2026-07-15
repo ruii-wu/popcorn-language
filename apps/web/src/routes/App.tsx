@@ -10,7 +10,6 @@ import {
   RELATIONSHIP_LABEL,
   WebAvatar,
   WebRelationshipDots,
-  WebDock,
   WebConversationsRail,
   npcView,
 } from '../components/shared';
@@ -36,7 +35,7 @@ function fmtTime(iso: any) {
 function mapMsg(m: ThreadMessage) {
   return { id: m.id, from: m.from, text: m.text,
            time: m.createdAt ? fmtTime(m.createdAt) : '',
-           correction: m.correction || null };
+           correction: m.correction || null, retracted: m.retracted, retractedText: m.retractedText };
 }
 
 // ---------- Chat header ----------
@@ -97,21 +96,69 @@ function DayDivider({ label }: { label: string }) {
 }
 
 // ---------- Message ----------
-function MessageRow({ npc, msg, showCorrection, onToggle }: { npc: any; msg: any; showCorrection: boolean; onToggle: () => void }) {
+function MessageRow({ npc, msg, showCorrection, onToggle, onRecall, onEdit, onRestore, recalling }: {
+  npc: any;
+  msg: any;
+  showCorrection: boolean;
+  onToggle: () => void;
+  onRecall?: (messageId: string) => void;
+  onEdit?: (text: string) => void;
+  onRestore?: (messageId: string) => void;
+  recalling?: boolean;
+}) {
   const isUser = msg.from === 'user';
+  const retracted = !!msg.retracted;
+  if (retracted) {
+    return (
+      <div className="my-4 flex flex-col items-center gap-1 fade-up">
+        <div className="flex items-center gap-2 text-[14px]" style={{ color: 'var(--muted)' }}>
+          <span>Message retracted</span>
+          {msg.retractedText && onEdit && (
+            <button type="button" onClick={() => onEdit(msg.retractedText)}
+                    className="font-medium transition hover:opacity-70"
+                    style={{ color: 'var(--accent-ink)' }}>
+              Edit
+            </button>
+          )}
+          {msg.retractedText && onRestore && msg.id && (
+            <button type="button" onClick={() => onRestore(msg.id)}
+                    className="font-medium transition hover:opacity-70"
+                    style={{ color: 'var(--accent-ink)' }}>
+              Undo recall
+            </button>
+          )}
+        </div>
+        {msg.time && <span className="text-[10px] font-mono" style={{ color: 'var(--muted)' }}>{msg.time}</span>}
+      </div>
+    );
+  }
   return (
-    <div className={`flex items-end gap-2 mb-2.5 fade-up ${isUser ? 'justify-end' : ''}`}>
+    <div className={`group flex items-end gap-2 mb-2.5 fade-up ${isUser ? 'justify-end' : ''}`}>
       {!isUser && <WebAvatar npc={npc} size={26} />}
       <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-[68%]`}>
         <div className="px-3.5 py-2.5 text-[14px] leading-relaxed"
-             style={isUser
+             style={retracted
+               ? { background: 'var(--surface-2)', color: 'var(--muted)', border: '1px dashed var(--hairline-strong)', borderRadius: '16px 16px 4px 16px', fontStyle: 'italic' }
+               : isUser
                ? { background: 'var(--bubble-sent)', color: 'var(--bubble-sent-ink)', borderRadius: '16px 16px 4px 16px', boxShadow: '0 1px 0.5px rgba(11,20,26,0.13)' }
                : { background: 'var(--bubble-received)', color: 'var(--bubble-received-ink)', border: '1px solid var(--hairline)', borderRadius: '16px 16px 16px 4px', boxShadow: '0 1px 0.5px rgba(11,20,26,0.08)', opacity: msg.error ? 0.7 : 1, outline: msg.error ? '1px solid var(--coral)' : 'none' }}>
           {msg.text}
         </div>
         <div className={`flex items-center gap-1.5 mt-1 ${isUser ? 'flex-row-reverse' : ''}`}>
           <span className="text-[10px] font-mono" style={{ color: 'var(--muted)' }}>{msg.time}</span>
-          {msg.correction && (
+          {isUser && !retracted && msg.id && onRecall && (
+            <button
+              type="button"
+              onClick={() => onRecall(msg.id)}
+              disabled={recalling}
+              title="Recall message"
+              aria-label="Recall message"
+              className="w-5 h-5 grid place-items-center rounded-full opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition disabled:opacity-40"
+              style={{ color: 'var(--muted)' }}>
+              {WebI.recall}
+            </button>
+          )}
+          {!retracted && msg.correction && (
             <button onClick={onToggle} className="inline-flex items-center gap-1 text-[10.5px]"
                     style={{ color: 'var(--coral-ink)' }}>
               <span className="w-3 h-3">{WebI.pencil}</span>
@@ -119,7 +166,7 @@ function MessageRow({ npc, msg, showCorrection, onToggle }: { npc: any; msg: any
             </button>
           )}
         </div>
-        {msg.correction && showCorrection && <CorrectionCard correction={msg.correction} />}
+        {!retracted && msg.correction && showCorrection && <CorrectionCard correction={msg.correction} />}
       </div>
     </div>
   );
@@ -166,15 +213,27 @@ function Typing({ npc }: { npc: any }) {
 }
 
 // ---------- Composer ----------
-function Composer({ onSend, disabled }: { onSend: (text: string) => void; disabled: boolean }) {
+function Composer({ onSend, disabled, draftValue, onDraftChange, focusSignal }: {
+  onSend: (text: string) => void;
+  disabled: boolean;
+  draftValue?: string;
+  onDraftChange?: (value: string) => void;
+  focusSignal?: number;
+}) {
   const [draft, setDraft] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const value = draftValue === undefined ? draft : draftValue;
   const chips = ['Tell me more', 'Why?', '什么意思?', 'Recommend me one'];
   const submit = () => {
-    const t = draft.trim();
+    const t = value.trim();
     if (!t || disabled) return;
     onSend(t);
     setDraft('');
+    onDraftChange?.('');
   };
+  useEffect(() => {
+    if (focusSignal !== undefined && focusSignal > 0) textareaRef.current?.focus();
+  }, [focusSignal]);
   return (
     <div className="px-6 pb-4 pt-3">
       <div className="max-w-[820px] mx-auto">
@@ -183,7 +242,7 @@ function Composer({ onSend, disabled }: { onSend: (text: string) => void; disabl
             ✨ Suggest
           </span>
           {chips.map(c => (
-            <button key={c} onClick={() => setDraft(c)}
+            <button key={c} onClick={() => { setDraft(c); onDraftChange?.(c); }}
                     className="shrink-0 px-3 py-1.5 rounded-full text-[12.5px] transition hover:bg-[var(--surface)]"
                     style={{ background: 'var(--surface-2)', border: '1px solid var(--hairline)', color: 'var(--ink-2)' }}>
               {c}
@@ -194,7 +253,7 @@ function Composer({ onSend, disabled }: { onSend: (text: string) => void; disabl
              style={{ background: 'var(--surface)', border: '1px solid var(--hairline-2)' }}>
           <button className="w-9 h-9 rounded-full grid place-items-center hover:bg-[var(--bg-warm)] transition"
                   style={{ color: 'var(--muted)' }}>{WebI.plus}</button>
-          <textarea value={draft} onChange={e => setDraft(e.target.value)} rows={1}
+          <textarea ref={textareaRef} value={value} onChange={e => { setDraft(e.target.value); onDraftChange?.(e.target.value); }} rows={1}
                     placeholder="Type in English or 中文…"
                     onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); submit(); } }}
                     className="flex-1 resize-none bg-transparent outline-none py-2 text-[14px] placeholder:text-[var(--muted)]"
@@ -203,7 +262,7 @@ function Composer({ onSend, disabled }: { onSend: (text: string) => void; disabl
                   style={{ color: 'var(--muted)' }}>{WebI.smile}</button>
           <button onClick={submit} disabled={disabled}
                   className="h-9 px-4 rounded-full flex items-center gap-1.5 text-[13px] font-medium transition"
-                  style={{ background: 'var(--accent)', color: '#fff', opacity: (!draft.trim() || disabled) ? 0.4 : 1 }}>
+                  style={{ background: 'var(--accent)', color: '#fff', opacity: (!value.trim() || disabled) ? 0.4 : 1 }}>
             Send <span className="w-4 h-4">{WebI.send}</span>
           </button>
         </div>
@@ -323,6 +382,9 @@ export default function App() {
   const [typing, setTyping] = useState(false);
   const [streaming, setStreaming] = useState('');   // live NPC token buffer
   const [sending, setSending] = useState(false);
+  const [recallingId, setRecallingId] = useState<string | null>(null);
+  const [composerDraft, setComposerDraft] = useState('');
+  const [composerFocusSignal, setComposerFocusSignal] = useState(0);
   const [expanded, setExpanded] = useState(-1);
   const [detail, setDetail] = useState<NpcDetail | null>(null);
   const [memories, setMemories] = useState<MemoryItem[]>([]);
@@ -355,6 +417,8 @@ export default function App() {
     let cancelled = false;
     chatStreamSeqRef.current += 1;
     setStreaming(''); setTyping(false); setSending(false); setMessages([]); setDetail(null); setMemories([]);
+    setRecallingId(null);
+    setComposerDraft('');
     api.thread(activeId)
       .then((r) => { if (!cancelled) setMessages((r.messages || []).map(mapMsg)); })
       .catch(() => { if (!cancelled) setMessages([]); });
@@ -369,7 +433,7 @@ export default function App() {
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages, streaming, typing]);
+  }, [messages, streaming, typing, scen.npcTyping, scen.declinedReply]);
 
   function send(text: string) {
     if (!text.trim() || sending || !activeId) return;
@@ -416,6 +480,51 @@ export default function App() {
     });
   }
 
+  async function recallMessage(messageId: string) {
+    if (!activeId || recallingId) return;
+    setRecallingId(messageId);
+    try {
+      await api.recallMessage(activeId, messageId);
+      setMessages((current) => {
+        const index = current.findIndex((message) => message.id === messageId);
+        if (index < 0) return current;
+        return current.slice(0, index + 1).map((message) => message.id === messageId
+          ? { ...message, text: 'Message retracted', retracted: true, retractedText: message.text, correction: null }
+          : message);
+      });
+      setStreaming('');
+      setTyping(false);
+      setSending(false);
+      scen.clearForRecall();
+    } catch {
+      // Keep the original bubble when the server cannot retract it.
+    } finally {
+      setRecallingId(null);
+    }
+  }
+
+  async function restoreRecalledMessage(messageId: string) {
+    if (!activeId || recallingId) return;
+    setRecallingId(messageId);
+    try {
+      await api.restoreRecalledMessage(activeId, messageId);
+      const thread = await api.thread(activeId);
+      setMessages((thread.messages || []).map(mapMsg));
+      setStreaming('');
+      setTyping(false);
+      await scen.refreshSessions();
+    } catch {
+      // Keep the rolled-back view when restoration fails.
+    } finally {
+      setRecallingId(null);
+    }
+  }
+
+  function editRecalledMessage(text: string) {
+    setComposerDraft(text);
+    setComposerFocusSignal((value) => value + 1);
+  }
+
   const npc = npcs.find((n) => n.id === activeId);
   if (!npc) {
     return <div className="app-shell" data-screen-label="01 Web · Main App"
@@ -452,17 +561,23 @@ export default function App() {
                 {messages.map((m, i) => (
                   <MessageRow key={m.id || i} npc={npc} msg={m}
                               showCorrection={!!m.correction && expanded === i}
-                              onToggle={() => setExpanded(expanded === i ? -1 : i)} />
+                              onToggle={() => setExpanded(expanded === i ? -1 : i)}
+                              onRecall={recallMessage} onEdit={editRecalledMessage} onRestore={restoreRecalledMessage}
+                              recalling={recallingId === m.id} />
                 ))}
+                {scen.declinedReply && (
+                  <MessageRow npc={npc} msg={{ from: scen.declinedReply.from === 'user' ? 'user' : 'npc', text: scen.declinedReply.text, time: scen.declinedReply.time || '' }}
+                              showCorrection={false} onToggle={() => {}} />
+                )}
                 {streaming && <MessageRow npc={npc} msg={{ from: 'npc', text: streaming, time: '' }}
                                           showCorrection={false} onToggle={() => {}} />}
-                {typing && <Typing npc={npc} />}
+                {(typing || scen.npcTyping) && <Typing npc={npc} />}
                 {scen.resumable && (
                   <ScenarioResumeBanner session={scen.resumable} onResume={scen.resume} onEnd={scen.abort} />
                 )}
                 {scen.status === 'invited' && (
                   <InvitationCard session={scen.session} npc={npc}
-                                  onAccept={scen.accept} onDecline={scen.decline} />
+                                  onAccept={scen.accept} onDecline={scen.decline} accepting={scen.accepting} />
                 )}
                 {scen.status === 'completed' && (
                   <>
@@ -483,13 +598,13 @@ export default function App() {
             <Composer onSend={(t: string) => scen.freetype(t)} disabled={scen.choiceDisabled} />
           </>
         ) : (
-          <Composer onSend={send} disabled={sending} />
+          <Composer onSend={send} disabled={sending || scen.accepting || scen.declining}
+                    draftValue={composerDraft} onDraftChange={setComposerDraft} focusSignal={composerFocusSignal} />
         )}
       </section>
       {scen.status
         ? <ScenarioRightPanel status={scen.status} session={scen.session} summaryData={scen.summary} hudState={scen.hudState} />
         : <RightPanel detail={detail} memories={memories} />}
-      <WebDock current="01 Main App" />
     </div>
   );
 }

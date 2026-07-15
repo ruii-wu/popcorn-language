@@ -49,7 +49,7 @@ export interface ScenarioTemplateSeed {
 export const SCENARIO_TEMPLATES: ScenarioTemplateSeed[] = [
   {
     id: 'mock_interview', title: 'Mock Interview', titleZh: '模拟面试',
-    npcId: 'lily', rolePlayedBy: 'hr_manager', minStage: 'friend',
+    npcId: 'lily', rolePlayedBy: 'hr_manager', minStage: 'acquaintance',
     estimatedMinutes: 8, estimatedTurns: 6,
     registerTags: ['Formal register', 'Polite hedging'],
     systemPrompt:

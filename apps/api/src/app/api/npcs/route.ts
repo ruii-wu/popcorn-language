@@ -9,7 +9,7 @@ export async function GET(req: Request): Promise<Response> {
     const relByNpc = new Map(rels.map((r) => [r.npcId, r]));
     const threads = await prisma.thread.findMany({
       where: { userId },
-      include: { messages: { orderBy: { createdAt: 'desc' }, take: 1 } },
+      include: { messages: { where: { hiddenAt: null }, orderBy: { createdAt: 'desc' }, take: 1 } },
     });
     const threadByNpc = new Map(threads.map((t) => [t.npcId, t]));
 
@@ -23,7 +23,7 @@ export async function GET(req: Request): Promise<Response> {
         status: rel ? 'active' : 'new',
         relationship: rel?.stage ?? 'acquaintance',
         stageValue: rel?.stageValue ?? 1,
-        lastMessage: last?.text ?? null,
+        lastMessage: last ? (last.retractedAt ? 'Message retracted' : last.text) : null,
         lastTime: last?.createdAt ?? null,
         hasSomething: false, // W3: set when there are undismissed memories
       };

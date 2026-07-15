@@ -131,6 +131,8 @@ model Message {
   meta       String?
   tokensUsed Int?
   modelName  String?
+  retractedAt DateTime?
+  hiddenAt   DateTime?
   createdAt  DateTime @default(now())
 
   scenarioSessionId String?
@@ -187,6 +189,7 @@ model ScenarioSession {
   invitedAt        DateTime  @default(now())
   startedAt        DateTime?
   endedAt          DateTime?
+  hiddenAt         DateTime?
   declineReason    String?
   triggerRationale String?
 

@@ -11,6 +11,7 @@ import * as npcs from '@/app/api/npcs/route';
 import * as npcById from '@/app/api/npcs/[id]/route';
 import * as threadByNpc from '@/app/api/threads/[npcId]/route';
 import * as threadMessages from '@/app/api/threads/[npcId]/messages/route';
+import * as threadMessageById from '@/app/api/threads/[npcId]/messages/[msgId]/route';
 import * as correction from '@/app/api/threads/[npcId]/messages/[msgId]/correction/route';
 import * as scenarioCatalog from '@/app/api/scenarios/catalog/route';
 import * as scenarioSessions from '@/app/api/scenarios/sessions/route';
@@ -57,6 +58,8 @@ app.get('/api/npcs/:id', adapt(npcById.GET));
 app.delete('/api/threads/:npcId', adapt(threadByNpc.DELETE));
 app.get('/api/threads/:npcId/messages', adapt(threadMessages.GET));
 app.post('/api/threads/:npcId/messages', adapt(threadMessages.POST)); // SSE
+app.delete('/api/threads/:npcId/messages/:msgId', adapt(threadMessageById.DELETE));
+app.post('/api/threads/:npcId/messages/:msgId/restore', adapt(threadMessageById.POST));
 app.post('/api/threads/:npcId/messages/:msgId/correction', adapt(correction.POST));
 
 // scenarios
