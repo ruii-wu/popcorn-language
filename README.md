@@ -74,6 +74,17 @@ nvm use
 npm run db:seed && npm run db:seed:demo
 npm run dev
 ```
+
+Before a live demo, keep the development services running in one terminal and verify the full
+local environment in another:
+
+```bash
+nvm use
+npm run demo:check
+```
+
+The check fails fast when Node 24, Vite, Hono, SQLite migrations, Ollama, or either required model
+is unavailable. It also warns when the chat model is installed but still cold.
 Open `http://localhost:5173/` and log in as **`demo` / `demo`** (the
 onboarding page at `http://localhost:5173/onboarding` has the login form; new accounts are created
 by running its wizard) — a learner pre-populated with three relationships (Lily = close, Chen =

@@ -140,6 +140,7 @@ export const api = {
     apiGet<MemoryItem[]>('/api/memories' + (npcId ? '?npcId=' + npcId : '')),
   settings: (): Promise<SettingsResponse> => apiGet<SettingsResponse>('/api/settings'),
   saveSettings: (s: SettingsPatch) => apiPut('/api/settings', s),
+  resetUserData: (): Promise<OkResponse> => apiPost<OkResponse>('/api/system/reset', { confirm: true }),
   // scenario
   scenarioCatalog: (): Promise<ScenarioCatalogItem[]> => apiGet<ScenarioCatalogItem[]>('/api/scenarios/catalog'),
   sessions: (query?: string): Promise<SessionListItem[]> =>
@@ -155,6 +156,10 @@ export const api = {
       Object.assign({ choiceId: choiceId }, extra || {}), onEvent),
   streamFreetype: (id: string, text: string, onEvent: (e: ScenarioStreamEvent) => void) =>
     streamPost<ScenarioStreamEvent>('/api/scenarios/sessions/' + id + '/freetype', { text: text }, onEvent),
+  pauseSession: (id: string): Promise<OkResponse> =>
+    apiPost<OkResponse>('/api/scenarios/sessions/' + id + '/pause', {}),
+  resumeSession: (id: string): Promise<unknown> =>
+    apiPost('/api/scenarios/sessions/' + id + '/resume', {}),
   abortSession: (id: string): Promise<OkResponse> =>
     apiPost<OkResponse>('/api/scenarios/sessions/' + id + '/abort', {}),
 };

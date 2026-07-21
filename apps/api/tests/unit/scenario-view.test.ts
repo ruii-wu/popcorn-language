@@ -7,7 +7,7 @@ const base = {
   invitedAt: new Date('2026-05-01'), startedAt: new Date('2026-05-02'), endedAt: new Date('2026-05-03'),
   triggerRationale: JSON.stringify({ topicMatch: 'interview' }),
   template: { id: 'mock_interview', title: 'Mock Interview', titleZh: '模拟面试' },
-  summary: { grade: 'A' },
+  summary: { grade: 'A', languageNote: 'Clear.', pragmaticsNote: 'Direct.', relationshipNote: 'Positive.' },
 };
 
 describe('scenario view mappers', () => {
@@ -21,11 +21,23 @@ describe('scenario view mappers', () => {
     const d = mapSessionDetail({ ...base, summary: null }, [
       { id: 'm1', role: 'npc-roleplay', text: 'Why this role?', userId: null, meta: null, createdAt: base.startedAt },
       { id: 'm2', role: 'user', text: 'I value the mission.', userId: 'u1', meta: JSON.stringify({ choiceId: 'c1' }), createdAt: base.endedAt },
-    ]);
+    ], JSON.stringify([{ id: 'c2', text: 'Let me explain.', tone: 'Confident', desc: '' }]));
     expect(d.state).toEqual({ impression: 8, stress: 'Low', turnsLeft: 0, turnIndex: 6 });
     expect(d.session.grade).toBeNull();
+    expect(d.summary).toBeNull();
     expect(d.transcript).toHaveLength(2);
     expect(d.transcript[0].from).toBe('npc');
     expect(d.transcript[1].meta).toEqual({ choiceId: 'c1' });
+    expect(d.choices).toEqual([{ id: 'c2', text: 'Let me explain.', tone: 'Confident', desc: '' }]);
+  });
+
+  it('does not expose malformed persisted choices', () => {
+    expect(mapSessionDetail({ ...base, summary: null }, [], '{bad').choices).toEqual([]);
+  });
+
+  it('returns the persisted completed summary', () => {
+    const detail = mapSessionDetail(base, []);
+    expect(detail.summary).toEqual(base.summary);
+    expect(detail.session.grade).toBe('A');
   });
 });

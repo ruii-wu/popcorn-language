@@ -22,6 +22,7 @@
     "db:seed:demo": "npm run db:seed:demo -w apps/api",
     "db:reset": "npm run db:reset -w apps/api",
     "db:generate": "npm run db:generate -w apps/api",
+    "demo:check": "node scripts/demo-check.mjs",
     "report:ablation": "npm run report:ablation -w apps/api",
     "smoke:web": "node scripts/smoke-web.mjs"
   },

@@ -4,7 +4,17 @@ import { WebI, WebAvatar, WebRelationshipDots, RELATIONSHIP_LABEL } from '../sha
 
 // ---------- Chat header ----------
 
-export function ScenChatHeader({ intense, session, hudState, npc, onEnd }: { intense: boolean; session: any; hudState: any; npc: any; onEnd?: () => void }) {
+export function ScenChatHeader({ intense, session, hudState, npc, onPause, onEnd, pausing = false, ending = false, pauseDisabled = false }: {
+  intense: boolean;
+  session: any;
+  hudState: any;
+  npc: any;
+  onPause?: () => void;
+  onEnd?: () => void;
+  pausing?: boolean;
+  ending?: boolean;
+  pauseDisabled?: boolean;
+}) {
   const turnsLeft = hudState ? hudState.turnsLeft : 0;
   const titleLabel = session ? session.scenarioTitle : '';
   return (
@@ -42,11 +52,18 @@ export function ScenChatHeader({ intense, session, hudState, npc, onEnd }: { int
       </div>
       <div className="flex items-center gap-2">
         {intense ? (
-          <button onClick={onEnd}
+          <>
+          <button onClick={onPause} disabled={pausing || ending || pauseDisabled}
                   className="px-3 py-1.5 rounded-full text-[11px] font-mono uppercase tracking-wider transition hover:bg-[var(--bg-warm)]"
-                  style={{ background: 'var(--surface)', border: '1px solid var(--hairline-strong)', color: 'var(--coral-ink)' }}>
-            <span className="inline-flex items-center gap-1.5">{WebI.pause} End roleplay</span>
+                  style={{ background: 'var(--surface)', border: '1px solid var(--hairline-strong)', color: 'var(--ink-2)' }}>
+            <span className="inline-flex items-center gap-1.5">{WebI.pause} {pausing ? 'Pausing...' : 'Pause'}</span>
           </button>
+          <button onClick={onEnd} disabled={pausing || ending || pauseDisabled}
+                  className="px-2.5 py-1.5 text-[11px] font-mono uppercase tracking-wider transition hover:opacity-70 disabled:opacity-40"
+                  style={{ color: 'var(--coral-ink)' }}>
+            {ending ? 'Ending...' : 'End'}
+          </button>
+          </>
         ) : (
           <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
                style={{ background: 'var(--surface)', border: '1px solid var(--hairline)' }}>
@@ -168,24 +185,31 @@ export function ScenMessage({ msg, intense, npc }: { msg: any; intense: boolean;
 }
 
 // ---------- Resume banner (an in-progress scenario, shown in casual chat) ----------
-export function ScenarioResumeBanner({ session, onResume, onEnd }: { session: any; onResume: () => void; onEnd: () => void }) {
+export function ScenarioResumeBanner({ session, onResume, onEnd, resuming = false, ending = false }: {
+  session: any;
+  onResume: () => void;
+  onEnd: () => void;
+  resuming?: boolean;
+  ending?: boolean;
+}) {
   const title = session ? session.scenarioTitle : 'Scenario';
+  const stateLabel = session?.status === 'paused' ? 'paused' : 'in progress';
   return (
     <div className="my-3 px-3.5 py-2.5 rounded-xl flex items-center justify-between gap-3 fade-up"
          style={{ background: 'var(--coral-soft)', border: '1px solid var(--coral)' }}>
       <span className="text-[12.5px]" style={{ color: 'var(--coral-ink)' }}>
-        🎭 <strong>{title}</strong> in progress
+        🎭 <strong>{title}</strong> {stateLabel}
       </span>
       <div className="flex items-center gap-2 shrink-0">
-        <button onClick={onResume}
-                className="rounded-full px-3.5 py-1.5 text-[12px] font-medium transition"
+        <button onClick={onResume} disabled={resuming || ending}
+                className="rounded-full px-3.5 py-1.5 text-[12px] font-medium transition disabled:opacity-60"
                 style={{ background: 'var(--coral)', color: '#fff' }}>
-          Resume
+          {resuming ? 'Restoring...' : 'Resume'}
         </button>
-        <button onClick={onEnd}
-                className="rounded-full px-3 py-1.5 text-[12px] transition hover:bg-[var(--surface)]"
+        <button onClick={onEnd} disabled={resuming || ending}
+                className="rounded-full px-3 py-1.5 text-[12px] transition hover:bg-[var(--surface)] disabled:opacity-40"
                 style={{ color: 'var(--ink-2)', border: '1px solid var(--hairline-strong)' }}>
-          End
+          {ending ? 'Ending...' : 'End'}
         </button>
       </div>
     </div>

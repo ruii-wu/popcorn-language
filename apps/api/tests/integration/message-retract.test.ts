@@ -28,8 +28,9 @@ describe('message retract', () => {
   it('retracts an owned message and hides everything after it', async () => {
     const user = await prisma.user.create({ data: { username: U + '_owner', password: 'pw' } });
     const thread = await prisma.thread.create({ data: { userId: user.id, npcId: 'lily' } });
-    const message = await prisma.message.create({ data: { threadId: thread.id, userId: user.id, role: 'user', text: 'please retract me' } });
-    const following = await prisma.message.create({ data: { threadId: thread.id, userId: null, role: 'npc', text: 'remove me too' } });
+    const createdAt = new Date('2026-07-22T00:00:00.000Z');
+    const message = await prisma.message.create({ data: { threadId: thread.id, userId: user.id, role: 'user', text: 'please retract me', createdAt } });
+    const following = await prisma.message.create({ data: { threadId: thread.id, userId: null, role: 'npc', text: 'remove me too', createdAt } });
 
     const response = await DELETE(req(user.id), { params: { npcId: 'lily', msgId: message.id } });
     expect(response.status).toBe(200);

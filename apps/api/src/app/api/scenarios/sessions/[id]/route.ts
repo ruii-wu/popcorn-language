@@ -12,11 +12,18 @@ export async function GET(req: Request, { params }: { params: { id: string } }):
     });
     if (!session) return errorJson(404, 'NOT_FOUND', 'Scenario session not found');
 
-    const messages = await prisma.message.findMany({
-      where: { scenarioSessionId: session.id, hiddenAt: null },
-      orderBy: { createdAt: 'asc' },
-    });
-    const out: SessionDetailResponse = mapSessionDetail(session, messages);
+    const [messages, latestTurn] = await Promise.all([
+      prisma.message.findMany({
+        where: { scenarioSessionId: session.id, hiddenAt: null },
+        orderBy: { createdAt: 'asc' },
+      }),
+      prisma.scenarioTurn.findFirst({
+        where: { sessionId: session.id },
+        orderBy: { turnIndex: 'desc' },
+        select: { nextChoices: true },
+      }),
+    ]);
+    const out: SessionDetailResponse = mapSessionDetail(session, messages, latestTurn?.nextChoices);
     return json(out);
   });
 }

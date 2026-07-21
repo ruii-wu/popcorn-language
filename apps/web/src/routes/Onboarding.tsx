@@ -4,8 +4,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
-import type { JourneySummaryResponse, RelationshipCard, Achievement } from '@popcorn/shared';
+import type {
+  JourneySummaryResponse,
+  RelationshipCard,
+  Achievement,
+  SessionListItem,
+  SessionDetailResponse,
+} from '@popcorn/shared';
 import { WebI, RELATIONSHIP_LABEL, WebRelationshipDots, WebNavRail } from '../components/shared';
+import { ScenarioSummaryCard } from '../components/scenario/parts';
 
 // ============================================================
 // ONBOARDING — full-bleed, 3 steps
@@ -593,12 +600,32 @@ function JourneyDashboard() {
   const [journey, setJourney] = useState<JourneySummaryResponse | null>(null);
   const [rels, setRels] = useState<RelationshipCard[]>([]);
   const [achs, setAchs] = useState<Achievement[]>([]);
+  const [scenarioHistory, setScenarioHistory] = useState<SessionListItem[]>([]);
+  const [selectedScenario, setSelectedScenario] = useState<SessionDetailResponse | null>(null);
+  const [scenarioLoadingId, setScenarioLoadingId] = useState<string | null>(null);
+  const [scenarioError, setScenarioError] = useState('');
 
   useEffect(() => {
-    Promise.all([api.journey(), api.relationships(), api.achievements()])
-      .then(([j, r, a]) => { setJourney(j); setRels(r); setAchs(a); })
+    Promise.all([api.journey(), api.relationships(), api.achievements(), api.sessions('?status=completed')])
+      .then(([j, r, a, s]) => { setJourney(j); setRels(r); setAchs(a); setScenarioHistory(s); })
       .catch(() => {});
   }, []);
+
+  async function showScenario(session: SessionListItem) {
+    if (selectedScenario?.session.id === session.id) {
+      setSelectedScenario(null);
+      return;
+    }
+    setScenarioLoadingId(session.id);
+    setScenarioError('');
+    try {
+      setSelectedScenario(await api.session(session.id));
+    } catch {
+      setScenarioError('Could not load this Scenario result. Please try again.');
+    } finally {
+      setScenarioLoadingId(null);
+    }
+  }
 
   const days          = journey ? journey.days          : '—';
   const conversations = journey ? journey.conversations : '—';
@@ -639,6 +666,59 @@ function JourneyDashboard() {
                 : <p className="text-[13px] col-span-3" style={{ color: 'var(--muted)' }}>Loading…</p>
               }
             </div>
+          </Section>
+
+          {/* Scenario history */}
+          <Section eyebrow="Scenarios" zh="情景练习"
+                   title="Completed roleplays" desc="Reopen the persisted transcript and feedback from any completed practice." mt={12}>
+            {scenarioHistory.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3">
+                {scenarioHistory.map((session) => {
+                  const selected = selectedScenario?.session.id === session.id;
+                  return (
+                    <div key={session.id} className="rounded-lg p-4 flex items-center justify-between gap-4"
+                         style={{
+                           background: 'var(--surface)',
+                           border: `1px solid ${selected ? 'var(--coral)' : 'var(--hairline)'}`,
+                         }}>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[14px] font-medium truncate">{session.scenarioTitle}</span>
+                          <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded"
+                                style={{ background: 'var(--moss-soft)', color: 'var(--moss)' }}>
+                            Grade {session.grade || '—'}
+                          </span>
+                        </div>
+                        <div className="text-[10.5px] font-mono mt-1 uppercase" style={{ color: 'var(--muted)' }}>
+                          {session.npcId} · {session.startedAt ? new Date(session.startedAt).toLocaleDateString() : 'Completed'}
+                        </div>
+                      </div>
+                      <button type="button" onClick={() => showScenario(session)}
+                              disabled={scenarioLoadingId === session.id}
+                              className="shrink-0 inline-flex items-center gap-1.5 text-[12px] font-medium transition disabled:opacity-50"
+                              style={{ color: 'var(--coral-ink)' }}>
+                        {scenarioLoadingId === session.id ? 'Loading...' : selected ? 'Close' : 'View results'}
+                        {!selected && scenarioLoadingId !== session.id && <span className="w-3.5 h-3.5">{WebI.arrowR}</span>}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-[13px]" style={{ color: 'var(--muted)' }}>No completed scenarios yet.</p>
+            )}
+            {selectedScenario && (
+              <div className="mt-4">
+                <ScenarioSummaryCard
+                  session={selectedScenario.session}
+                  transcript={selectedScenario.transcript}
+                  summaryData={selectedScenario.summary}
+                />
+              </div>
+            )}
+            {scenarioError && (
+              <p className="text-[12px] mt-3" style={{ color: 'var(--coral-ink)' }}>{scenarioError}</p>
+            )}
           </Section>
 
           {/* Achievements */}

@@ -2,6 +2,11 @@ import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
 
 const LILY = 'lily';
+const LILY_INITIAL_RELATIONSHIP = {
+  stage: 'friend',
+  stageValue: 2,
+  relationshipPoints: 30,
+} as const;
 
 export async function POST(req: Request): Promise<Response> {
   return withUser(req, async (userId) => {
@@ -10,7 +15,7 @@ export async function POST(req: Request): Promise<Response> {
 
     await prisma.relationship.upsert({
       where: { userId_npcId: { userId, npcId: LILY } },
-      create: { userId, npcId: LILY },
+      create: { userId, npcId: LILY, ...LILY_INITIAL_RELATIONSHIP },
       update: {},
     });
     await prisma.userSettings.upsert({

@@ -37,6 +37,8 @@ export const WebI = {
   arrowR: <Icon d={<><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></>} />,
   arrowL: <Icon d={<><path d="M19 12H5" /><path d="m12 19-7-7 7-7" /></>} />,
   recall: <Icon d={<><path d="M9 7 4 12l5 5" /><path d="M4 12h9a6 6 0 1 1-4.2 10.2" /></>} />,
+  reset: <Icon d={<><ellipse cx="12" cy="5" rx="7" ry="3" /><path d="M5 5v5c0 1.7 3.1 3 7 3 1.2 0 2.3-.1 3.2-.4" /><path d="M5 10v5c0 1.7 3.1 3 7 3" /><path d="m17 15 3 3-3 3" /><path d="M20 18h-5" /></>} />,
+  logout: <Icon d={<><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /></>} />,
   chev: <Icon d={<><path d="m6 9 6 6 6-6" /></>} />,
   chevR: <Icon d={<><path d="m9 6 6 6-6 6" /></>} />,
   flame: <Icon d={<><path d="M12 3s4 4 4 8a4 4 0 0 1-8 0c0-1.5.5-2.5 1.5-3.5C10 6 12 3 12 3Z" /><path d="M9.5 14.5c0 2 1 3.5 2.5 3.5s2.5-1.5 2.5-3.5" /></>} />,
@@ -266,10 +268,11 @@ export function WebConversationsRail({ npcs = [], activeId, onSelect, intense }:
         style={{ color: 'var(--ink-2)', border: '1px solid var(--hairline)' }}>
           <span className="w-3.5 h-3.5">{WebI.book}</span> Journey
         </Link>
-        <button className="text-[11px] py-2 px-2.5 rounded-lg flex items-center transition"
+        <Link to="/settings" title="Settings" aria-label="Settings"
+        className="text-[11px] py-2 px-2.5 rounded-lg flex items-center transition no-underline"
         style={{ color: 'var(--muted)' }}>
           <span className="w-3.5 h-3.5">{WebI.settings}</span>
-        </button>
+        </Link>
       </div>
     </div>);
 

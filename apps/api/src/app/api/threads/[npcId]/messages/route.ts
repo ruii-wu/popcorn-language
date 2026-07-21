@@ -16,16 +16,27 @@ export async function GET(req: Request, { params }: { params: { npcId: string } 
     const thread = await prisma.thread.findUnique({ where: { userId_npcId: { userId, npcId: params.npcId } } });
     if (!thread) return json({ messages: [], hasMore: false });
 
-    let beforeCreatedAt: Date | undefined;
+    let beforeMessage: { id: string; createdAt: Date } | null = null;
     if (before) {
       // scope the cursor to this thread: a foreign id must not steer pagination
-      const b = await prisma.message.findFirst({ where: { id: before, threadId: thread.id } });
-      beforeCreatedAt = b?.createdAt;
+      beforeMessage = await prisma.message.findFirst({
+        where: { id: before, threadId: thread.id },
+        select: { id: true, createdAt: true },
+      });
     }
 
     const rows = await prisma.message.findMany({
-      where: { threadId: thread.id, hiddenAt: null, ...(beforeCreatedAt ? { createdAt: { lt: beforeCreatedAt } } : {}) },
-      orderBy: { createdAt: 'desc' },
+      where: {
+        threadId: thread.id,
+        hiddenAt: null,
+        ...(beforeMessage ? {
+          OR: [
+            { createdAt: { lt: beforeMessage.createdAt } },
+            { createdAt: beforeMessage.createdAt, id: { lt: beforeMessage.id } },
+          ],
+        } : {}),
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
     });
     const hasMore = rows.length > limit;

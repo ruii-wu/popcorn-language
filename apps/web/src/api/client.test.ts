@@ -35,4 +35,36 @@ describe('parseFrame', () => {
 
     expect(events).toEqual(['error', 'done']);
   });
+
+  it('requires an explicit confirmation payload when resetting user data', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), { status: 200 }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await api.resetUserData();
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/system/reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirm: true }),
+    });
+  });
+
+  it('calls the persisted scenario pause and resume endpoints', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await api.pauseSession('session-1');
+    await api.resumeSession('session-1');
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/scenarios/sessions/session-1/pause', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/scenarios/sessions/session-1/resume', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    });
+  });
 });

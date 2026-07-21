@@ -538,7 +538,9 @@ export default function App() {
       <WebConversationsRail npcs={npcs} activeId={activeId ?? undefined} onSelect={setActiveId} />
       <section className="pane-main">
         {scen.status === 'active'
-          ? <ScenChatHeader intense={true} session={scen.session} hudState={scen.hudState} npc={npc} onEnd={scen.abort} />
+          ? <ScenChatHeader intense={true} session={scen.session} hudState={scen.hudState} npc={npc}
+                            onPause={scen.pause} onEnd={scen.abort} pausing={scen.pausing}
+                            ending={scen.ending} pauseDisabled={scen.choiceDisabled} />
           : <WebChatHeader npc={npc} />}
         {scen.status === 'active' && <ScenarioHUD session={scen.session} hudState={scen.hudState} />}
 
@@ -573,7 +575,8 @@ export default function App() {
                                           showCorrection={false} onToggle={() => {}} />}
                 {(typing || scen.npcTyping) && <Typing npc={npc} />}
                 {scen.resumable && (
-                  <ScenarioResumeBanner session={scen.resumable} onResume={scen.resume} onEnd={scen.abort} />
+                  <ScenarioResumeBanner session={scen.resumable} onResume={scen.resume} onEnd={scen.abort}
+                                        resuming={scen.resuming} ending={scen.ending} />
                 )}
                 {scen.status === 'invited' && (
                   <InvitationCard session={scen.session} npc={npc}

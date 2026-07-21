@@ -24,7 +24,9 @@ describe('onboarding complete', () => {
     expect(first.firstMessageId).toBeTruthy();
 
     const rel = await prisma.relationship.findUnique({ where: { userId_npcId: { userId: user.id, npcId: 'lily' } } });
-    expect(rel?.stage).toBe('acquaintance');
+    expect(rel?.stage).toBe('friend');
+    expect(rel?.stageValue).toBe(2);
+    expect(rel?.relationshipPoints).toBe(30);
     const intro = await prisma.message.findUnique({ where: { id: first.firstMessageId } });
     expect(intro?.role).toBe('npc');
     expect(intro?.text.length).toBeGreaterThan(0);

@@ -27,6 +27,13 @@ describe('scenario read routes', () => {
     const session = await prisma.scenarioSession.create({
       data: { userId: user.id, npcId: 'lily', threadId: thread.id, templateId: 'mock_interview', status: 'invited' },
     });
+    await prisma.scenarioTurn.create({
+      data: {
+        sessionId: session.id,
+        turnIndex: 0,
+        nextChoices: JSON.stringify([{ id: 'c1', text: 'Tell me more.', tone: 'Curious', desc: '' }]),
+      },
+    });
     const emmaThread = await prisma.thread.create({ data: { userId: user.id, npcId: 'emma' } });
     const emmaSession = await prisma.scenarioSession.create({
       data: { userId: user.id, npcId: 'emma', threadId: emmaThread.id, templateId: 'flat_viewing', status: 'active' },
@@ -45,6 +52,7 @@ describe('scenario read routes', () => {
 
     const detailRes = await detailGET(reqAs(user.id), { params: { id: session.id } });
     expect(detailRes.status).toBe(200);
+    expect(((await detailRes.json()) as { choices: unknown[] }).choices).toHaveLength(1);
 
     // isolation: a foreign user gets 404 on the detail and an empty list
     const stranger = await prisma.user.create({ data: { username: U + '_x', password: 'pw' } });

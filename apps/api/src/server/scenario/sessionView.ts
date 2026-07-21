@@ -1,4 +1,6 @@
 // src/server/scenario/sessionView.ts
+import type { ScenarioChoice, ScenarioSummary } from '@popcorn/shared';
+import { ChoiceSchema } from './schemas';
 interface TemplateLite { id: string; title: string; titleZh: string | null }
 
 interface SessionRow {
@@ -11,7 +13,7 @@ interface SessionRow {
   endedAt: Date | null;
   triggerRationale: string | null;
   template: TemplateLite;
-  summary?: { grade: string } | null;
+  summary?: ScenarioSummary | null;
 }
 
 interface MessageRow {
@@ -47,11 +49,19 @@ export interface SessionDetail {
   };
   transcript: { id: string; role: string; from: 'user' | 'npc'; text: string; meta: unknown; createdAt: Date }[];
   state: unknown;
+  choices: ScenarioChoice[];
+  summary: ScenarioSummary | null;
 }
 
 function safeParse(raw: string | null): unknown {
   if (!raw) return null;
   try { return JSON.parse(raw); } catch { return null; }
+}
+
+function safeChoices(raw: string | null | undefined): ScenarioChoice[] {
+  const parsed = safeParse(raw ?? null);
+  const result = ChoiceSchema.array().safeParse(parsed);
+  return result.success ? result.data : [];
 }
 
 export function mapSessionListItem(s: SessionRow): SessionListItem {
@@ -65,7 +75,7 @@ export function mapSessionListItem(s: SessionRow): SessionListItem {
   };
 }
 
-export function mapSessionDetail(s: SessionRow, messages: MessageRow[]): SessionDetail {
+export function mapSessionDetail(s: SessionRow, messages: MessageRow[], latestChoices?: string | null): SessionDetail {
   return {
     session: {
       id: s.id,
@@ -88,5 +98,12 @@ export function mapSessionDetail(s: SessionRow, messages: MessageRow[]): Session
       createdAt: m.createdAt,
     })),
     state: safeParse(s.state),
+    choices: safeChoices(latestChoices),
+    summary: s.summary ? {
+      grade: s.summary.grade,
+      languageNote: s.summary.languageNote,
+      pragmaticsNote: s.summary.pragmaticsNote,
+      relationshipNote: s.summary.relationshipNote,
+    } : null,
   };
 }

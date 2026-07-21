@@ -26,13 +26,20 @@ export async function DELETE(req: Request, { params }: { params: { npcId: string
         data: { retractedAt: now, correction: null },
       });
       const hidden = await tx.message.updateMany({
-        where: { threadId: message.threadId, createdAt: { gt: message.createdAt }, hiddenAt: null },
+        where: {
+          threadId: message.threadId,
+          hiddenAt: null,
+          OR: [
+            { createdAt: { gt: message.createdAt } },
+            { createdAt: message.createdAt, id: { gt: message.id } },
+          ],
+        },
         data: { hiddenAt: now },
       });
       await tx.scenarioSession.updateMany({
         where: {
           threadId: message.threadId,
-          invitedAt: { gt: message.createdAt },
+          invitedAt: { gte: message.createdAt },
           status: { in: ['invited', 'accepted', 'active', 'paused'] },
         },
         data: { hiddenAt: now },
@@ -63,16 +70,23 @@ export async function POST(req: Request, { params }: { params: { npcId: string; 
     const restored = await prisma.$transaction(async (tx) => {
       await tx.message.update({ where: { id: message.id }, data: { retractedAt: null } });
       const visible = await tx.message.updateMany({
-        where: { threadId: message.threadId, createdAt: { gt: message.createdAt }, hiddenAt: { not: null } },
+        where: {
+          threadId: message.threadId,
+          hiddenAt: { not: null },
+          OR: [
+            { createdAt: { gt: message.createdAt } },
+            { createdAt: message.createdAt, id: { gt: message.id } },
+          ],
+        },
         data: { hiddenAt: null },
       });
       await tx.scenarioSession.updateMany({
-        where: { threadId: message.threadId, invitedAt: { gt: message.createdAt }, hiddenAt: { not: null } },
+        where: { threadId: message.threadId, invitedAt: { gte: message.createdAt }, hiddenAt: { not: null } },
         data: { hiddenAt: null },
       });
       const last = await tx.message.findFirst({
         where: { threadId: message.threadId, hiddenAt: null },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         select: { createdAt: true },
       });
       await tx.thread.update({ where: { id: message.threadId }, data: { lastMsgAt: last?.createdAt ?? null } });

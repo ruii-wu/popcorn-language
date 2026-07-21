@@ -1,4 +1,5 @@
 import type { MemoryStrategy } from './requests';
+import type { ScenarioChoice, ScenarioSummary } from './events';
 
 // Response types — one per typed client method, mirroring today's handler output.
 // Derived by reading each handler / its src/server mapper; no behavior change.
@@ -165,13 +166,15 @@ export interface SessionDetailResponse {
   session: ScenarioSessionView;
   transcript: ScenarioTranscriptItem[];
   state: unknown;
+  choices: ScenarioChoice[];
+  summary: ScenarioSummary | null;
 }
 
 // POST /api/scenarios/sessions/:id/accept (see acceptScenario → AcceptResult)
 export interface AcceptSessionResponse {
   session: ScenarioSessionView;
   openingMessage: { id: string; text: string };
-  choices: unknown[];
+  choices: ScenarioChoice[];
   state: unknown;
 }
 

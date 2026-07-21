@@ -23,7 +23,7 @@ export interface AcceptDeps {
 export interface AcceptResult {
   session: SessionDetail['session'];
   openingMessage: { id: string; text: string };
-  choices: unknown[];
+  choices: ScenarioTurnJson['suggestedChoicesNext'];
   state: ScenarioState;
 }
 
