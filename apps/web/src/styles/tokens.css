@@ -157,6 +157,7 @@ body {
 }
 .pane-nav   { background: var(--bg-cool); border-right: 1px solid var(--hairline); min-height: 0; }
 .pane-main  { background: var(--bg);      display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+.pane-main-scroll { overflow-y: auto; }
 .pane-right { background: var(--surface); border-left: 1px solid var(--hairline); overflow-y: auto; min-height: 0; }
 
 /* Subtle dotted chat-canvas pattern — cool tone, very faint */

@@ -637,7 +637,7 @@ function JourneyDashboard() {
     <div className="app-shell" data-screen-label="04 Web · Your Journey">
       <WebNavRail activeTop="journey" />
 
-      <section className="pane-main overflow-y-auto" style={{ background: 'var(--bg)' }}>
+      <section className="pane-main pane-main-scroll" style={{ background: 'var(--bg)' }}>
         <div className="max-w-[1100px] mx-auto px-10 py-8">
           {/* Header */}
           <div className="fade-up">

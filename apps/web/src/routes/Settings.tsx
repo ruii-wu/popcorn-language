@@ -117,7 +117,7 @@ export default function Settings() {
   return (
     <div className="app-shell">
       <WebNavRail activeTop="settings" />
-      <section className="pane-main overflow-y-auto" style={{ background: 'var(--bg)' }}>
+      <section className="pane-main pane-main-scroll" style={{ background: 'var(--bg)' }}>
         <div className="max-w-[760px] mx-auto px-10 py-8">
           <span className="text-[10px] font-mono uppercase tracking-[0.22em]" style={{ color: 'var(--muted)' }}>
             settings

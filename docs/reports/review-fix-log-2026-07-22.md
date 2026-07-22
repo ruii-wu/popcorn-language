@@ -42,6 +42,14 @@
 - Message rollback now uses `(createdAt, id)` as a stable order. This prevents a later NPC reply
   created in the same millisecond as the recalled user message from surviving the rollback.
 
+## Journey and Settings scrolling
+
+- Journey and Settings now use an explicit scrollable main-pane modifier. The shared
+  `.pane-main` rule is loaded after Tailwind utilities and previously overrode
+  `overflow-y-auto` with `overflow: hidden`, making content below the viewport unreachable.
+- Browser verification confirms both panes compute to `overflow-y: auto`; Journey reaches its
+  footer and Settings reaches its account controls without console errors.
+
 ## Verification
 
 - Node: `v24.18.0` selected through the repository `.nvmrc`.
