@@ -45,6 +45,8 @@ describe('streamChat', () => {
     expect(names[0]).toBe('user_message_saved');
     expect(names).toContain('typing_start');
     expect(names.filter((n) => n === 'token').length).toBe(2);
+    expect(names.indexOf('typing_start')).toBeLessThan(names.indexOf('typing_end'));
+    expect(names.indexOf('typing_end')).toBeLessThan(names.indexOf('token'));
     expect(names).toContain('message_complete');
     expect(names[names.length - 1]).toBe('done');
 

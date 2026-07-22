@@ -73,21 +73,29 @@ async function* streamCasualReply(deps: CasualReplyDeps): AsyncGenerator<SseEven
   ];
 
   let full = '';
+  let typingActive = true;
   try {
     for await (const tok of ollama.chat(messages)) {
+      if (!tok) continue;
+      if (typingActive) {
+        typingActive = false;
+        yield { event: 'typing_end', data: { npcId } };
+      }
       full += tok;
       yield { event: 'token', data: { delta: tok } };
     }
   } catch (e) {
+    if (typingActive) yield { event: 'typing_end', data: { npcId } };
     yield { event: 'error', data: { code: 'LLM_UNAVAILABLE', message: String(e) } };
-    yield { event: 'typing_end', data: { npcId } };
     yield { event: 'done', data: {} };
     return;
   }
 
+  // Empty generations still need to close the pending typing indicator.
+  if (typingActive) yield { event: 'typing_end', data: { npcId } };
+
   const currentUserMessage = await prisma.message.findUnique({ where: { id: userMsgId }, select: { retractedAt: true } });
   if (!currentUserMessage || currentUserMessage.retractedAt) {
-    yield { event: 'typing_end', data: { npcId } };
     yield { event: 'done', data: {} };
     return;
   }
@@ -95,7 +103,6 @@ async function* streamCasualReply(deps: CasualReplyDeps): AsyncGenerator<SseEven
   const npcMsg = await prisma.message.create({
     data: { threadId, userId: null, role: 'npc', text: full },
   });
-  yield { event: 'typing_end', data: { npcId } };
   yield { event: 'message_complete', data: { messageId: npcMsg.id, fullText: full } };
 
   await prisma.thread.update({ where: { id: threadId }, data: { lastMsgAt: npcMsg.createdAt } });

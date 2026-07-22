@@ -50,6 +50,15 @@
 - Browser verification confirms both panes compute to `overflow-y: auto`; Journey reaches its
   footer and Settings reaches its account controls without console errors.
 
+## Typing and streaming state
+
+- Casual-chat SSE now closes `typing_start` immediately before the first non-empty `token`, so the
+  pending typing indicator and the progressively rendered NPC response are mutually exclusive.
+- The web client also clears typing on every token as a defensive guard against stale servers or
+  an unexpected event order. Empty generations and model failures still emit `typing_end`.
+- The stream integration test asserts `typing_start -> typing_end -> token`, and a live browser
+  check confirmed the partial response was visible while the typing indicator count was zero.
+
 ## Verification
 
 - Node: `v24.18.0` selected through the repository `.nvmrc`.

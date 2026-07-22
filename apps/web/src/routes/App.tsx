@@ -96,7 +96,7 @@ function DayDivider({ label }: { label: string }) {
 }
 
 // ---------- Message ----------
-function MessageRow({ npc, msg, showCorrection, onToggle, onRecall, onEdit, onRestore, recalling }: {
+function MessageRow({ npc, msg, showCorrection, onToggle, onRecall, onEdit, onRestore, recalling, live = false }: {
   npc: any;
   msg: any;
   showCorrection: boolean;
@@ -105,6 +105,7 @@ function MessageRow({ npc, msg, showCorrection, onToggle, onRecall, onEdit, onRe
   onEdit?: (text: string) => void;
   onRestore?: (messageId: string) => void;
   recalling?: boolean;
+  live?: boolean;
 }) {
   const isUser = msg.from === 'user';
   const retracted = !!msg.retracted;
@@ -133,7 +134,8 @@ function MessageRow({ npc, msg, showCorrection, onToggle, onRecall, onEdit, onRe
     );
   }
   return (
-    <div className={`group flex items-end gap-2 mb-2.5 fade-up ${isUser ? 'justify-end' : ''}`}>
+    <div data-testid={live ? 'live-npc-response' : undefined}
+         className={`group flex items-end gap-2 mb-2.5 fade-up ${isUser ? 'justify-end' : ''}`}>
       {!isUser && <WebAvatar npc={npc} size={26} />}
       <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-[68%]`}>
         <div className="px-3.5 py-2.5 text-[14px] leading-relaxed"
@@ -199,7 +201,7 @@ function CorrectionCard({ correction }: { correction: any }) {
 // ---------- Typing ----------
 function Typing({ npc }: { npc: any }) {
   return (
-    <div className="flex items-end gap-2 mb-2.5">
+    <div data-testid="npc-typing" className="flex items-end gap-2 mb-2.5">
       <WebAvatar npc={npc} size={26} />
       <div className="px-3.5 py-3 rounded-2xl rounded-bl-md flex items-center gap-1"
            style={{ background: 'var(--surface)', border: '1px solid var(--hairline)' }}>
@@ -449,7 +451,11 @@ export default function App() {
             time: fmtTime(ev.data.createdAt || Date.now()), correction: null }]));
           break;
         case 'typing_start': setTyping(true); break;
-        case 'token': acc += ev.data.delta || ''; setStreaming(acc); break;
+        case 'token':
+          setTyping(false); // the first visible token replaces the pending typing indicator
+          acc += ev.data.delta || '';
+          setStreaming(acc);
+          break;
         case 'typing_end': setTyping(false); break;
         case 'message_complete':
           setStreaming('');
@@ -572,7 +578,7 @@ export default function App() {
                               showCorrection={false} onToggle={() => {}} />
                 )}
                 {streaming && <MessageRow npc={npc} msg={{ from: 'npc', text: streaming, time: '' }}
-                                          showCorrection={false} onToggle={() => {}} />}
+                                          showCorrection={false} onToggle={() => {}} live />}
                 {(typing || scen.npcTyping) && <Typing npc={npc} />}
                 {scen.resumable && (
                   <ScenarioResumeBanner session={scen.resumable} onResume={scen.resume} onEnd={scen.abort}
