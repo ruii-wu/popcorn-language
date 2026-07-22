@@ -36,6 +36,12 @@
   companion at the top of the conversation rail and makes Lily the initial active chat; the
   remaining NPCs retain their stable id order.
 
+## Scenario completion handoff
+
+- Completed Scenario summaries now expose a `Continue chatting` action. It exits the temporary
+  Scenario summary view, restores the NPC's normal chat context and focuses the composer, while
+  keeping the completed transcript and grade available in Journey.
+
 ## P0 demo hardening
 
 - Completed Scenario sessions are restored from SQLite after a reload, including transcript,
@@ -75,6 +81,8 @@
   demo user's Emma relationship to `friend` / stage value `2` / `30` points.
 - Onboarding, demo-seed, and Flat Viewing integration coverage pass with Emma at the Friend
   baseline.
+- Browser verification confirms the completed Scenario handoff: `Continue chatting` removes the
+  Summary view, restores the casual composer, and focuses it for the next message.
 - TypeScript: API and Web typechecks pass.
 - API: 89 test files, 245 tests pass.
 - Web: 2 test files, 8 tests pass.

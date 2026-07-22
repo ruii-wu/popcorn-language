@@ -591,7 +591,11 @@ export default function App() {
                 {scen.status === 'completed' && (
                   <>
                     <ScenDayDivider label="Completed scenario · 已完成" />
-                    <ScenarioSummaryCard session={scen.session} transcript={scen.transcript} summaryData={scen.summary} />
+                    <ScenarioSummaryCard session={scen.session} transcript={scen.transcript} summaryData={scen.summary}
+                                         onContinueChat={() => {
+                                           scen.continueChatting();
+                                           setComposerFocusSignal((value) => value + 1);
+                                         }} />
                   </>
                 )}
               </>

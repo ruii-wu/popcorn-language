@@ -62,6 +62,7 @@ export function useScenarioSession(npcId: string | null) {
   const liveSidRef = useRef<string | null>(null);
   const declineSeqRef = useRef(0);
   const sessionsSeqRef = useRef(0);
+  const dismissedCompletedSessionIdRef = useRef<string | null>(null);
   liveSidRef.current = session ? session.id : null;
 
   function refreshSessions() {
@@ -80,7 +81,7 @@ export function useScenarioSession(npcId: string | null) {
         setSession(null);
         setResumable({ id: pending.id, status: pending.status as 'active' | 'paused', scenarioTitle: pending.scenarioTitle, npcId, grade: pending.grade });
         setSummary(null); setTranscript([]);
-      } else if (completed) {
+      } else if (completed && dismissedCompletedSessionIdRef.current !== completed.id) {
         setSession({ id: completed.id, status: 'completed', scenarioTitle: completed.scenarioTitle, npcId, grade: completed.grade });
         setResumable(null);
         const detail = await api.session(completed.id);
@@ -96,7 +97,9 @@ export function useScenarioSession(npcId: string | null) {
   useEffect(() => {
     setSession(null); setResumable(null); setMessages([]); setChoices([]); setHudState(null);
     setSummary(null); setTranscript([]); setChoiceDisabled(false); setNpcTyping(false); setAccepting(false);
-    setDeclining(false); setPausing(false); setResuming(false); setEnding(false); setDeclinedReply(null); declineSeqRef.current += 1;
+    setDeclining(false); setPausing(false); setResuming(false); setEnding(false); setDeclinedReply(null);
+    declineSeqRef.current += 1;
+    dismissedCompletedSessionIdRef.current = null;
     if (!npcId) return;
     refreshSessions();
     return () => { sessionsSeqRef.current += 1; };
@@ -116,6 +119,7 @@ export function useScenarioSession(npcId: string | null) {
       } else if (event.type === 'choices') {
         setChoices(event.data.choices); setChoiceDisabled(false);
       } else if (event.type === 'scenario_end') {
+        dismissedCompletedSessionIdRef.current = null;
         setSummary(event.data.summary); setChoices([]); setChoiceDisabled(false);
         setSession((prev) => prev ? { ...prev, status: 'completed', grade: event.data.summary.grade } : prev);
       } else if (event.type === 'error') {
@@ -257,6 +261,15 @@ export function useScenarioSession(npcId: string | null) {
     setTranscript([]); setNpcTyping(false); setEnding(false); setDeclinedReply(null);
   }
 
+  // A completed Scenario is already persisted. Leaving its summary only changes the current
+  // chat view; the result remains available from Journey and can be restored after reload.
+  function continueChatting() {
+    if (session?.status !== 'completed') return;
+    dismissedCompletedSessionIdRef.current = session.id;
+    setSession(null); setResumable(null); setMessages([]); setChoices([]); setHudState(null); setSummary(null);
+    setTranscript([]); setNpcTyping(false); setChoiceDisabled(false); setEnding(false);
+  }
+
   function choose(choice: ScenarioChoice) {
     if (!session || choiceDisabled) return;
     const sid = session.id;
@@ -280,6 +293,6 @@ export function useScenarioSession(npcId: string | null) {
     session, status, resumable, messages, choices, hudState, summary, transcript,
     choiceDisabled, accepting, declining, pausing, resuming, ending, declinedReply, npcTyping,
     offerSession, accept, decline, pause, resume, abort,
-    clearForRecall, refreshSessions, choose, freetype,
+    clearForRecall, continueChatting, refreshSessions, choose, freetype,
   };
 }

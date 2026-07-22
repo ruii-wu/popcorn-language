@@ -264,7 +264,12 @@ export function InvitationCard({ session, onAccept, onDecline, npc, accepting = 
 }
 
 // ---------- Summary card ----------
-export function ScenarioSummaryCard({ session, transcript, summaryData }: { session: any; transcript: any[]; summaryData: any }) {
+export function ScenarioSummaryCard({ session, transcript, summaryData, onContinueChat }: {
+  session: any;
+  transcript: any[];
+  summaryData: any;
+  onContinueChat?: () => void;
+}) {
   const grade = (session && session.grade) || (summaryData && summaryData.grade) || '—';
   const title = session ? session.scenarioTitle : 'Scenario';
   const languageNote = summaryData && summaryData.languageNote;
@@ -341,9 +346,17 @@ export function ScenarioSummaryCard({ session, transcript, summaryData }: { sess
         <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
           ✨ AI · local
         </span>
-        <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: 'var(--coral-ink)' }}>
-          Grade: {grade}
-        </span>
+        {onContinueChat ? (
+          <button type="button" onClick={onContinueChat}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-medium transition hover:bg-[var(--coral-soft)]"
+                  style={{ color: 'var(--coral-ink)', border: '1px solid var(--hairline-strong)' }}>
+            Continue chatting <span className="w-3.5 h-3.5">{WebI.arrowR}</span>
+          </button>
+        ) : (
+          <span className="text-[11px] font-mono uppercase tracking-wider" style={{ color: 'var(--coral-ink)' }}>
+            Grade: {grade}
+          </span>
+        )}
       </div>
     </div>
   );
