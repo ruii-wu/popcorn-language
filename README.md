@@ -88,7 +88,7 @@ is unavailable. It also warns when the chat model is installed but still cold.
 Open `http://localhost:5173/` and log in as **`demo` / `demo`** (the
 onboarding page at `http://localhost:5173/onboarding` has the login form; new accounts are created
 by running its wizard) — a learner pre-populated with three relationships (Lily = close, Chen =
-friend, Emma = acquaintance), memory facts + a memory card, one completed graded scenario,
+friend, Emma = friend), memory facts + a memory card, one completed graded scenario,
 unlocked achievements, and a multi-day streak. `db:seed:demo` is additive and idempotent.
 
 For a reliable course demo, check these before presenting:

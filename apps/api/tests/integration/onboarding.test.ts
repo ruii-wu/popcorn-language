@@ -15,7 +15,7 @@ const post = (uid: string) =>
   new Request('http://x/', { method: 'POST', headers: { cookie: `${SESSION_COOKIE}=${uid}` }, body: '{}' });
 
 describe('onboarding complete', () => {
-  it('inits Lily relationship + thread + intro message, idempotently', async () => {
+  it('inits Lily and Emma at Friend, with a Lily intro thread, idempotently', async () => {
     await prisma.user.deleteMany({ where: { username: U } });
     const user = await prisma.user.create({ data: { username: U, password: 'pw' } });
 
@@ -23,10 +23,14 @@ describe('onboarding complete', () => {
     expect(first.npc).toBe('lily');
     expect(first.firstMessageId).toBeTruthy();
 
-    const rel = await prisma.relationship.findUnique({ where: { userId_npcId: { userId: user.id, npcId: 'lily' } } });
-    expect(rel?.stage).toBe('friend');
-    expect(rel?.stageValue).toBe(2);
-    expect(rel?.relationshipPoints).toBe(30);
+    const [lilyRelationship, emmaRelationship] = await Promise.all(['lily', 'emma'].map((npcId) =>
+      prisma.relationship.findUnique({ where: { userId_npcId: { userId: user.id, npcId } } }),
+    ));
+    for (const relationship of [lilyRelationship, emmaRelationship]) {
+      expect(relationship?.stage).toBe('friend');
+      expect(relationship?.stageValue).toBe(2);
+      expect(relationship?.relationshipPoints).toBe(30);
+    }
     const intro = await prisma.message.findUnique({ where: { id: first.firstMessageId } });
     expect(intro?.role).toBe('npc');
     expect(intro?.text.length).toBeGreaterThan(0);
@@ -36,6 +40,7 @@ describe('onboarding complete', () => {
     expect(second.firstMessageId).toBe(first.firstMessageId);
     const count = await prisma.message.count({ where: { thread: { userId: user.id, npcId: 'lily' } } });
     expect(count).toBe(1);
+    expect(await prisma.thread.count({ where: { userId: user.id, npcId: 'emma' } })).toBe(0);
   });
 
   it('provisions a UserSettings row so the Settings page has persisted state', async () => {

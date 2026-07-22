@@ -25,7 +25,7 @@ describe('seedDemo', () => {
     expect(user.settings?.memoryStrategy).toBe('hybrid');
 
     const rels = await prisma.relationship.findMany({ where: { userId }, orderBy: { stageValue: 'desc' } });
-    expect(rels.map((r) => r.stageValue)).toEqual([3, 2, 1]); // close / friend / acquaintance
+    expect(rels.map((r) => r.stageValue)).toEqual([3, 2, 2]); // close / friend / friend
 
     expect(await prisma.memoryFact.count({ where: { userId } })).toBeGreaterThanOrEqual(4);
     expect(await prisma.memory.count({ where: { userId } })).toBeGreaterThanOrEqual(1);

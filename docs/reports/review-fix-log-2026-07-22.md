@@ -26,6 +26,9 @@
 
 - Completing onboarding initializes Lily at the Friend stage and remains idempotent for returning
   users.
+- Emma now follows the same Friend baseline for onboarding, Settings history resets, and the demo
+  seed. Existing SQLite users are upgraded or provisioned by migration while preserving any
+  stronger relationship stage, so Emma's Friend-gated Flat Viewing can be demonstrated directly.
 
 ## P0 demo hardening
 
@@ -62,6 +65,10 @@
 ## Verification
 
 - Node: `v24.18.0` selected through the repository `.nvmrc`.
+- Prisma migration `20260722143000_emma_initial_friend` applies cleanly and upgrades the local
+  demo user's Emma relationship to `friend` / stage value `2` / `30` points.
+- Onboarding, demo-seed, and Flat Viewing integration coverage pass with Emma at the Friend
+  baseline.
 - TypeScript: API and Web typechecks pass.
 - API: 89 test files, 245 tests pass.
 - Web: 2 test files, 8 tests pass.

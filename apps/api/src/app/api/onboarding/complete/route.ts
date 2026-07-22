@@ -2,7 +2,9 @@ import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
 
 const LILY = 'lily';
-const LILY_INITIAL_RELATIONSHIP = {
+const EMMA = 'emma';
+const INITIAL_NPC_IDS = [LILY, EMMA] as const;
+const INITIAL_FRIEND_RELATIONSHIP = {
   stage: 'friend',
   stageValue: 2,
   relationshipPoints: 30,
@@ -10,14 +12,22 @@ const LILY_INITIAL_RELATIONSHIP = {
 
 export async function POST(req: Request): Promise<Response> {
   return withUser(req, async (userId) => {
-    const lily = await prisma.npc.findUnique({ where: { id: LILY } });
-    if (!lily) return errorJson(500, 'SEED_MISSING', 'Lily NPC is not seeded');
-
-    await prisma.relationship.upsert({
-      where: { userId_npcId: { userId, npcId: LILY } },
-      create: { userId, npcId: LILY, ...LILY_INITIAL_RELATIONSHIP },
-      update: {},
+    const initialNpcs = await prisma.npc.findMany({
+      where: { id: { in: [...INITIAL_NPC_IDS] } },
+      select: { id: true, introMessage: true },
     });
+    const lily = initialNpcs.find((npc) => npc.id === LILY);
+    if (initialNpcs.length !== INITIAL_NPC_IDS.length || !lily) {
+      return errorJson(500, 'SEED_MISSING', 'Lily and Emma NPCs must be seeded');
+    }
+
+    await prisma.$transaction(
+      INITIAL_NPC_IDS.map((npcId) => prisma.relationship.upsert({
+        where: { userId_npcId: { userId, npcId } },
+        create: { userId, npcId, ...INITIAL_FRIEND_RELATIONSHIP },
+        update: {},
+      })),
+    );
     await prisma.userSettings.upsert({
       where: { userId },
       create: { userId },

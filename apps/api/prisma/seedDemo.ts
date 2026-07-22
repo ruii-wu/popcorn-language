@@ -32,7 +32,7 @@ export async function seedDemo(
   const stages: { npcId: string; stage: string; stageValue: number; points: number }[] = [
     { npcId: 'lily', stage: 'close', stageValue: 3, points: 80 },
     { npcId: 'chen', stage: 'friend', stageValue: 2, points: 45 },
-    { npcId: 'emma', stage: 'acquaintance', stageValue: 1, points: 15 },
+    { npcId: 'emma', stage: 'friend', stageValue: 2, points: 30 },
   ];
   let lilyThreadId = '';
   for (const { npcId, stage, stageValue, points } of stages) {
