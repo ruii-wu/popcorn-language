@@ -56,23 +56,23 @@ export function useScenarioSession(npcId: string | null) {
   const [pausing, setPausing] = useState(false);
   const [resuming, setResuming] = useState(false);
   const [ending, setEnding] = useState(false);
+  const [reviewingSessionId, setReviewingSessionId] = useState<string | null>(null);
+  const [reviewErrorSessionId, setReviewErrorSessionId] = useState<string | null>(null);
   const [declinedReply, setDeclinedReply] = useState<ScenarioMessage | null>(null);
 
   // Guards stale stream writes after the user switches NPC mid-stream.
   const liveSidRef = useRef<string | null>(null);
   const declineSeqRef = useRef(0);
   const sessionsSeqRef = useRef(0);
-  const dismissedCompletedSessionIdRef = useRef<string | null>(null);
   liveSidRef.current = session ? session.id : null;
 
   function refreshSessions() {
     if (!npcId) return Promise.resolve();
     const requestId = ++sessionsSeqRef.current;
-    return api.sessions('?npcId=' + encodeURIComponent(npcId)).then(async (list) => {
+    return api.sessions('?npcId=' + encodeURIComponent(npcId)).then((list) => {
       if (requestId !== sessionsSeqRef.current) return;
       const invited = list.find((s) => s.status === 'invited');
       const pending = list.find((s) => s.status === 'paused' || s.status === 'active');
-      const completed = list.find((s) => s.status === 'completed');
       if (invited) {
         setSession({ id: invited.id, status: 'invited', scenarioTitle: invited.scenarioTitle, npcId, grade: invited.grade });
         setResumable(null);
@@ -81,13 +81,6 @@ export function useScenarioSession(npcId: string | null) {
         setSession(null);
         setResumable({ id: pending.id, status: pending.status as 'active' | 'paused', scenarioTitle: pending.scenarioTitle, npcId, grade: pending.grade });
         setSummary(null); setTranscript([]);
-      } else if (completed && dismissedCompletedSessionIdRef.current !== completed.id) {
-        setSession({ id: completed.id, status: 'completed', scenarioTitle: completed.scenarioTitle, npcId, grade: completed.grade });
-        setResumable(null);
-        const detail = await api.session(completed.id);
-        if (requestId !== sessionsSeqRef.current) return;
-        setSummary(detail.summary);
-        setTranscript(detail.transcript || []);
       } else {
         setSession(null); setResumable(null); setSummary(null); setTranscript([]);
       }
@@ -97,9 +90,9 @@ export function useScenarioSession(npcId: string | null) {
   useEffect(() => {
     setSession(null); setResumable(null); setMessages([]); setChoices([]); setHudState(null);
     setSummary(null); setTranscript([]); setChoiceDisabled(false); setNpcTyping(false); setAccepting(false);
-    setDeclining(false); setPausing(false); setResuming(false); setEnding(false); setDeclinedReply(null);
+    setDeclining(false); setPausing(false); setResuming(false); setEnding(false);
+    setReviewingSessionId(null); setReviewErrorSessionId(null); setDeclinedReply(null);
     declineSeqRef.current += 1;
-    dismissedCompletedSessionIdRef.current = null;
     if (!npcId) return;
     refreshSessions();
     return () => { sessionsSeqRef.current += 1; };
@@ -119,7 +112,6 @@ export function useScenarioSession(npcId: string | null) {
       } else if (event.type === 'choices') {
         setChoices(event.data.choices); setChoiceDisabled(false);
       } else if (event.type === 'scenario_end') {
-        dismissedCompletedSessionIdRef.current = null;
         setSummary(event.data.summary); setChoices([]); setChoiceDisabled(false);
         setSession((prev) => prev ? { ...prev, status: 'completed', grade: event.data.summary.grade } : prev);
       } else if (event.type === 'error') {
@@ -133,7 +125,7 @@ export function useScenarioSession(npcId: string | null) {
   function offerSession(sessionId: string, title: string) {
     if (!npcId) return;
     setSummary(null); setMessages([]); setChoices([]); setHudState(null); setResumable(null);
-    setAccepting(false); setDeclining(false); setEnding(false); setDeclinedReply(null);
+    setAccepting(false); setDeclining(false); setEnding(false); setReviewErrorSessionId(null); setDeclinedReply(null);
     setSession({ id: sessionId, status: 'invited', scenarioTitle: title, npcId });
   }
 
@@ -258,16 +250,46 @@ export function useScenarioSession(npcId: string | null) {
 
   function clearForRecall() {
     setSession(null); setResumable(null); setMessages([]); setChoices([]); setHudState(null); setSummary(null);
-    setTranscript([]); setNpcTyping(false); setEnding(false); setDeclinedReply(null);
+    setTranscript([]); setNpcTyping(false); setEnding(false); setReviewingSessionId(null);
+    setReviewErrorSessionId(null); setDeclinedReply(null);
   }
 
-  // A completed Scenario is already persisted. Leaving its summary only changes the current
-  // chat view; the result remains available from Journey and can be restored after reload.
+  async function reviewCompleted(sessionId: string) {
+    if (!npcId || reviewingSessionId) return;
+    const requestId = ++sessionsSeqRef.current;
+    setReviewingSessionId(sessionId);
+    setReviewErrorSessionId(null);
+    try {
+      const detail: SessionDetailResponse = await api.session(sessionId);
+      if (requestId !== sessionsSeqRef.current) return;
+      if (detail.session.npcId !== npcId || detail.session.status !== 'completed') {
+        setReviewErrorSessionId(sessionId);
+        return;
+      }
+      setSession({
+        id: detail.session.id,
+        status: 'completed',
+        scenarioTitle: detail.session.scenarioTitle,
+        npcId,
+        grade: detail.session.grade,
+      });
+      setResumable(null);
+      setSummary(detail.summary);
+      setTranscript(detail.transcript || []);
+    } catch {
+      if (requestId === sessionsSeqRef.current) setReviewErrorSessionId(sessionId);
+    } finally {
+      if (requestId === sessionsSeqRef.current) setReviewingSessionId(null);
+    }
+  }
+
+  // A completed Scenario is already persisted. Leaving Review only changes the current view;
+  // its card, transcript, and result remain available in Chat and Journey.
   function continueChatting() {
     if (session?.status !== 'completed') return;
-    dismissedCompletedSessionIdRef.current = session.id;
     setSession(null); setResumable(null); setMessages([]); setChoices([]); setHudState(null); setSummary(null);
     setTranscript([]); setNpcTyping(false); setChoiceDisabled(false); setEnding(false);
+    setReviewingSessionId(null); setReviewErrorSessionId(null);
   }
 
   function choose(choice: ScenarioChoice) {
@@ -291,8 +313,9 @@ export function useScenarioSession(npcId: string | null) {
   const status: ScenarioStatus = session ? session.status : null;
   return {
     session, status, resumable, messages, choices, hudState, summary, transcript,
-    choiceDisabled, accepting, declining, pausing, resuming, ending, declinedReply, npcTyping,
+    choiceDisabled, accepting, declining, pausing, resuming, ending,
+    reviewingSessionId, reviewErrorSessionId, declinedReply, npcTyping,
     offerSession, accept, decline, pause, resume, abort,
-    clearForRecall, continueChatting, refreshSessions, choose, freetype,
+    clearForRecall, reviewCompleted, continueChatting, refreshSessions, choose, freetype,
   };
 }

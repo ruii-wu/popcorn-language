@@ -41,11 +41,17 @@
 - Completed Scenario summaries now expose a `Continue chatting` action. It exits the temporary
   Scenario summary view, restores the NPC's normal chat context and focuses the composer, while
   keeping the completed transcript and grade available in Journey.
+- Ordinary Chat no longer expands Scenario turns as regular messages. Each completed session is
+  represented by one NPC Scenario card in chronological order; the user chooses `Review roleplay`
+  to open its persisted Summary and transcript.
+- Review is a distinct mode with `Back to chat` in the top bar and `Continue chatting` at the end.
+  Returning refreshes the thread so a newly completed Scenario immediately appears as a card.
 
 ## P0 demo hardening
 
-- Completed Scenario sessions are restored from SQLite after a reload, including transcript,
-  grade, language feedback, pragmatics feedback, and relationship feedback.
+- Completed Scenario sessions are restored from SQLite through their Chat and Journey review
+  entries, including transcript, grade, language feedback, pragmatics feedback, and relationship
+  feedback, without taking over casual Chat after reload.
 - Journey now lists completed roleplays and lets the user reopen the persisted result and
   transcript instead of losing the result when leaving the chat screen.
 - End now requires confirmation. After confirmation, the UI shows `Ending...` and waits for the
@@ -81,10 +87,11 @@
   demo user's Emma relationship to `friend` / stage value `2` / `30` points.
 - Onboarding, demo-seed, and Flat Viewing integration coverage pass with Emma at the Friend
   baseline.
-- Browser verification confirms the completed Scenario handoff: `Continue chatting` removes the
-  Summary view, restores the casual composer, and focuses it for the next message.
+- Browser verification confirms the completed Scenario handoff: ordinary Chat shows exactly one
+  review card and none of the three Scenario turn messages; `Review roleplay` restores the persisted
+  Summary/transcript; both return actions restore and focus the casual composer with no console errors.
 - TypeScript: API and Web typechecks pass.
-- API: 89 test files, 245 tests pass.
+- API: 89 test files, 246 tests pass.
 - Web: 2 test files, 8 tests pass.
 - Vite production build passes.
 - Playwright pause/resume flow passes: paused banner -> resume with transcript/choices -> pause -> reload -> resume.

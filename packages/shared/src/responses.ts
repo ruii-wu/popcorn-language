@@ -36,6 +36,7 @@ export interface NpcListItem {
 // GET /api/threads/:npcId/messages — element of `messages` (see mapMessageToApi)
 export interface ThreadMessage {
   id: string;
+  kind: 'message' | 'scenario';
   role: string;
   text: string;
   from: string; // 'user' | 'npc', widened by the mapper
@@ -44,6 +45,9 @@ export interface ThreadMessage {
   retracted: boolean;
   retractedText: string | null;
   createdAt: string | Date;
+  scenarioSessionId: string | null;
+  scenarioTitle: string | null;
+  scenarioGrade: string | null;
 }
 export interface ThreadResponse {
   messages: ThreadMessage[];

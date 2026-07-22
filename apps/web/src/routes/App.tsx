@@ -17,10 +17,12 @@ import { useScenarioSession } from '../components/scenario/useScenarioSession';
 import {
   ScenChatHeader,
   ScenarioHUD,
+  ScenarioReviewBar,
   DayDivider as ScenDayDivider,
   ScenMessage,
   InvitationCard,
   ScenarioResumeBanner,
+  ScenarioHistoryCard,
   ScenarioSummaryCard,
   ChoiceComposer,
   ScenarioRightPanel,
@@ -33,9 +35,10 @@ function fmtTime(iso: any) {
 }
 
 function mapMsg(m: ThreadMessage) {
-  return { id: m.id, from: m.from, text: m.text,
+  return { id: m.id, kind: m.kind, from: m.from, text: m.text,
            time: m.createdAt ? fmtTime(m.createdAt) : '',
-           correction: m.correction || null, retracted: m.retracted, retractedText: m.retractedText };
+           correction: m.correction || null, retracted: m.retracted, retractedText: m.retractedText,
+           scenarioSessionId: m.scenarioSessionId, scenarioTitle: m.scenarioTitle, scenarioGrade: m.scenarioGrade };
 }
 
 // ---------- Chat header ----------
@@ -437,6 +440,10 @@ export default function App() {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, streaming, typing, scen.npcTyping, scen.declinedReply]);
 
+  useEffect(() => {
+    if (scen.status === 'completed' && scrollRef.current) scrollRef.current.scrollTop = 0;
+  }, [scen.status, scen.session?.id]);
+
   function send(text: string) {
     if (!text.trim() || sending || !activeId) return;
     const sendNpcId = activeId;
@@ -531,6 +538,18 @@ export default function App() {
     setComposerFocusSignal((value) => value + 1);
   }
 
+  function continueFromScenario() {
+    const npcId = activeId;
+    scen.continueChatting();
+    setComposerFocusSignal((value) => value + 1);
+    if (!npcId) return;
+    api.thread(npcId)
+      .then((thread) => {
+        if (activeIdRef.current === npcId) setMessages((thread.messages || []).map(mapMsg));
+      })
+      .catch(() => {});
+  }
+
   const npc = npcs.find((n) => n.id === activeId);
   if (!npc) {
     return <div className="app-shell" data-screen-label="01 Web · Main App"
@@ -549,6 +568,7 @@ export default function App() {
                             ending={scen.ending} pauseDisabled={scen.choiceDisabled} />
           : <WebChatHeader npc={npc} />}
         {scen.status === 'active' && <ScenarioHUD session={scen.session} hudState={scen.hudState} />}
+        {scen.status === 'completed' && <ScenarioReviewBar session={scen.session} onBack={continueFromScenario} />}
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6">
           <div className="max-w-[820px] mx-auto py-2">
@@ -563,15 +583,28 @@ export default function App() {
                 {scen.messages.map((m, i) => <ScenMessage key={i} msg={m} intense={true} npc={npc} />)}
                 {scen.npcTyping && <Typing npc={npc} />}
               </>
+            ) : scen.status === 'completed' ? (
+              <>
+                <ScenDayDivider label="Scenario review · 复盘" />
+                <ScenarioSummaryCard session={scen.session} transcript={scen.transcript} summaryData={scen.summary}
+                                     onContinueChat={continueFromScenario} />
+              </>
             ) : (
               <>
                 <DayDivider label="Today · 今天" />
                 {messages.map((m, i) => (
-                  <MessageRow key={m.id || i} npc={npc} msg={m}
-                              showCorrection={!!m.correction && expanded === i}
-                              onToggle={() => setExpanded(expanded === i ? -1 : i)}
-                              onRecall={recallMessage} onEdit={editRecalledMessage} onRestore={restoreRecalledMessage}
-                              recalling={recallingId === m.id} />
+                  m.kind === 'scenario' ? (
+                    <ScenarioHistoryCard key={m.id || i} npc={npc} item={m}
+                                         reviewing={scen.reviewingSessionId === m.scenarioSessionId}
+                                         reviewFailed={scen.reviewErrorSessionId === m.scenarioSessionId}
+                                         onReview={() => m.scenarioSessionId && scen.reviewCompleted(m.scenarioSessionId)} />
+                  ) : (
+                    <MessageRow key={m.id || i} npc={npc} msg={m}
+                                showCorrection={!!m.correction && expanded === i}
+                                onToggle={() => setExpanded(expanded === i ? -1 : i)}
+                                onRecall={recallMessage} onEdit={editRecalledMessage} onRestore={restoreRecalledMessage}
+                                recalling={recallingId === m.id} />
+                  )
                 ))}
                 {scen.declinedReply && (
                   <MessageRow npc={npc} msg={{ from: scen.declinedReply.from === 'user' ? 'user' : 'npc', text: scen.declinedReply.text, time: scen.declinedReply.time || '' }}
@@ -588,16 +621,6 @@ export default function App() {
                   <InvitationCard session={scen.session} npc={npc}
                                   onAccept={scen.accept} onDecline={scen.decline} accepting={scen.accepting} />
                 )}
-                {scen.status === 'completed' && (
-                  <>
-                    <ScenDayDivider label="Completed scenario · 已完成" />
-                    <ScenarioSummaryCard session={scen.session} transcript={scen.transcript} summaryData={scen.summary}
-                                         onContinueChat={() => {
-                                           scen.continueChatting();
-                                           setComposerFocusSignal((value) => value + 1);
-                                         }} />
-                  </>
-                )}
               </>
             )}
           </div>
@@ -610,7 +633,7 @@ export default function App() {
             )}
             <Composer onSend={(t: string) => scen.freetype(t)} disabled={scen.choiceDisabled} />
           </>
-        ) : (
+        ) : scen.status === 'completed' ? null : (
           <Composer onSend={send} disabled={sending || scen.accepting || scen.declining}
                     draftValue={composerDraft} onDraftChange={setComposerDraft} focusSignal={composerFocusSignal} />
         )}
