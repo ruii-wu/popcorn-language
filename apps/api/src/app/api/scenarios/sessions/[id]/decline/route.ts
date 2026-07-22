@@ -24,6 +24,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           threadId: declined.threadId,
           userMsgId: declined.userMsgId ?? '',
           text: declined.deferredText,
+          signal: req.signal,
+          progressionAlreadyApplied: true,
         }));
       }
       return sseResponse((async function* () {

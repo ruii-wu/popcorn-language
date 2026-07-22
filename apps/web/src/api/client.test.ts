@@ -36,6 +36,36 @@ describe('parseFrame', () => {
     expect(events).toEqual(['error', 'done']);
   });
 
+  it('passes an abort signal to chat fetch and suppresses error frames after cancellation', async () => {
+    const controller = new AbortController();
+    const fetchMock = vi.fn((_url: string, init: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      init.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const events: string[] = [];
+
+    const request = api.streamMessage('lily', 'hello', (event) => events.push(event.type), controller.signal);
+    controller.abort();
+    await request;
+
+    expect(fetchMock.mock.calls[0][1].signal).toBe(controller.signal);
+    expect(events).toEqual([]);
+  });
+
+  it('treats a streamed error frame as terminal', async () => {
+    const stream = [
+      'event: error\ndata: {"code":"FAILED"}',
+      'event: token\ndata: {"delta":"should not render"}',
+      'event: done\ndata: {}',
+    ].join('\n\n') + '\n\n';
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(stream, { status: 200 })));
+    const events: string[] = [];
+
+    await api.streamMessage('lily', 'hello', (event) => events.push(event.type));
+
+    expect(events).toEqual(['error']);
+  });
+
   it('requires an explicit confirmation payload when resetting user data', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ ok: true }), { status: 200 }),

@@ -99,3 +99,96 @@
 - Demo preflight passes with the Vite/API services, Prisma, Ollama, `qwen3.5:9b`, and
   `nomic-embed-text` ready.
 - `git diff --check` passes.
+
+## Recall concurrency P0 fixes
+
+- Recall cascades now stamp each hidden message and open Scenario session with the id of the user
+  message that owns the rollback. Restoring one version only reveals rows carrying that ownership,
+  so a nested recall remains intact until its own user message is restored.
+- Prisma migration `20260722160000_retract_ownership` adds and backfills the ownership columns.
+  The follow-up fallback migration also recovers legacy rows whose timestamps diverged after a
+  repeated retract request.
+- Chat streams now use an `AbortController`. Recalling, restoring, or replacing a stream immediately
+  invalidates its sequence and cancels the pending HTTP/Ollama
+  request, so stale tokens, completion bubbles, and correction frames cannot re-enter React state.
+- NPC reply persistence now checks that the parent user message has neither `retractedAt` nor
+  `hiddenAt` and creates the reply in the same transaction. If a direct or cascading recall wins
+  first, no NPC reply is persisted; if the reply transaction wins first, the following recall
+  cascade hides it normally.
+- Regression coverage includes nested `C -> A -> restore A -> restore C` ownership, direct recall
+  during generation, cascading recall during generation, and browser-client abort propagation.
+- Verification ran on Node `v24.18.0`: all 89 API test files / 249 tests and all 9 Web tests pass;
+  API and Web typechecks pass; the Vite production build passes; Prisma reports all 10 migrations
+  applied and the SQLite schema up to date.
+
+## Scenario and timeline P1 fixes
+
+- Declining a Scenario invitation now reuses the progression already recorded when the invitation
+  was created. The deferred casual reply no longer increments relationship points, conversation
+  count, activity history, or daily progress a second time for the same user turn.
+- A failed decline request now reconciles the invitation with the server. If that refresh also
+  fails, the previous invitation is restored locally so the user can retry accepting or declining
+  instead of losing the card.
+- SSE `error` is now terminal in both the shared client and Chat state machine. The reader is
+  cancelled, the active request generation is invalidated, and any later token, completion, or
+  correction frames are ignored.
+- Deferred decline lookup is bounded by the invitation timestamp. A legacy invitation with text
+  but no stored source-message id can no longer attach its fallback reply to a message sent after
+  the invitation.
+- Thread history pagination now applies its cursor and `limit + 1` bounds in SQLite for casual
+  messages, completed sessions with `endedAt`, and legacy completed sessions without `endedAt`.
+  The bounded candidates are merge-sorted into the same stable message-and-Scenario timeline, so
+  history requests no longer load the entire conversation before slicing in JavaScript.
+- Scenario resume has its own request generation and centralized invalidation. Refresh, abort,
+  review, NPC changes, or another lifecycle action now clear `resuming` immediately; stale resume
+  responses cannot leave the button spinning or overwrite newer state.
+- Regression coverage verifies single progression on decline, invitation-time fallback selection,
+  terminal stream errors, and same-timestamp pagination across messages and Scenario cards.
+- Verification ran on Node `v24.18.0`: all 89 API test files / 252 tests and all 10 Web tests pass;
+  API and Web typechecks pass; the Vite production build and Demo preflight pass; `git diff --check`
+  reports no whitespace errors.
+
+## Remaining P2 review fixes
+
+- The returning-user Login form now lives inside the Welcome step instead of after its full-height
+  shell. The preview stack was tightened so the username field, password field, and Login button
+  all fit in the initial `1264 x 720` viewport without scrolling.
+- A recall no longer clears the stored grammar-correction JSON. The retracted marker suppresses the
+  correction while hidden, and Undo recall restores the original learning card from SQLite.
+- The existing `retractedAt: null` DELETE guard is now covered by a repeated-request regression test,
+  confirming that a duplicate recall cannot replace the original ownership timestamp.
+- Recall now hides completed and aborted Scenario sessions as well as open sessions. A completed
+  review card and its transcript therefore disappear and restore as one rollback unit instead of
+  leaving a visible card that opens an empty transcript.
+- The Scenario detail endpoint now applies the same `hiddenAt: null` invariant as the list and Chat
+  timeline endpoints, so a cached or bookmarked id cannot reopen a hidden session.
+- Scenario refresh now clears live messages, choices, HUD, typing, and choice-disabled state before
+  applying the refreshed invitation or resumable session. Stale roleplay UI cannot leak across a
+  recall, restore, or lifecycle refresh.
+- Base seed upserts now refresh every managed NPC, Scenario template, and static Achievement field.
+  Re-running `prisma db seed` produces the same canonical configuration as a fresh database,
+  including persona prompts, intro messages, keywords, system prompts, rule configs, and enabled
+  flags.
+- The reported `qwen3.5:9b` model-name issue was not reproduced and required no code change. The
+  model is consistently configured in the API, `.env.example`, README, and Demo check; the local
+  Ollama tag exists, is loaded, and passes `npm run demo:check`. The README already documents
+  `OLLAMA_CHAT_MODEL` as the override for installations using a different tag.
+- Verification ran on Node `v24.18.0`: all 90 API test files / 254 tests and all 10 Web tests pass;
+  API and Web typechecks pass; `prisma db seed`, the Vite production build, and Demo preflight pass.
+  Browser QA at `1264 x 720` confirms the complete Login form is visible at `scrollY = 0`, accepts
+  input, and produces no console warnings or errors.
+
+## Follow-up review fixes
+
+- A successful Scenario decline reply now retains its persisted NPC message id. On the next casual
+  send it is deduplicated into the ordinary Chat timeline before the temporary decline state is
+  cleared, so it remains in chronological order instead of floating below newer turns. Transient
+  decline errors are intentionally not promoted as persisted NPC messages.
+- Casual sending now uses one shared disabled-state rule in both the Composer and the `send()` guard.
+  An in-flight recall therefore disables mouse, keyboard, and programmatic sends until the DELETE
+  request settles, closing the race between a new user message and the rollback cascade.
+- Equal-timestamp ordering is now documented beside the merge sort: casual messages precede
+  Scenario cards, followed by id ordering within each kind. Cursor predicates use the same rule, so
+  this deterministic tiebreak remains stable across pagination boundaries.
+- Regression coverage raises the Web suite to 14 tests, including decline-reply promotion and recall
+  Composer disabling.

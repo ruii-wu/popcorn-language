@@ -14,6 +14,7 @@ export async function DELETE(req: Request, { params }: { params: { npcId: string
         role: 'user',
         scenarioSessionId: null,
         hiddenAt: null,
+        retractedAt: null,
       },
       select: { id: true, threadId: true, createdAt: true },
     });
@@ -23,26 +24,28 @@ export async function DELETE(req: Request, { params }: { params: { npcId: string
     const result = await prisma.$transaction(async (tx) => {
       await tx.message.update({
         where: { id: message.id },
-        data: { retractedAt: now, correction: null },
+        data: { retractedAt: now },
       });
       const hidden = await tx.message.updateMany({
         where: {
           threadId: message.threadId,
           hiddenAt: null,
+          hiddenByMessageId: null,
           OR: [
             { createdAt: { gt: message.createdAt } },
             { createdAt: message.createdAt, id: { gt: message.id } },
           ],
         },
-        data: { hiddenAt: now },
+        data: { hiddenAt: now, hiddenByMessageId: message.id },
       });
       await tx.scenarioSession.updateMany({
         where: {
           threadId: message.threadId,
           invitedAt: { gte: message.createdAt },
-          status: { in: ['invited', 'accepted', 'active', 'paused'] },
+          hiddenAt: null,
+          hiddenByMessageId: null,
         },
-        data: { hiddenAt: now },
+        data: { hiddenAt: now, hiddenByMessageId: message.id },
       });
       await tx.thread.update({ where: { id: message.threadId }, data: { lastMsgAt: message.createdAt } });
       return hidden.count;
@@ -63,7 +66,7 @@ export async function POST(req: Request, { params }: { params: { npcId: string; 
         hiddenAt: null,
         retractedAt: { not: null },
       },
-      select: { id: true, threadId: true, createdAt: true },
+      select: { id: true, threadId: true, createdAt: true, retractedAt: true },
     });
     if (!message) return errorJson(404, 'NOT_FOUND', 'Retracted message not found');
 
@@ -73,16 +76,34 @@ export async function POST(req: Request, { params }: { params: { npcId: string; 
         where: {
           threadId: message.threadId,
           hiddenAt: { not: null },
-          OR: [
-            { createdAt: { gt: message.createdAt } },
-            { createdAt: message.createdAt, id: { gt: message.id } },
+          AND: [
+            {
+              OR: [
+                { hiddenByMessageId: message.id },
+                { hiddenByMessageId: null, hiddenAt: message.retractedAt },
+              ],
+            },
+            {
+              OR: [
+                { createdAt: { gt: message.createdAt } },
+                { createdAt: message.createdAt, id: { gt: message.id } },
+              ],
+            },
           ],
         },
-        data: { hiddenAt: null },
+        data: { hiddenAt: null, hiddenByMessageId: null },
       });
       await tx.scenarioSession.updateMany({
-        where: { threadId: message.threadId, invitedAt: { gte: message.createdAt }, hiddenAt: { not: null } },
-        data: { hiddenAt: null },
+        where: {
+          threadId: message.threadId,
+          invitedAt: { gte: message.createdAt },
+          hiddenAt: { not: null },
+          OR: [
+            { hiddenByMessageId: message.id },
+            { hiddenByMessageId: null, hiddenAt: message.retractedAt },
+          ],
+        },
+        data: { hiddenAt: null, hiddenByMessageId: null },
       });
       const last = await tx.message.findFirst({
         where: { threadId: message.threadId, hiddenAt: null },

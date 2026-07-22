@@ -119,27 +119,29 @@ model Thread {
 }
 
 model Message {
-  id        String  @id @default(cuid())
-  threadId  String
-  userId    String?
-  thread    Thread  @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  user      User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
-  role      String
-  text      String
-  langDetect String?
-  correction String?
-  meta       String?
-  tokensUsed Int?
-  modelName  String?
-  retractedAt DateTime?
-  hiddenAt   DateTime?
-  createdAt  DateTime @default(now())
+  id                String    @id @default(cuid())
+  threadId          String
+  userId            String?
+  thread            Thread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user              User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  role              String
+  text              String
+  langDetect        String?
+  correction        String?
+  meta              String?
+  tokensUsed        Int?
+  modelName         String?
+  retractedAt       DateTime?
+  hiddenAt          DateTime?
+  hiddenByMessageId String?
+  createdAt         DateTime  @default(now())
 
   scenarioSessionId String?
   scenarioSession   ScenarioSession? @relation(fields: [scenarioSessionId], references: [id], onDelete: SetNull)
   scenarioTurn      ScenarioTurn?
 
   @@index([threadId, createdAt])
+  @@index([threadId, hiddenByMessageId])
 }
 
 model ConversationSummary {
@@ -174,7 +176,7 @@ model ScenarioTemplate {
 }
 
 model ScenarioSession {
-  id         String @id @default(cuid())
+  id         String           @id @default(cuid())
   userId     String
   npcId      String
   threadId   String
@@ -184,18 +186,21 @@ model ScenarioSession {
   thread     Thread           @relation(fields: [threadId], references: [id], onDelete: Cascade)
   template   ScenarioTemplate @relation(fields: [templateId], references: [id])
 
-  status           String
-  state            String    @default("{}")
-  invitedAt        DateTime  @default(now())
-  startedAt        DateTime?
-  endedAt          DateTime?
-  hiddenAt         DateTime?
-  declineReason    String?
-  triggerRationale String?
+  status            String
+  state             String    @default("{}")
+  invitedAt         DateTime  @default(now())
+  startedAt         DateTime?
+  endedAt           DateTime?
+  hiddenAt          DateTime?
+  hiddenByMessageId String?
+  declineReason     String?
+  triggerRationale  String?
 
   turns    ScenarioTurn[]
   messages Message[]
   summary  ScenarioSummary?
+
+  @@index([threadId, hiddenByMessageId])
 }
 
 model ScenarioTurn {

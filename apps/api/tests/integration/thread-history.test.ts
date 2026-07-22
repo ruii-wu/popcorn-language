@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 const U = '__w2_history_user__';
 
 afterAll(async () => {
-  await prisma.user.deleteMany({ where: { username: U } });
+  await prisma.user.deleteMany({ where: { username: { startsWith: U } } });
   await prisma.$disconnect();
 });
 
@@ -99,6 +99,39 @@ describe('thread history', () => {
     const beforeCard = await (await history(get(user.id, `?limit=20&before=${encodeURIComponent(cards[0].id)}`), { params: { npcId: 'lily' } })).json();
     expect(beforeCard.messages.some((m: { kind: string }) => m.kind === 'scenario')).toBe(false);
     expect(beforeCard.messages.map((m: { text: string }) => m.text)).toEqual(['m0', 'm1', 'm2', 'm3', 'm4']);
+  });
+
+  it('paginates a same-time message and Scenario card without loading past the cursor', async () => {
+    const username = U + '_merged_cursor';
+    await prisma.user.deleteMany({ where: { username } });
+    const user = await prisma.user.create({ data: { username, password: 'pw' } });
+    const thread = await prisma.thread.create({ data: { userId: user.id, npcId: 'lily' } });
+    const eventTime = new Date('2026-07-22T05:00:00.000Z');
+    const message = await prisma.message.create({
+      data: { threadId: thread.id, userId: user.id, role: 'user', text: 'same-time message', createdAt: eventTime },
+    });
+    const scenario = await prisma.scenarioSession.create({
+      data: {
+        userId: user.id,
+        npcId: 'lily',
+        threadId: thread.id,
+        templateId: 'mock_interview',
+        status: 'completed',
+        invitedAt: new Date(eventTime.getTime() - 1_000),
+        endedAt: eventTime,
+      },
+    });
+
+    const latest = await (await history(get(user.id, '?limit=1'), { params: { npcId: 'lily' } })).json();
+    expect(latest.hasMore).toBe(true);
+    expect(latest.messages.map((item: { id: string }) => item.id)).toEqual([`scenario:${scenario.id}`]);
+
+    const previous = await (await history(
+      get(user.id, `?limit=1&before=${encodeURIComponent(`scenario:${scenario.id}`)}`),
+      { params: { npcId: 'lily' } },
+    )).json();
+    expect(previous.hasMore).toBe(false);
+    expect(previous.messages.map((item: { id: string }) => item.id)).toEqual([message.id]);
   });
 
   it('DELETE clears the thread messages', async () => {

@@ -72,7 +72,14 @@ export async function declineScenario(deps: LifecycleDeps): Promise<DeclinedScen
     }
   } else if (!userMsgId) {
     const original = await deps.prisma.message.findFirst({
-      where: { threadId: s.threadId, userId: deps.userId, role: 'user', retractedAt: null, hiddenAt: null },
+      where: {
+        threadId: s.threadId,
+        userId: deps.userId,
+        role: 'user',
+        retractedAt: null,
+        hiddenAt: null,
+        createdAt: { lte: s.invitedAt },
+      },
       orderBy: { createdAt: 'desc' },
       select: { id: true },
     });

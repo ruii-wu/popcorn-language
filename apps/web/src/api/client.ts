@@ -57,6 +57,7 @@ async function streamPost<E extends { type: string; data: unknown } = { type: st
   url: string,
   body: unknown,
   onEvent: (e: E) => void,
+  signal?: AbortSignal,
 ) {
   let res: Response;
   try {
@@ -64,8 +65,10 @@ async function streamPost<E extends { type: string; data: unknown } = { type: st
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal,
     });
   } catch (e) {
+    if (signal?.aborted) return;
     onEvent({ type: 'error', data: { code: 'NETWORK', message: String(e) } } as E);
     onEvent({ type: 'done', data: {} } as E);
     return;
@@ -88,7 +91,14 @@ async function streamPost<E extends { type: string; data: unknown } = { type: st
     while ((idx = buf.indexOf('\n\n')) >= 0) {
       const frame = buf.slice(0, idx);
       buf = buf.slice(idx + 2);
-      if (frame.trim()) onEvent(parseFrame(frame) as E);
+      if (frame.trim()) {
+        const event = parseFrame(frame) as E;
+        onEvent(event);
+        if (event.type === 'error') {
+          await reader.cancel();
+          return;
+        }
+      }
     }
   }
   if (buf.trim()) onEvent(parseFrame(buf) as E);
@@ -125,8 +135,8 @@ export const api = {
     req<OkResponse>('DELETE', '/api/threads/' + npcId + '/messages/' + messageId),
   restoreRecalledMessage: (npcId: string, messageId: string): Promise<OkResponse> =>
     apiPost<OkResponse>('/api/threads/' + npcId + '/messages/' + messageId + '/restore', {}),
-  streamMessage: (npcId: string, text: string, onEvent: (e: ChatStreamEvent) => void) =>
-    streamPost<ChatStreamEvent>('/api/threads/' + npcId + '/messages', { text: text }, onEvent),
+  streamMessage: (npcId: string, text: string, onEvent: (e: ChatStreamEvent) => void, signal?: AbortSignal) =>
+    streamPost<ChatStreamEvent>('/api/threads/' + npcId + '/messages', { text: text }, onEvent, signal),
   // onboarding / journey / profile
   profile: (): Promise<ProfileResponse> => apiGet<ProfileResponse>('/api/profile'),
   saveProfile: (p: ProfileBody) => apiPut('/api/profile', p),

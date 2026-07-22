@@ -48,4 +48,36 @@ describe('scenario lifecycle', () => {
     const { session: s } = await session('invited');
     await expect(declineScenario({ prisma, userId: 'stranger', sessionId: s.id })).rejects.toThrow(/not found/i);
   });
+
+  it('never binds deferred decline text to a message sent after the invitation', async () => {
+    const { user, session: s } = await session('invited');
+    const invitedAt = new Date('2026-07-22T04:00:00.000Z');
+    await prisma.scenarioSession.update({
+      where: { id: s.id },
+      data: { invitedAt, triggerRationale: JSON.stringify({ deferredText: 'original trigger text' }) },
+    });
+    const before = await prisma.message.create({
+      data: {
+        threadId: s.threadId,
+        userId: user.id,
+        role: 'user',
+        text: 'before invitation',
+        createdAt: new Date(invitedAt.getTime() - 1_000),
+      },
+    });
+    await prisma.message.create({
+      data: {
+        threadId: s.threadId,
+        userId: user.id,
+        role: 'user',
+        text: 'after invitation',
+        createdAt: new Date(invitedAt.getTime() + 1_000),
+      },
+    });
+
+    const declined = await declineScenario({ prisma, userId: user.id, sessionId: s.id });
+
+    expect(declined.deferredText).toBe('original trigger text');
+    expect(declined.userMsgId).toBe(before.id);
+  });
 });

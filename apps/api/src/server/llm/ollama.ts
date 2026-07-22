@@ -87,11 +87,12 @@ export class OllamaClient {
 
   async *chat(
     messages: ChatMessage[],
-    opts: { model?: string; think?: boolean; options?: Record<string, unknown> } = {},
+    opts: { model?: string; think?: boolean; options?: Record<string, unknown>; signal?: AbortSignal } = {},
   ): AsyncGenerator<string> {
     const res = await this.fetchImpl(`${this.baseUrl}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: opts.signal,
       body: JSON.stringify({
         model: opts.model ?? this.chatModel,
         messages,

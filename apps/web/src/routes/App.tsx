@@ -13,7 +13,8 @@ import {
   WebConversationsRail,
   npcView,
 } from '../components/shared';
-import { useScenarioSession } from '../components/scenario/useScenarioSession';
+import { declinedReplyToCasualMessage, useScenarioSession } from '../components/scenario/useScenarioSession';
+import { isCasualComposerDisabled } from './chatState';
 import {
   ScenChatHeader,
   ScenarioHUD,
@@ -396,7 +397,14 @@ export default function App() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeIdRef = useRef<string | null>(activeId);
   const chatStreamSeqRef = useRef(0);
+  const chatAbortRef = useRef<AbortController | null>(null);
   const scen = useScenarioSession(activeId);
+  const casualComposerDisabled = isCasualComposerDisabled({
+    sending,
+    recallingId,
+    acceptingScenario: scen.accepting,
+    decliningScenario: scen.declining,
+  });
 
   useEffect(() => {
     activeIdRef.current = activeId;
@@ -420,6 +428,7 @@ export default function App() {
   useEffect(() => {
     if (!activeId) return;
     let cancelled = false;
+    chatAbortRef.current = null;
     chatStreamSeqRef.current += 1;
     setStreaming(''); setTyping(false); setSending(false); setMessages([]); setDetail(null); setMemories([]);
     setRecallingId(null);
@@ -433,7 +442,11 @@ export default function App() {
     api.memories(activeId)
       .then((r) => { if (!cancelled) setMemories(r); })
       .catch(() => { if (!cancelled) setMemories([]); });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      chatAbortRef.current = null;
+      chatStreamSeqRef.current += 1;
+    };
   }, [activeId]);
 
   useEffect(() => {
@@ -445,13 +458,24 @@ export default function App() {
   }, [scen.status, scen.session?.id]);
 
   function send(text: string) {
-    if (!text.trim() || sending || !activeId) return;
+    if (!text.trim() || casualComposerDisabled || !activeId) return;
     const sendNpcId = activeId;
+    const declinedMessage = declinedReplyToCasualMessage(scen.declinedReply);
+    if (declinedMessage) {
+      setMessages((current) => declinedMessage.id && current.some((message) => message.id === declinedMessage.id)
+        ? current
+        : current.concat(declinedMessage));
+    }
+    scen.clearDeclinedReply();
+    chatAbortRef.current?.abort();
+    const controller = new AbortController();
+    chatAbortRef.current = controller;
     const streamSeq = ++chatStreamSeqRef.current;
     setSending(true); setStreaming('');
     let acc = '';
+    let terminal = false;
     api.streamMessage(sendNpcId, text, (ev) => {
-      if (activeIdRef.current !== sendNpcId || chatStreamSeqRef.current !== streamSeq) return;
+      if (terminal || activeIdRef.current !== sendNpcId || chatStreamSeqRef.current !== streamSeq) return;
       switch (ev.type) {
         case 'user_message_saved':
           setMessages((m) => m.concat([{ id: ev.data.messageId, from: 'user', text: text,
@@ -479,25 +503,43 @@ export default function App() {
           break;
         }
         case 'error':
+          terminal = true;
+          chatStreamSeqRef.current += 1;
+          controller.abort();
+          if (chatAbortRef.current === controller) chatAbortRef.current = null;
           setTyping(false); setStreaming(''); setSending(false);
           setMessages((m) => m.concat([{ id: 'err-' + Date.now(), from: 'npc', error: true,
             text: (ev.data.code === 'LLM_UNAVAILABLE'
               ? 'Local model unavailable — start Ollama (qwen3.5:9b) and retry.'
               : ('Error: ' + (ev.data.message || ev.data.code))), time: fmtTime(Date.now()), correction: null }]));
           break;
-        case 'done': setSending(false); break;
+        case 'done': terminal = true; setSending(false); break;
         default: break;
       }
-    }).catch(() => {
+    }, controller.signal).catch(() => {
       if (activeIdRef.current === sendNpcId && chatStreamSeqRef.current === streamSeq) setSending(false);
+    }).finally(() => {
+      if (chatAbortRef.current === controller) chatAbortRef.current = null;
     });
+  }
+
+  function stopChatStream() {
+    chatStreamSeqRef.current += 1;
+    chatAbortRef.current?.abort();
+    chatAbortRef.current = null;
+    setStreaming('');
+    setTyping(false);
+    setSending(false);
   }
 
   async function recallMessage(messageId: string) {
     if (!activeId || recallingId) return;
+    const npcId = activeId;
+    stopChatStream();
     setRecallingId(messageId);
     try {
-      await api.recallMessage(activeId, messageId);
+      await api.recallMessage(npcId, messageId);
+      if (activeIdRef.current !== npcId) return;
       setMessages((current) => {
         const index = current.findIndex((message) => message.id === messageId);
         if (index < 0) return current;
@@ -505,9 +547,6 @@ export default function App() {
           ? { ...message, text: 'Message retracted', retracted: true, retractedText: message.text, correction: null }
           : message);
       });
-      setStreaming('');
-      setTyping(false);
-      setSending(false);
       scen.clearForRecall();
     } catch {
       // Keep the original bubble when the server cannot retract it.
@@ -518,13 +557,14 @@ export default function App() {
 
   async function restoreRecalledMessage(messageId: string) {
     if (!activeId || recallingId) return;
+    const npcId = activeId;
+    stopChatStream();
     setRecallingId(messageId);
     try {
-      await api.restoreRecalledMessage(activeId, messageId);
-      const thread = await api.thread(activeId);
+      await api.restoreRecalledMessage(npcId, messageId);
+      const thread = await api.thread(npcId);
+      if (activeIdRef.current !== npcId) return;
       setMessages((thread.messages || []).map(mapMsg));
-      setStreaming('');
-      setTyping(false);
       await scen.refreshSessions();
     } catch {
       // Keep the rolled-back view when restoration fails.
@@ -634,7 +674,7 @@ export default function App() {
             <Composer onSend={(t: string) => scen.freetype(t)} disabled={scen.choiceDisabled} />
           </>
         ) : scen.status === 'completed' ? null : (
-          <Composer onSend={send} disabled={sending || scen.accepting || scen.declining}
+          <Composer onSend={send} disabled={casualComposerDisabled}
                     draftValue={composerDraft} onDraftChange={setComposerDraft} focusSignal={composerFocusSignal} />
         )}
       </section>

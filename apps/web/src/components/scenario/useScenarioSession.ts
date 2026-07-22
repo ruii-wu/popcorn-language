@@ -10,7 +10,7 @@ import type {
 } from '@popcorn/shared';
 
 export type ScenarioStatus = 'invited' | 'active' | 'paused' | 'completed' | null;
-export interface ScenarioMessage { from: 'user' | 'npc-c' | 'system'; text: string; time?: string }
+export interface ScenarioMessage { id?: string; from: 'user' | 'npc-c' | 'system'; text: string; time?: string }
 export interface HudState { impression: number; stress: string; turnsLeft: number }
 export interface LiveSession {
   id: string;
@@ -24,6 +24,17 @@ export function choiceToTurnPayload(choice: ScenarioChoice): { text?: string; to
   return {
     ...(choice.text ? { text: choice.text } : {}),
     ...(choice.tone ? { tone: choice.tone } : {}),
+  };
+}
+
+export function declinedReplyToCasualMessage(reply: ScenarioMessage | null) {
+  if (!reply || reply.from !== 'npc-c') return null;
+  return {
+    id: reply.id,
+    from: 'npc' as const,
+    text: reply.text,
+    time: reply.time || '',
+    correction: null,
   };
 }
 
@@ -64,13 +75,21 @@ export function useScenarioSession(npcId: string | null) {
   const liveSidRef = useRef<string | null>(null);
   const declineSeqRef = useRef(0);
   const sessionsSeqRef = useRef(0);
+  const resumeSeqRef = useRef(0);
   liveSidRef.current = session ? session.id : null;
 
+  function invalidateResume() {
+    resumeSeqRef.current += 1;
+    setResuming(false);
+  }
+
   function refreshSessions() {
-    if (!npcId) return Promise.resolve();
+    if (!npcId) return Promise.resolve(false);
+    invalidateResume();
     const requestId = ++sessionsSeqRef.current;
     return api.sessions('?npcId=' + encodeURIComponent(npcId)).then((list) => {
-      if (requestId !== sessionsSeqRef.current) return;
+      if (requestId !== sessionsSeqRef.current) return true;
+      setMessages([]); setChoices([]); setHudState(null); setChoiceDisabled(false); setNpcTyping(false);
       const invited = list.find((s) => s.status === 'invited');
       const pending = list.find((s) => s.status === 'paused' || s.status === 'active');
       if (invited) {
@@ -84,7 +103,8 @@ export function useScenarioSession(npcId: string | null) {
       } else {
         setSession(null); setResumable(null); setSummary(null); setTranscript([]);
       }
-    }).catch(() => {});
+      return true;
+    }).catch(() => false);
   }
 
   useEffect(() => {
@@ -93,9 +113,10 @@ export function useScenarioSession(npcId: string | null) {
     setDeclining(false); setPausing(false); setResuming(false); setEnding(false);
     setReviewingSessionId(null); setReviewErrorSessionId(null); setDeclinedReply(null);
     declineSeqRef.current += 1;
+    resumeSeqRef.current += 1;
     if (!npcId) return;
     refreshSessions();
-    return () => { sessionsSeqRef.current += 1; };
+    return () => { sessionsSeqRef.current += 1; resumeSeqRef.current += 1; };
   }, [npcId]);
 
   // Shared SSE handler for choose/freetype turns.
@@ -124,6 +145,7 @@ export function useScenarioSession(npcId: string | null) {
   // Called by App when a scenario_offer arrives on the chat stream.
   function offerSession(sessionId: string, title: string) {
     if (!npcId) return;
+    invalidateResume();
     setSummary(null); setMessages([]); setChoices([]); setHudState(null); setResumable(null);
     setAccepting(false); setDeclining(false); setEnding(false); setReviewErrorSessionId(null); setDeclinedReply(null);
     setSession({ id: sessionId, status: 'invited', scenarioTitle: title, npcId });
@@ -152,7 +174,19 @@ export function useScenarioSession(npcId: string | null) {
 
   function decline() {
     if (!session || accepting || declining) return;
+    const current = session;
     const requestId = ++declineSeqRef.current;
+    let recoveryStarted = false;
+    const recoverInvitation = () => {
+      if (recoveryStarted) return;
+      recoveryStarted = true;
+      void refreshSessions().then((refreshed) => {
+        if (declineSeqRef.current !== requestId) return;
+        if (!refreshed) setSession(current);
+        setNpcTyping(false);
+        setDeclining(false);
+      });
+    };
     setDeclining(true);
     setNpcTyping(true);
     setChoices([]);
@@ -163,10 +197,11 @@ export function useScenarioSession(npcId: string | null) {
       else if (event.type === 'typing_end') setNpcTyping(false);
       else if (event.type === 'message_complete') {
         setNpcTyping(false);
-        setDeclinedReply({ from: 'npc-c', text: event.data.fullText, time: nowTime() });
+        setDeclinedReply({ id: event.data.messageId, from: 'npc-c', text: event.data.fullText, time: nowTime() });
       } else if (event.type === 'error') {
         setNpcTyping(false);
         setDeclinedReply({ from: 'system', text: 'Could not continue the chat. Please try again.' });
+        recoverInvitation();
       } else if (event.type === 'done') {
         setNpcTyping(false);
         setDeclining(false);
@@ -174,8 +209,8 @@ export function useScenarioSession(npcId: string | null) {
     }).catch(() => {
       if (declineSeqRef.current !== requestId) return;
       setNpcTyping(false);
-      setDeclining(false);
       setDeclinedReply({ from: 'system', text: 'Could not continue the chat. Please try again.' });
+      recoverInvitation();
     });
   }
 
@@ -203,15 +238,16 @@ export function useScenarioSession(npcId: string | null) {
     const r = resumable;
     if (!r || resuming) return;
     const requestId = ++sessionsSeqRef.current;
+    const resumeRequestId = ++resumeSeqRef.current;
     setResuming(true);
     try {
       if (r.status === 'paused') {
         await api.resumeSession(r.id);
-        if (requestId !== sessionsSeqRef.current) return;
+        if (requestId !== sessionsSeqRef.current || resumeRequestId !== resumeSeqRef.current) return;
         setResumable({ ...r, status: 'active' });
       }
       const detail: SessionDetailResponse = await api.session(r.id);
-      if (requestId !== sessionsSeqRef.current) return;
+      if (requestId !== sessionsSeqRef.current || resumeRequestId !== resumeSeqRef.current) return;
       setSession({ ...r, status: 'active' });
       setResumable(null);
       setTranscript(detail.transcript || []);
@@ -219,10 +255,10 @@ export function useScenarioSession(npcId: string | null) {
       setChoices(detail.choices || []);
       if (detail.state) setHudState(detail.state as HudState);
     } catch {
-      if (requestId === sessionsSeqRef.current) setResuming(false);
       return;
+    } finally {
+      if (resumeRequestId === resumeSeqRef.current) setResuming(false);
     }
-    if (requestId === sessionsSeqRef.current) setResuming(false);
   }
 
   // Leave/end a scenario — aborts it server-side and returns to casual chat.
@@ -233,6 +269,7 @@ export function useScenarioSession(npcId: string | null) {
       'End this scenario? Your saved progress will be closed and cannot be resumed. Use Pause if you want to continue later.',
     );
     if (!confirmed) return;
+    invalidateResume();
     const requestId = ++sessionsSeqRef.current;
     setEnding(true);
     try {
@@ -249,13 +286,19 @@ export function useScenarioSession(npcId: string | null) {
   }
 
   function clearForRecall() {
+    invalidateResume();
     setSession(null); setResumable(null); setMessages([]); setChoices([]); setHudState(null); setSummary(null);
     setTranscript([]); setNpcTyping(false); setEnding(false); setReviewingSessionId(null);
     setReviewErrorSessionId(null); setDeclinedReply(null);
   }
 
+  function clearDeclinedReply() {
+    setDeclinedReply(null);
+  }
+
   async function reviewCompleted(sessionId: string) {
     if (!npcId || reviewingSessionId) return;
+    invalidateResume();
     const requestId = ++sessionsSeqRef.current;
     setReviewingSessionId(sessionId);
     setReviewErrorSessionId(null);
@@ -316,6 +359,6 @@ export function useScenarioSession(npcId: string | null) {
     choiceDisabled, accepting, declining, pausing, resuming, ending,
     reviewingSessionId, reviewErrorSessionId, declinedReply, npcTyping,
     offerSession, accept, decline, pause, resume, abort,
-    clearForRecall, reviewCompleted, continueChatting, refreshSessions, choose, freetype,
+    clearForRecall, clearDeclinedReply, reviewCompleted, continueChatting, refreshSessions, choose, freetype,
   };
 }

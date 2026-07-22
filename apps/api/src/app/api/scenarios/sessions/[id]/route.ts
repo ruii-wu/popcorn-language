@@ -7,7 +7,7 @@ import { mapSessionDetail } from '@/server/scenario/sessionView';
 export async function GET(req: Request, { params }: { params: { id: string } }): Promise<Response> {
   return withUser(req, async (userId) => {
     const session = await prisma.scenarioSession.findFirst({
-      where: { id: params.id, userId },
+      where: { id: params.id, userId, hiddenAt: null },
       include: { template: true, summary: true },
     });
     if (!session) return errorJson(404, 'NOT_FOUND', 'Scenario session not found');

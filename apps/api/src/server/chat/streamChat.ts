@@ -19,6 +19,7 @@ export interface StreamChatDeps {
   npcId: string;
   text: string;
   lang?: string;
+  signal?: AbortSignal;
 }
 
 interface CasualReplyDeps {
@@ -29,10 +30,12 @@ interface CasualReplyDeps {
   threadId: string;
   userMsgId: string;
   text: string;
+  signal?: AbortSignal;
+  progressionAlreadyApplied?: boolean;
 }
 
 async function* streamCasualReply(deps: CasualReplyDeps): AsyncGenerator<SseEvent> {
-  const { prisma, ollama, userId, npcId, threadId, userMsgId, text } = deps;
+  const { prisma, ollama, userId, npcId, threadId, userMsgId, text, signal } = deps;
   const npc = await prisma.npc.findUnique({ where: { id: npcId } });
   const rel = await prisma.relationship.findUnique({ where: { userId_npcId: { userId, npcId } } });
   if (!npc || !rel) {
@@ -75,7 +78,8 @@ async function* streamCasualReply(deps: CasualReplyDeps): AsyncGenerator<SseEven
   let full = '';
   let typingActive = true;
   try {
-    for await (const tok of ollama.chat(messages)) {
+    for await (const tok of ollama.chat(messages, { signal })) {
+      if (signal?.aborted) return;
       if (!tok) continue;
       if (typingActive) {
         typingActive = false;
@@ -85,6 +89,7 @@ async function* streamCasualReply(deps: CasualReplyDeps): AsyncGenerator<SseEven
       yield { event: 'token', data: { delta: tok } };
     }
   } catch (e) {
+    if (signal?.aborted) return;
     if (typingActive) yield { event: 'typing_end', data: { npcId } };
     yield { event: 'error', data: { code: 'LLM_UNAVAILABLE', message: String(e) } };
     yield { event: 'done', data: {} };
@@ -94,22 +99,41 @@ async function* streamCasualReply(deps: CasualReplyDeps): AsyncGenerator<SseEven
   // Empty generations still need to close the pending typing indicator.
   if (typingActive) yield { event: 'typing_end', data: { npcId } };
 
-  const currentUserMessage = await prisma.message.findUnique({ where: { id: userMsgId }, select: { retractedAt: true } });
-  if (!currentUserMessage || currentUserMessage.retractedAt) {
+  if (signal?.aborted) return;
+
+  // Keep the visibility check and reply write in one transaction. A retract that wins
+  // first makes this a no-op; a retract that follows will cascade-hide the committed reply.
+  const npcMsg = await prisma.$transaction(async (tx) => {
+    const currentUserMessage = await tx.message.findFirst({
+      where: {
+        id: userMsgId,
+        threadId,
+        userId,
+        role: 'user',
+        retractedAt: null,
+        hiddenAt: null,
+      },
+      select: { id: true },
+    });
+    if (!currentUserMessage || signal?.aborted) return null;
+
+    const created = await tx.message.create({
+      data: { threadId, userId: null, role: 'npc', text: full },
+    });
+    await tx.thread.update({ where: { id: threadId }, data: { lastMsgAt: created.createdAt } });
+    return created;
+  });
+  if (!npcMsg) {
     yield { event: 'done', data: {} };
     return;
   }
-
-  const npcMsg = await prisma.message.create({
-    data: { threadId, userId: null, role: 'npc', text: full },
-  });
   yield { event: 'message_complete', data: { messageId: npcMsg.id, fullText: full } };
-
-  await prisma.thread.update({ where: { id: threadId }, data: { lastMsgAt: npcMsg.createdAt } });
-  await prisma.activityEvent.create({
-    data: { userId, type: 'message_sent', payload: JSON.stringify({ npcId }) },
-  });
-  await applyMessageProgression(prisma, userId, npcId);
+  if (!deps.progressionAlreadyApplied) {
+    await prisma.activityEvent.create({
+      data: { userId, type: 'message_sent', payload: JSON.stringify({ npcId }) },
+    });
+    await applyMessageProgression(prisma, userId, npcId);
+  }
 
   // Grammar correction — gated by settings (default on), guarded. Targets the user's message.
   try {
@@ -195,5 +219,6 @@ export async function* streamChat(deps: StreamChatDeps): AsyncGenerator<SseEvent
     threadId: thread.id,
     userMsgId: userMsg.id,
     text,
+    signal: deps.signal,
   });
 }

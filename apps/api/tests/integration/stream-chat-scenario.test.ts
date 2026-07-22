@@ -2,14 +2,14 @@
 import { describe, it, expect, afterAll, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { OllamaClient } from '@/server/llm/ollama';
-import { streamChat } from '@/server/chat/streamChat';
+import { streamChat, streamDeferredChat } from '@/server/chat/streamChat';
 import type { SseEvent } from '@/server/sse/events';
 
 const prisma = new PrismaClient();
 const U = '__w4_streamoffer_user__';
 
 afterAll(async () => {
-  await prisma.user.deleteMany({ where: { username: U } });
+  await prisma.user.deleteMany({ where: { username: { startsWith: U } } });
   await prisma.$disconnect();
 });
 
@@ -48,5 +48,52 @@ describe('streamChat scenario offer', () => {
     expect(events.find((e) => e.event === 'message_complete')).toBeUndefined();
     expect(events.findIndex((e) => e.event === 'scenario_offer')).toBeLessThan(events.findIndex((e) => e.event === 'done'));
     expect(events[events.length - 1].event).toBe('done');
+  });
+
+  it('does not apply message progression again when a declined offer resumes casual chat', async () => {
+    const username = U + '_decline_progression';
+    await prisma.user.deleteMany({ where: { username } });
+    const user = await prisma.user.create({ data: { username, password: 'pw' } });
+    await prisma.userSettings.create({
+      data: { userId: user.id, memoryStrategy: 'recency', grammarCorrection: false },
+    });
+    const thread = await prisma.thread.create({ data: { userId: user.id, npcId: 'lily' } });
+    await prisma.relationship.create({ data: { userId: user.id, npcId: 'lily', stage: 'friend', stageValue: 2 } });
+    for (let i = 0; i < 4; i++) {
+      await prisma.message.create({ data: { threadId: thread.id, userId: user.id, role: 'user', text: `warmup ${i}` } });
+    }
+    const fetchImpl = vi.fn(async (_url: string, init: { body: string }) => {
+      const body = JSON.parse(init.body);
+      if (body.stream === true) return ndjson([JSON.stringify({ message: { content: 'No problem.' }, done: true })]);
+      return { ok: true, status: 200, json: async () => ({ message: { content: JSON.stringify({ facts: [] }) } }) } as unknown as Response;
+    });
+    const ollama = new OllamaClient({ fetchImpl: fetchImpl as unknown as typeof fetch });
+    const offerEvents: SseEvent[] = [];
+    for await (const event of streamChat({
+      prisma,
+      ollama,
+      userId: user.id,
+      npcId: 'lily',
+      text: 'can we do a mock interview?',
+    })) offerEvents.push(event);
+
+    const saved = offerEvents.find((event) => event.event === 'user_message_saved')!.data as { messageId: string };
+    for await (const _event of streamDeferredChat({
+      prisma,
+      ollama,
+      userId: user.id,
+      npcId: 'lily',
+      threadId: thread.id,
+      userMsgId: saved.messageId,
+      text: 'can we do a mock interview?',
+      progressionAlreadyApplied: true,
+    })) void _event;
+
+    const relationship = await prisma.relationship.findUniqueOrThrow({
+      where: { userId_npcId: { userId: user.id, npcId: 'lily' } },
+    });
+    expect(relationship.conversationCount).toBe(1);
+    expect(relationship.relationshipPoints).toBe(1);
+    expect(await prisma.activityEvent.count({ where: { userId: user.id, type: 'message_sent' } })).toBe(1);
   });
 });

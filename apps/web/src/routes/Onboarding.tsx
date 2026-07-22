@@ -122,6 +122,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
         {/* Visual side */}
         <div className="col-span-5 fade-up" style={{ animationDelay: '0.10s' }}>
           <PreviewStack />
+          <LoginForm />
         </div>
       </div>
     </OnboardingShell>
@@ -130,7 +131,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
 
 function PreviewStack() {
   return (
-    <div className="relative" style={{ height: 460 }}>
+    <div className="relative" style={{ height: 370 }}>
       {/* Card 3: behind */}
       <div className="absolute right-0 bottom-0 rounded-2xl p-4"
            style={{
@@ -894,7 +895,6 @@ export default function Onboarding() {
           onBack={() => setStep(1)}
         />
       )}
-      {step === 0 && <LoginForm />}
     </div>
   );
 }
