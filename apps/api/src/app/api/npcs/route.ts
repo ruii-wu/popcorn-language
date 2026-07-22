@@ -2,6 +2,8 @@ import { NpcListItem } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json } from '@/server/http/respond';
 
+const PRIMARY_NPC_ID = 'lily';
+
 export async function GET(req: Request): Promise<Response> {
   return withUser(req, async (userId) => {
     const npcs = await prisma.npc.findMany({ orderBy: { id: 'asc' } });
@@ -13,7 +15,13 @@ export async function GET(req: Request): Promise<Response> {
     });
     const threadByNpc = new Map(threads.map((t) => [t.npcId, t]));
 
-    const out = npcs.map((n): NpcListItem => {
+    // Lily is the onboarding companion and default chat, so keep her first even after
+    // other conversations become more recent. The remaining NPCs retain id ordering.
+    const orderedNpcs = [...npcs].sort((a, b) =>
+      Number(b.id === PRIMARY_NPC_ID) - Number(a.id === PRIMARY_NPC_ID),
+    );
+
+    const out = orderedNpcs.map((n): NpcListItem => {
       const rel = relByNpc.get(n.id);
       const last = threadByNpc.get(n.id)?.messages[0];
       return {

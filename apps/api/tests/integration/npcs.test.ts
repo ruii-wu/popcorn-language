@@ -23,6 +23,7 @@ describe('npc routes', () => {
     await prisma.message.create({ data: { threadId: thread.id, userId: null, role: 'npc', text: 'last one' } });
 
     const data = await (await list(req(user.id))).json();
+    expect(data[0].id).toBe('lily');
     const lily = data.find((n: { id: string }) => n.id === 'lily');
     expect(lily.relationship).toBe('friend');
     expect(lily.stageValue).toBe(2);

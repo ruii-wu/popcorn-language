@@ -30,6 +30,12 @@
   seed. Existing SQLite users are upgraded or provisioned by migration while preserving any
   stronger relationship stage, so Emma's Friend-gated Flat Viewing can be demonstrated directly.
 
+## Conversation list priority
+
+- Lily is now the fixed first item returned by the NPC list API. This keeps the onboarding
+  companion at the top of the conversation rail and makes Lily the initial active chat; the
+  remaining NPCs retain their stable id order.
+
 ## P0 demo hardening
 
 - Completed Scenario sessions are restored from SQLite after a reload, including transcript,
