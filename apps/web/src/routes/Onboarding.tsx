@@ -13,6 +13,7 @@ import type {
 } from '@popcorn/shared';
 import { WebI, RELATIONSHIP_LABEL, WebRelationshipDots, WebNavRail } from '../components/shared';
 import { ScenarioSummaryCard } from '../components/scenario/parts';
+import { PROFILE_GOALS, PROFILE_INTERESTS, PROFILE_ROLES } from '../profileOptions';
 
 // ============================================================
 // ONBOARDING — full-bleed, 3 steps
@@ -223,15 +224,6 @@ function Pill({ children }: { children?: any }) {
 
 // ---------- Step 2: Profile ----------
 
-const ROLES = ['Student', 'Software engineer', 'Designer', 'Marketer', 'Researcher', 'Something else'];
-const GOALS = [
-  { id: 'work',   label: 'Work',         zh: '工作' },
-  { id: 'travel', label: 'Travel',       zh: '旅行' },
-  { id: 'study',  label: 'Study abroad', zh: '留学' },
-  { id: 'daily',  label: 'Daily life',   zh: '日常' },
-];
-const INTERESTS = ['Coffee', 'Movies', 'Tech', 'Sports', 'Cats', 'Cooking', 'Art', 'Gaming', 'Books', 'Music'];
-
 function ProfileStep({ onNext, onBack }: { onNext: (data: any) => void; onBack: () => void }) {
   const [role, setRole] = useState('Software engineer');
   const [goal, setGoal] = useState('work');
@@ -256,7 +248,7 @@ function ProfileStep({ onNext, onBack }: { onNext: (data: any) => void; onBack: 
 
         <Question label="I am a…" hint="single select" mt={10}>
           <div className="flex flex-wrap gap-2">
-            {ROLES.map(o => (
+            {PROFILE_ROLES.map(o => (
               <Pillbtn key={o} selected={role === o} onClick={() => setRole(o)}>{o}</Pillbtn>
             ))}
           </div>
@@ -264,7 +256,7 @@ function ProfileStep({ onNext, onBack }: { onNext: (data: any) => void; onBack: 
 
         <Question label="I'm learning English for…" hint="single select" mt={8}>
           <div className="flex flex-wrap gap-2">
-            {GOALS.map(o => (
+            {PROFILE_GOALS.map(o => (
               <Pillbtn key={o.id} selected={goal === o.id} onClick={() => setGoal(o.id)}>
                 {o.label}<span className="ml-2 text-[10.5px] font-mono opacity-60">{o.zh}</span>
               </Pillbtn>
@@ -274,7 +266,7 @@ function ProfileStep({ onNext, onBack }: { onNext: (data: any) => void; onBack: 
 
         <Question label="What I like…" hint={`pick 3 to 5 · ${interests.size} selected`} mt={8}>
           <div className="flex flex-wrap gap-2">
-            {INTERESTS.map(o => (
+            {PROFILE_INTERESTS.map(o => (
               <Pillbtn key={o} selected={interests.has(o)} onClick={() => toggle(o)}>{o}</Pillbtn>
             ))}
           </div>

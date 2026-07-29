@@ -4,7 +4,7 @@ NUS Master of Computing capstone — a **local-LLM-powered, bilingual (中→EN)
 
 > ⚠️ **Local demo only.** Authentication is intentionally minimal (see [A note on auth](#a-note-on-auth)). **Never deploy this beyond localhost.**
 
-> **Project status: backend complete (W1–W8) + web client wired (W10).** Chat (SSE streaming), the pluggable memory engine + ablation harness, scenario gameplay, grammar correction, relationships/progression, achievements (static + dynamic), the Journey dashboard, Settings, system/reset, and reversible message recall are implemented and tested. 254 API Vitest cases and 14 Web tests pass; `typecheck` is clean. The frontend is a **Vite + React + TypeScript SPA** (`apps/web/`) that proxies `/api` to the Hono backend — open `http://localhost:5173/` to use the product end-to-end. The chat model is `qwen3.5:9b`.
+> **Project status: backend complete (W1–W8) + web client wired (W10).** Chat (SSE streaming), the pluggable memory engine + ablation harness, scenario gameplay, grammar correction, relationships/progression, achievements (static + dynamic), the Journey dashboard, Settings, system/reset, and reversible message recall are implemented and tested. 254 API Vitest cases and 17 Web tests pass; `typecheck` is clean. The frontend is a **Vite + React + TypeScript SPA** (`apps/web/`) that proxies `/api` to the Hono backend — open `http://localhost:5173/` to use the product end-to-end. The chat model is `qwen3.5:9b`.
 
 ---
 
