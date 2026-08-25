@@ -1,7 +1,7 @@
 # Ollama and API LLM Provider Switching - Technical Design
 
-**Date:** 2026-08-24  
-**Status:** Proposed  
+**Date:** 2026-08-24
+**Status:** Proposed
 **Scope:** Backend provider abstraction, Settings integration, embedding compatibility, and rollout
 
 ## 1. Background
