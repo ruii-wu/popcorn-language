@@ -22,6 +22,9 @@ import type {
   OkResponse,
   ChatStreamEvent,
   ScenarioStreamEvent,
+  LearnerModelResponse,
+  RecommendationResponse,
+  StartScenarioResponse,
 } from '@popcorn/shared';
 
 interface ApiError extends Error {
@@ -140,6 +143,12 @@ export const api = {
   // onboarding / journey / profile
   profile: (): Promise<ProfileResponse> => apiGet<ProfileResponse>('/api/profile'),
   saveProfile: (p: ProfileBody) => apiPut('/api/profile', p),
+  learnerModel: (): Promise<LearnerModelResponse> => apiGet<LearnerModelResponse>('/api/learner-model'),
+  recommendation: (): Promise<RecommendationResponse> => apiGet<RecommendationResponse>('/api/scenarios/recommendation'),
+  dismissRecommendation: (templateId: string) =>
+    apiPost('/api/scenarios/recommendation/dismiss', { templateId }),
+  startScenarioTemplate: (templateId: string): Promise<StartScenarioResponse> =>
+    apiPost<StartScenarioResponse>('/api/scenarios/templates/' + templateId + '/start', {}),
   onboardingComplete: () => apiPost('/api/onboarding/complete', {}),
   journey: (): Promise<JourneySummaryResponse> => apiGet<JourneySummaryResponse>('/api/journey/summary'),
   relationships: (): Promise<RelationshipCard[]> => apiGet<RelationshipCard[]>('/api/journey/relationships'),
@@ -166,6 +175,8 @@ export const api = {
       Object.assign({ choiceId: choiceId }, extra || {}), onEvent),
   streamFreetype: (id: string, text: string, onEvent: (e: ScenarioStreamEvent) => void) =>
     streamPost<ScenarioStreamEvent>('/api/scenarios/sessions/' + id + '/freetype', { text: text }, onEvent),
+  streamCompleteSession: (id: string, onEvent: (e: ScenarioStreamEvent) => void) =>
+    streamPost<ScenarioStreamEvent>('/api/scenarios/sessions/' + id + '/complete', {}, onEvent),
   pauseSession: (id: string): Promise<OkResponse> =>
     apiPost<OkResponse>('/api/scenarios/sessions/' + id + '/pause', {}),
   resumeSession: (id: string): Promise<unknown> =>

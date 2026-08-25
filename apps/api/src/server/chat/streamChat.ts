@@ -9,6 +9,7 @@ import { maybeOfferScenario } from '@/server/scenario/offer';
 import { applyMessageProgression } from '@/server/relationship/progression';
 import { correctGrammar } from '@/server/correction/grammar';
 import { runAchievementTick } from '@/server/achievements/engine';
+import { writeSignals } from '@/server/learning/signals';
 
 const RECENT_BUFFER = 10;
 
@@ -144,6 +145,16 @@ async function* streamCasualReply(deps: CasualReplyDeps): AsyncGenerator<SseEven
         const payload = { fixed: correction.fixed, noteZh: correction.noteZh, tag: correction.tag };
         await prisma.message.update({ where: { id: userMsgId }, data: { correction: JSON.stringify(payload) } });
         yield { event: 'correction', data: { targetMessageId: userMsgId, correction: payload } };
+        if (correction.signals.length > 0) {
+          await writeSignals({
+            prisma, userId,
+            sourceType: 'correction',
+            sourceRef: userMsgId,
+            signals: correction.signals,
+            npcId,
+            sourceMessageId: userMsgId,
+          });
+        }
       }
     }
   } catch (e) {

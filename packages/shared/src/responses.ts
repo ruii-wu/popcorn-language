@@ -60,6 +60,61 @@ export interface ProfileResponse {
   goal: string | null;
   interests: string[];
   language: string;
+  cefrLevel: 'A2' | 'B1' | 'B2' | 'C1' | null;
+}
+
+// GET /api/learner-model
+export type LearnerSkillCategory = 'grammar' | 'vocabulary' | 'pragmatics' | 'interaction';
+export type LearnerSkillStatus =
+  | 'gathering'
+  | 'needs_practice'
+  | 'developing'
+  | 'solid'
+  | 'strong';
+export type LearnerTrend = 'improving' | 'stable' | 'declining';
+
+export interface LearnerSkillState {
+  skillCode: string;
+  category: LearnerSkillCategory;
+  labelEn: string;
+  labelZh: string;
+  level: number;
+  evidenceN: number;
+  successCount: number;
+  mistakeCount: number;
+  status: LearnerSkillStatus;
+  trend: LearnerTrend;
+  lastObservedAt: string | null;
+}
+
+export interface LearnerModelResponse {
+  skills: LearnerSkillState[];
+  focus: LearnerSkillState[];
+}
+
+// GET /api/scenarios/recommendation
+export interface ScenarioRecommendation {
+  templateId: string;
+  npcId: string;
+  title: string;
+  titleZh: string | null;
+  reason: string;
+  targetSkills: string[];
+  difficulty: string;
+  estimatedMinutes: number;
+  source: 'learner_model' | 'novelty';
+  score: number;
+}
+export interface RecommendationResponse {
+  recommendation: ScenarioRecommendation | null;
+}
+
+// POST /api/scenarios/templates/:id/start
+export interface StartScenarioResponse {
+  ok: true;
+  sessionId: string;
+  npcId: string;
+  templateId: string;
 }
 
 // GET /api/journey/summary

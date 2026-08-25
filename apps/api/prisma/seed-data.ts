@@ -44,6 +44,8 @@ export interface ScenarioTemplateSeed {
   id: string; title: string; titleZh?: string; npcId: string; rolePlayedBy: string;
   minStage: string; estimatedMinutes: number; estimatedTurns: number;
   registerTags: string[]; systemPrompt: string; topicKeywords: string[]; enabled: boolean;
+  targetSkills: string[]; difficulty: 'A2' | 'B1' | 'B2' | 'C1';
+  successRubric?: Record<string, unknown>;
 }
 
 export const SCENARIO_TEMPLATES: ScenarioTemplateSeed[] = [
@@ -55,6 +57,13 @@ export const SCENARIO_TEMPLATES: ScenarioTemplateSeed[] = [
     systemPrompt:
       'Roleplay: you are Linda, a tough but fair HR manager interviewing the user for a junior marketing role. Ask probing questions, test composure under pressure, and stay in character. Keep each reply to 1-3 sentences.',
     topicKeywords: ['interview', 'job', 'hr', 'hiring', 'role', 'application', 'mock', 'practice', '面试', '模拟'],
+    targetSkills: [
+      'vocabulary.interview',
+      'pragmatics.hedging',
+      'pragmatics.formal_register',
+      'interaction.describing_experience',
+    ],
+    difficulty: 'B1',
     enabled: true,
   },
   {
@@ -65,6 +74,12 @@ export const SCENARIO_TEMPLATES: ScenarioTemplateSeed[] = [
     systemPrompt:
       'Roleplay: you are Emma, a current tenant showing the user a spare room in your shared flat. Be friendly but practical — describe the room, ask about their budget, move-in date, and living habits, and answer questions about rent, bills, and the area. Stay in character with light British expressions. Keep each reply to 1-3 sentences.',
     topicKeywords: ['flat', 'apartment', 'rent', 'room', 'viewing', 'move', 'flatmate', 'housing', 'lease', 'tenant'],
+    targetSkills: [
+      'pragmatics.making_requests',
+      'interaction.clarification',
+      'vocabulary.social_casual',
+    ],
+    difficulty: 'A2',
     enabled: true,
   },
 ];

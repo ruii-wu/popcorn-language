@@ -28,6 +28,8 @@ describe('auth me + logout', () => {
   it('me returns user, streak and totals', async () => {
     await prisma.user.deleteMany({ where: { username: U } });
     const user = await prisma.user.create({ data: { username: U, password: 'pw' } });
+    const thread = await prisma.thread.create({ data: { userId: user.id, npcId: 'lily' } });
+    await prisma.message.create({ data: { threadId: thread.id, userId: user.id, role: 'user', text: 'Hello' } });
     await prisma.activityEvent.create({ data: { userId: user.id, type: 'message_sent' } });
 
     const res = await me(withUid(user.id));
@@ -35,6 +37,6 @@ describe('auth me + logout', () => {
     const data = await res.json();
     expect(data.user.username).toBe(U);
     expect(data.streak.weekCount).toBe(1);
-    expect(data.totals).toEqual({ conversations: 0, scenarios: 0, memories: 0 });
+    expect(data.totals).toEqual({ conversations: 1, scenarios: 0, memories: 0 });
   });
 });

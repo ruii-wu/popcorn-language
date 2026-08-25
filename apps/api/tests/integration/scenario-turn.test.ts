@@ -85,4 +85,18 @@ describe('runScenarioTurn (non-final)', () => {
     const reloaded = await prisma.scenarioSession.findUniqueOrThrow({ where: { id: session.id } });
     expect(JSON.parse(reloaded.state).turnsLeft).toBe(3); // still advanced
   });
+
+  it('does not persist an extra turn when completion is waiting to be retried', async () => {
+    const { user, session } = await activeSession(0);
+    const ollama = { chatJson: vi.fn(), embed: vi.fn() };
+    const events: SseEvent[] = [];
+    for await (const event of runScenarioTurn({
+      prisma, ollama, userId: user.id, sessionId: session.id, text: 'an unintended extra answer',
+    })) events.push(event);
+
+    expect(events.find((event) => event.event === 'error')?.data).toEqual(expect.objectContaining({ code: 'END_FAILED' }));
+    expect(await prisma.message.count({ where: { scenarioSessionId: session.id } })).toBe(0);
+    expect(await prisma.scenarioTurn.count({ where: { sessionId: session.id } })).toBe(0);
+    expect(ollama.chatJson).not.toHaveBeenCalled();
+  });
 });

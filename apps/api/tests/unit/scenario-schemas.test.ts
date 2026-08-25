@@ -23,4 +23,13 @@ describe('scenario schemas', () => {
     expect(ScenarioSummarySchema.parse({ grade: 'B+', languageNote: 'a', pragmaticsNote: 'b', relationshipNote: 'c' }).grade).toBe('B+');
     expect(MemoryCardSchema.parse({ title: 'Polite Disagree-er', body: 'Hedges before pushing back.' }).title).toBe('Polite Disagree-er');
   });
+
+  it('keeps the main summary when auxiliary assessment rows are malformed', () => {
+    const parsed = ScenarioSummarySchema.parse({
+      grade: 'B', languageNote: 'Clear.', pragmaticsNote: 'Polite.', relationshipNote: 'Warm.',
+      skillAssessments: [{ skillCode: 42, score: 'bad' }],
+    });
+    expect(parsed.grade).toBe('B');
+    expect(parsed.skillAssessments).toEqual([{ skillCode: 42, score: 'bad' }]);
+  });
 });

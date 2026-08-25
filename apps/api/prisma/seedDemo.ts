@@ -24,6 +24,7 @@ export async function seedDemo(
       username,
       password: username,
       displayName: 'Demo Learner',
+      cefrLevel: 'B1',
       profile: { create: { role: 'Software engineer', goal: 'work', interests: JSON.stringify(['coffee', 'hiking', 'cats']) } },
       settings: { create: { memoryStrategy: 'hybrid', grammarCorrection: true } },
     },
@@ -92,14 +93,59 @@ export async function seedDemo(
       startedAt: new Date(now - DAY - 1_800_000), endedAt: new Date(now - DAY - 600_000),
     },
   });
+  const preLevels = {
+    'vocabulary.interview': { level: 0.5, evidenceN: 0 },
+    'pragmatics.hedging': { level: 0.5, evidenceN: 0 },
+    'pragmatics.formal_register': { level: 0.5, evidenceN: 0 },
+    'interaction.describing_experience': { level: 0.5, evidenceN: 0 },
+  };
+  const postLevels = {
+    ...preLevels,
+    'pragmatics.hedging': { level: 0.5675, evidenceN: 1 },
+  };
   await prisma.scenarioSummary.create({
     data: {
       sessionId: session.id, grade: 'A-',
       languageNote: 'Strong, polite phrasing; a couple of article slips.',
       pragmaticsNote: 'Good hedging and turn-taking under light pressure.',
       relationshipNote: 'Lily was impressed — your rapport moved to close friend.',
+      preLevels: JSON.stringify(preLevels),
+      postLevels: JSON.stringify(postLevels),
     },
   });
+  await prisma.learningSignal.create({
+    data: {
+      userId: user.id,
+      sourceType: 'scenario_summary',
+      sourceRef: session.id,
+      skillCode: 'pragmatics.hedging',
+      polarity: 'success',
+      score: 0.75,
+      confidence: 0.9,
+      weight: 1,
+      evidence: 'I would say my strongest example is...',
+      npcId: 'lily',
+      scenarioSessionId: session.id,
+      createdAt: new Date(now - DAY - 600_000),
+    },
+  });
+  for (let i = 0; i < 3; i++) {
+    await prisma.learningSignal.create({
+      data: {
+        userId: user.id,
+        sourceType: 'conversation_review',
+        sourceRef: `demo-clarification-${i + 1}`,
+        skillCode: 'interaction.clarification',
+        polarity: 'mistake',
+        score: 0.2 + i * 0.05,
+        confidence: 0.9,
+        weight: 1,
+        evidence: 'What this means?',
+        npcId: 'emma',
+        createdAt: new Date(now - (4 - i) * DAY),
+      },
+    });
+  }
   await prisma.scenarioTurn.create({
     data: { sessionId: session.id, turnIndex: 0, stateBefore: JSON.stringify({ impression: 5, stress: 'Medium', turnsLeft: 6 }), stateAfter: JSON.stringify({ impression: 6, stress: 'Medium', turnsLeft: 5 }) },
   });
@@ -111,7 +157,14 @@ export async function seedDemo(
   for (let d = 0; d < 6; d++) {
     await prisma.activityEvent.create({ data: { userId: user.id, type: 'message_sent', createdAt: new Date(now - d * DAY) } });
   }
-  await prisma.activityEvent.create({ data: { userId: user.id, type: 'scenario_completed', createdAt: new Date(now - DAY - 600_000) } });
+  await prisma.activityEvent.create({
+    data: {
+      userId: user.id,
+      type: 'scenario_completed',
+      payload: JSON.stringify({ sessionId: session.id, templateId: session.templateId, grade: 'A-' }),
+      createdAt: new Date(now - DAY - 600_000),
+    },
+  });
 
   return { userId: user.id };
 }

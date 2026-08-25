@@ -143,6 +143,14 @@ in SQLite. `POST .../:msgId/restore` clears the rollback and restores the hidden
 and scenario session. The UI shows `Message retracted`, offers `Edit` to refill the composer, and
 offers `Undo recall` to restore the later content.
 
+Scenario completion persists the final turn before generating the review. The completion claim,
+learning signals, mastery snapshots, summary, and progression then commit atomically. If that tail
+fails, the UI replaces the composer with `Retry review`; the server refuses extra roleplay turns and
+reuses an already-persisted summary when compensating optional Memory generation.
+
+`npm run db:migrate` runs a SQLite preflight that creates a missing database file before Prisma starts.
+This keeps a fresh clone from hitting Prisma 5's empty `Schema engine error` on first migration.
+
 ## Environment variables (`.env`)
 
 | Variable | Default | Purpose |

@@ -25,6 +25,7 @@ import {
   ScenarioResumeBanner,
   ScenarioHistoryCard,
   ScenarioSummaryCard,
+  ScenarioCompletionRetry,
   ChoiceComposer,
   ScenarioRightPanel,
 } from '../components/scenario/parts';
@@ -417,7 +418,16 @@ export default function App() {
       .then((list) => {
         const mapped = list.map(npcView);
         setNpcs(mapped);
-        setActiveId((cur) => cur || (mapped[0] && mapped[0].id));
+        // If a ?npc= hint is present, honour it once (e.g. Journey "Start now" hand-off).
+        const params = new URLSearchParams(window.location.search);
+        const npcHint = params.get('npc');
+        const preferred = npcHint && mapped.some((n) => n.id === npcHint) ? npcHint : null;
+        setActiveId((cur) => preferred || cur || (mapped[0] && mapped[0].id));
+        if (npcHint) {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('npc');
+          window.history.replaceState(null, '', url.pathname + (url.search ? url.search : '') + url.hash);
+        }
       })
       .catch((e: any) => {
         if (e.status === 401) navigate('/onboarding');
@@ -605,7 +615,8 @@ export default function App() {
         {scen.status === 'active'
           ? <ScenChatHeader intense={true} session={scen.session} hudState={scen.hudState} npc={npc}
                             onPause={scen.pause} onEnd={scen.abort} pausing={scen.pausing}
-                            ending={scen.ending} pauseDisabled={scen.choiceDisabled} />
+                            ending={scen.ending} pauseDisabled={scen.choiceDisabled}
+                            endDisabled={scen.choiceDisabled && !scen.completionFailed} />
           : <WebChatHeader npc={npc} />}
         {scen.status === 'active' && <ScenarioHUD session={scen.session} hudState={scen.hudState} />}
         {scen.status === 'completed' && <ScenarioReviewBar session={scen.session} onBack={continueFromScenario} />}
@@ -667,12 +678,16 @@ export default function App() {
         </div>
 
         {scen.status === 'active' ? (
-          <>
-            {scen.choices.length > 0 && (
-              <ChoiceComposer choices={scen.choices} onChoose={(c: ScenarioChoice) => scen.choose(c)} disabled={scen.choiceDisabled} />
-            )}
-            <Composer onSend={(t: string) => scen.freetype(t)} disabled={scen.choiceDisabled} />
-          </>
+          scen.completionFailed ? (
+            <ScenarioCompletionRetry onRetry={scen.retryCompletion} retrying={scen.retryingCompletion} />
+          ) : (
+            <>
+              {scen.choices.length > 0 && (
+                <ChoiceComposer choices={scen.choices} onChoose={(c: ScenarioChoice) => scen.choose(c)} disabled={scen.choiceDisabled} />
+              )}
+              <Composer onSend={(t: string) => scen.freetype(t)} disabled={scen.choiceDisabled} />
+            </>
+          )
         ) : scen.status === 'completed' ? null : (
           <Composer onSend={send} disabled={casualComposerDisabled}
                     draftValue={composerDraft} onDraftChange={setComposerDraft} focusSignal={composerFocusSignal} />

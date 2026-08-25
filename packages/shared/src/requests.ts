@@ -13,6 +13,7 @@ export const ProfileBody = z.object({
   goal: z.string().nullish(),
   interests: z.array(z.string()).default([]),
   language: z.string().optional(),
+  cefrLevel: z.enum(['A2', 'B1', 'B2', 'C1']).nullish(),
 });
 export type ProfileBody = z.infer<typeof ProfileBody>;
 
@@ -49,6 +50,12 @@ export const MemoryEvalBody = z.object({
   k: z.number().int().positive().max(20).optional(),
 });
 export type MemoryEvalBody = z.infer<typeof MemoryEvalBody>;
+
+// scenarios/recommendation/dismiss POST
+export const DismissRecommendationBody = z.object({
+  templateId: z.string().min(1),
+});
+export type DismissRecommendationBody = z.infer<typeof DismissRecommendationBody>;
 
 // settings PUT — partial update (every field optional). Single source for the
 // memory-strategy enum, shared by the request schema and the response type.

@@ -21,11 +21,22 @@ export interface ScenarioChoice {
 export type ScenarioStress = 'Low' | 'Medium' | 'High';
 
 // scenario grading summary (scenario_end event)
+export interface LearningUpdateItem {
+  skillCode: string;
+  labelEn: string;
+  labelZh: string;
+  before: number;
+  after: number;
+  delta: number;
+  status: 'gathering' | 'needs_practice' | 'developing' | 'solid' | 'strong';
+}
+
 export interface ScenarioSummary {
   grade: string;
   languageNote: string;
   pragmaticsNote: string;
   relationshipNote: string;
+  learningUpdate?: LearningUpdateItem[];
 }
 
 // POST /api/threads/:npcId/messages (chat send)

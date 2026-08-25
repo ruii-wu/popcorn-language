@@ -35,4 +35,24 @@ describe('GET /api/journey/summary', () => {
     expect(body.memories).toBe(1);
     expect(body.days).toBe(1);
   });
+
+  it('does not count retracted messages or hidden completed scenarios', async () => {
+    await prisma.user.deleteMany({ where: { username: U } });
+    const user = await prisma.user.create({ data: { username: U, password: 'pw' } });
+    const thread = await prisma.thread.create({ data: { userId: user.id, npcId: 'lily' } });
+    await prisma.message.create({
+      data: { threadId: thread.id, userId: user.id, role: 'user', text: 'gone', retractedAt: new Date() },
+    });
+    await prisma.scenarioSession.create({
+      data: {
+        userId: user.id, npcId: 'lily', threadId: thread.id, templateId: 'mock_interview',
+        status: 'completed', hiddenAt: new Date(),
+      },
+    });
+
+    const body = await (await GET(get(user.id))).json();
+    expect(body.conversations).toBe(0);
+    expect(body.scenarios).toBe(0);
+    expect(body.days).toBe(0);
+  });
 });

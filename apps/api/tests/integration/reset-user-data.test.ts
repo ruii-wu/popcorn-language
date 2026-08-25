@@ -24,6 +24,20 @@ async function seedUser(username: string) {
   await prisma.memoryFact.create({ data: { userId: user.id, predicate: 'has_pet', value: 'cat' } });
   await prisma.userAchievement.create({ data: { userId: user.id, achievementId: 'first_chat' } });
   await prisma.activityEvent.create({ data: { userId: user.id, type: 'message_sent' } });
+  // A standalone learning signal (no source Message/Session) — simulates a future
+  // conversation_review record that would otherwise leak past reset.
+  await prisma.learningSignal.create({
+    data: {
+      userId: user.id,
+      sourceType: 'conversation_review',
+      sourceRef: 'review-' + user.id,
+      skillCode: 'grammar.past_tense',
+      polarity: 'mistake',
+      score: 0.3,
+      confidence: 0.8,
+      weight: 1,
+    },
+  });
   return user;
 }
 
@@ -43,6 +57,7 @@ describe('resetUserData', () => {
       prisma.memoryFact.count({ where: { userId: a.id } }),
       prisma.userAchievement.count({ where: { userId: a.id } }),
       prisma.activityEvent.count({ where: { userId: a.id } }),
+      prisma.learningSignal.count({ where: { userId: a.id } }),
     ]) {
       expect(await n).toBe(0);
     }
@@ -56,5 +71,6 @@ describe('resetUserData', () => {
     expect(await prisma.memoryFact.count({ where: { userId: b.id } })).toBe(1);
     expect(await prisma.userAchievement.count({ where: { userId: b.id } })).toBe(1);
     expect(await prisma.activityEvent.count({ where: { userId: b.id } })).toBe(1);
+    expect(await prisma.learningSignal.count({ where: { userId: b.id } })).toBe(1);
   });
 });

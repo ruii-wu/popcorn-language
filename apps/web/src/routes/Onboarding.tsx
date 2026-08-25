@@ -1,7 +1,7 @@
 // Popcorn Language — Web Onboarding + Your Journey
 // Onboarding is full-bleed (no app shell). Journey uses the 3-pane shell.
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import type {
@@ -10,9 +10,12 @@ import type {
   Achievement,
   SessionListItem,
   SessionDetailResponse,
+  LearnerModelResponse,
+  ScenarioRecommendation,
 } from '@popcorn/shared';
 import { WebI, RELATIONSHIP_LABEL, WebRelationshipDots, WebNavRail } from '../components/shared';
 import { ScenarioSummaryCard } from '../components/scenario/parts';
+import { LearningFocus, RecommendationCard, RecommendationEmpty } from '../components/learning';
 import { PROFILE_GOALS, PROFILE_INTERESTS, PROFILE_ROLES } from '../profileOptions';
 
 // ============================================================
@@ -228,6 +231,7 @@ function ProfileStep({ onNext, onBack }: { onNext: (data: any) => void; onBack: 
   const [role, setRole] = useState('Software engineer');
   const [goal, setGoal] = useState('work');
   const [interests, setInterests] = useState(new Set(['Coffee', 'Cats', 'Tech']));
+  const [cefrLevel, setCefrLevel] = useState<string | null>(null);
 
   const toggle = (i: string) => {
     const next = new Set(interests);
@@ -272,6 +276,22 @@ function ProfileStep({ onNext, onBack }: { onNext: (data: any) => void; onBack: 
           </div>
         </Question>
 
+        <Question label="Current English level" hint="self-assessed · used only for recommendations" mt={8}>
+          <div className="flex flex-wrap gap-2">
+            {(['A2', 'B1', 'B2', 'C1'] as const).map((lv) => (
+              <Pillbtn key={lv} selected={cefrLevel === lv} onClick={() => setCefrLevel(lv)}>
+                {lv}
+                <span className="ml-2 text-[10.5px] font-mono opacity-60">
+                  {lv === 'A2' ? 'elementary' : lv === 'B1' ? 'intermediate' : lv === 'B2' ? 'upper-int.' : 'advanced'}
+                </span>
+              </Pillbtn>
+            ))}
+            <Pillbtn selected={cefrLevel === null} onClick={() => setCefrLevel(null)}>
+              Not sure
+            </Pillbtn>
+          </div>
+        </Question>
+
         {/* AI explainer */}
         <div className="mt-8 rounded-xl px-4 py-3.5 flex items-start gap-3 fade-up"
              style={{ background: 'var(--plum-soft)', border: '1px dashed oklch(0.78 0.05 300)' }}>
@@ -297,7 +317,7 @@ function ProfileStep({ onNext, onBack }: { onNext: (data: any) => void; onBack: 
                     style={{ color: 'var(--ink-2)' }}>
               Back
             </button>
-            <button onClick={() => onNext({ role, goal, interests: Array.from(interests) })}
+            <button onClick={() => onNext({ role, goal, interests: Array.from(interests), cefrLevel })}
                     disabled={interests.size < 3}
                     className="group inline-flex items-center gap-2 px-6 py-3 rounded-full text-[14px] font-medium transition disabled:opacity-40"
                     style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-ink)' }}>
@@ -351,9 +371,9 @@ function MeetStep({ onFinish, onBack, profileData }: { onFinish?: () => void; on
     setBusy(true);
     setError('');
     try {
-      const { role, goal, interests } = profileData || {};
+      const { role, goal, interests, cefrLevel } = profileData || {};
       const goalStr = Array.isArray(goal) ? (goal[0] || null) : (goal || null);
-      await finishOnboarding({ username: username.trim(), role: role || null, goal: goalStr, interests: interests || [], navigate });
+      await finishOnboarding({ username: username.trim(), role: role || null, goal: goalStr, interests: interests || [], cefrLevel: cefrLevel ?? null, navigate });
     } catch (e: any) {
       setError(e.message || 'Something went wrong.');
       setBusy(false);
@@ -494,7 +514,7 @@ function MeetStep({ onFinish, onBack, profileData }: { onFinish?: () => void; on
   );
 }
 
-async function finishOnboarding({ username, role, goal, interests, navigate }: { username: string; role: string | null; goal: string | null; interests: string[]; navigate: (path: string) => void }) {
+async function finishOnboarding({ username, role, goal, interests, cefrLevel, navigate }: { username: string; role: string | null; goal: string | null; interests: string[]; cefrLevel: 'A2' | 'B1' | 'B2' | 'C1' | null; navigate: (path: string) => void }) {
   try {
     await api.register(username, username);
   } catch (e: any) {
@@ -504,7 +524,7 @@ async function finishOnboarding({ username, role, goal, interests, navigate }: {
       throw e;
     }
   }
-  await api.saveProfile({ role: role || null, goal: goal || null, interests: interests || [] });
+  await api.saveProfile({ role: role || null, goal: goal || null, interests: interests || [], cefrLevel });
   await api.onboardingComplete();
   navigate('/');
 }
@@ -589,6 +609,26 @@ const NPC_VISUAL: Record<string, { glyph: string; bg: string; ink: string }> = {
   emma:  { glyph: 'E',  bg: 'oklch(0.93 0.04 340)',          ink: 'oklch(0.48 0.10 340)' },
 };
 
+function JourneyLoadState({ message, action, onAction }: {
+  message: string;
+  action?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="rounded-lg p-4 flex items-center justify-between gap-4"
+         style={{ background: 'var(--surface)', border: '1px solid var(--hairline)' }}>
+      <p className="text-[13px]" style={{ color: 'var(--muted)' }}>{message}</p>
+      {action && onAction ? (
+        <button type="button" onClick={onAction}
+                className="text-[12px] font-medium shrink-0"
+                style={{ color: 'var(--coral-ink)' }}>
+          {action}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function JourneyDashboard() {
   const [journey, setJourney] = useState<JourneySummaryResponse | null>(null);
   const [rels, setRels] = useState<RelationshipCard[]>([]);
@@ -597,12 +637,47 @@ function JourneyDashboard() {
   const [selectedScenario, setSelectedScenario] = useState<SessionDetailResponse | null>(null);
   const [scenarioLoadingId, setScenarioLoadingId] = useState<string | null>(null);
   const [scenarioError, setScenarioError] = useState('');
+  const [learnerModel, setLearnerModel] = useState<LearnerModelResponse | null>(null);
+  const [learnerModelLoading, setLearnerModelLoading] = useState(true);
+  const [learnerModelError, setLearnerModelError] = useState('');
+  const [recommendation, setRecommendation] = useState<ScenarioRecommendation | null>(null);
+  const [recommendationLoading, setRecommendationLoading] = useState(true);
+  const [recommendationBusy, setRecommendationBusy] = useState<'start' | 'dismiss' | null>(null);
+  const [recommendationError, setRecommendationError] = useState('');
+  const navigate = useNavigate();
+
+  const loadLearnerModel = useCallback(async () => {
+    setLearnerModelLoading(true);
+    setLearnerModelError('');
+    try {
+      setLearnerModel(await api.learnerModel());
+    } catch {
+      setLearnerModelError('Could not load your learning profile.');
+    } finally {
+      setLearnerModelLoading(false);
+    }
+  }, []);
+
+  const loadRecommendation = useCallback(async () => {
+    setRecommendationLoading(true);
+    setRecommendationError('');
+    try {
+      const response = await api.recommendation();
+      setRecommendation(response.recommendation);
+    } catch {
+      setRecommendationError('Could not load a recommendation.');
+    } finally {
+      setRecommendationLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     Promise.all([api.journey(), api.relationships(), api.achievements(), api.sessions('?status=completed')])
       .then(([j, r, a, s]) => { setJourney(j); setRels(r); setAchs(a); setScenarioHistory(s); })
       .catch(() => {});
-  }, []);
+    void loadLearnerModel();
+    void loadRecommendation();
+  }, [loadLearnerModel, loadRecommendation]);
 
   async function showScenario(session: SessionListItem) {
     if (selectedScenario?.session.id === session.id) {
@@ -617,6 +692,38 @@ function JourneyDashboard() {
       setScenarioError('Could not load this Scenario result. Please try again.');
     } finally {
       setScenarioLoadingId(null);
+    }
+  }
+
+  async function handleStart(templateId: string, npcId: string) {
+    if (recommendationBusy) return;
+    setRecommendationBusy('start');
+    setRecommendationError('');
+    try {
+      const started = await api.startScenarioTemplate(templateId);
+      navigate('/?npc=' + encodeURIComponent(started.npcId || npcId));
+    } catch {
+      setRecommendationError('Could not start the scenario. Try again.');
+    } finally {
+      setRecommendationBusy(null);
+    }
+  }
+
+  async function handleDismiss(templateId: string) {
+    if (recommendationBusy) return;
+    setRecommendationBusy('dismiss');
+    setRecommendationError('');
+    const previous = recommendation;
+    setRecommendation(null);
+    try {
+      await api.dismissRecommendation(templateId);
+      const next = await api.recommendation();
+      setRecommendation(next.recommendation);
+    } catch {
+      setRecommendation(previous);
+      setRecommendationError('Could not dismiss the recommendation. Try again.');
+    } finally {
+      setRecommendationBusy(null);
     }
   }
 
@@ -659,6 +766,42 @@ function JourneyDashboard() {
                 : <p className="text-[13px] col-span-3" style={{ color: 'var(--muted)' }}>Loading…</p>
               }
             </div>
+          </Section>
+
+          {/* Learning Focus */}
+          <Section eyebrow="Learning Focus" zh="学习重点"
+                   title="Where practice will help most"
+                   desc="Skills backed by at least a few observations from your chats and scenarios." mt={12} plum>
+            {learnerModelLoading ? (
+              <JourneyLoadState message="Loading your learning profile..." />
+            ) : learnerModelError ? (
+              <JourneyLoadState message={learnerModelError} action="Retry" onAction={loadLearnerModel} />
+            ) : (
+              <LearningFocus focus={learnerModel?.focus ?? []} skills={learnerModel?.skills ?? []} />
+            )}
+          </Section>
+
+          {/* Recommended Practice */}
+          <Section eyebrow="Recommended Practice" zh="推荐练习"
+                   title="A scenario tailored to you" mt={12} plum>
+            {recommendationLoading
+              ? <JourneyLoadState message="Finding a practice scenario..." />
+              : recommendationError && !recommendation
+                ? <JourneyLoadState message={recommendationError} action="Retry" onAction={loadRecommendation} />
+                : recommendation
+              ? (
+                <RecommendationCard
+                  recommendation={recommendation}
+                  onStart={handleStart}
+                  onDismiss={handleDismiss}
+                  busy={recommendationBusy}
+                />
+              )
+              : <RecommendationEmpty />
+            }
+            {recommendationError && recommendation && (
+              <p className="text-[12px] mt-3" style={{ color: 'var(--coral-ink)' }}>{recommendationError}</p>
+            )}
           </Section>
 
           {/* Scenario history */}
@@ -847,7 +990,7 @@ export default function Onboarding() {
   // 'loading' | 'wizard' | 'journey'
   const [appView, setAppView] = useState('loading');
   const [step, setStep] = useState(0);
-  const [profileData, setProfileData] = useState({ role: 'Software engineer', goal: 'work', interests: ['Coffee', 'Cats', 'Tech'] });
+  const [profileData, setProfileData] = useState<{ role: string; goal: string; interests: string[]; cefrLevel: 'A2' | 'B1' | 'B2' | 'C1' | null }>({ role: 'Software engineer', goal: 'work', interests: ['Coffee', 'Cats', 'Tech'], cefrLevel: null });
 
   useEffect(() => {
     api.me()

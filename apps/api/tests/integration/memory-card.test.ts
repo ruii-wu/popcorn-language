@@ -41,4 +41,20 @@ describe('generateMemoryCard', () => {
     const mem = await generateMemoryCard({ prisma, ollama, userId: user.id, npcId: 'lily', sessionId: 's2', transcript: 'x', grade: 'B' });
     expect(mem).toBeNull();
   });
+
+  it('is idempotent for repeated generation of the same scenario source', async () => {
+    const user = await prisma.user.findFirstOrThrow({ where: { username: U } });
+    const ollama = {
+      chatJson: vi.fn()
+        .mockResolvedValueOnce({ title: 'First Card', body: 'First body.' })
+        .mockResolvedValueOnce({ title: 'Second Card', body: 'Second body.' }),
+    };
+    const deps = { prisma, ollama, userId: user.id, npcId: 'lily', sessionId: 'same-session', transcript: 'x', grade: 'B' };
+    const first = await generateMemoryCard(deps);
+    const second = await generateMemoryCard(deps);
+
+    expect(second?.id).toBe(first?.id);
+    expect(second?.title).toBe('First Card');
+    expect(await prisma.memory.count({ where: { userId: user.id, sourceRef: 'same-session' } })).toBe(1);
+  });
 });

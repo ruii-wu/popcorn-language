@@ -28,6 +28,7 @@ model User {
   achievements     UserAchievement[]
   events           ActivityEvent[]
   retrievalLogs    MemoryRetrievalLog[]
+  learningSignals  LearningSignal[]
 }
 
 model UserProfile {
@@ -139,6 +140,7 @@ model Message {
   scenarioSessionId String?
   scenarioSession   ScenarioSession? @relation(fields: [scenarioSessionId], references: [id], onDelete: SetNull)
   scenarioTurn      ScenarioTurn?
+  learningSignals   LearningSignal[]
 
   @@index([threadId, createdAt])
   @@index([threadId, hiddenByMessageId])
@@ -170,6 +172,9 @@ model ScenarioTemplate {
   registerTags     String  @default("[]")
   systemPrompt     String
   topicKeywords    String  @default("[]")
+  targetSkills     String  @default("[]")
+  difficulty       String  @default("B1")
+  successRubric    String  @default("{}")
   enabled          Boolean @default(true)
 
   sessions ScenarioSession[]
@@ -199,6 +204,7 @@ model ScenarioSession {
   turns    ScenarioTurn[]
   messages Message[]
   summary  ScenarioSummary?
+  learningSignals LearningSignal[]
 
   @@index([threadId, hiddenByMessageId])
 }
@@ -231,6 +237,8 @@ model ScenarioSummary {
   pragmaticsNote   String
   relationshipNote String
   transcriptUrl    String?
+  preLevels        String          @default("{}")
+  postLevels       String          @default("{}")
   createdAt        DateTime        @default(now())
 }
 
@@ -243,6 +251,7 @@ model Memory {
   npcId       String?
   sourceType  String
   sourceRef   String?
+  sourceKey   String?   @unique
   noticedAt   DateTime  @default(now())
   dismissedAt DateTime?
   meta        String?
@@ -316,4 +325,42 @@ model MemoryRetrievalLog {
   createdAt    DateTime @default(now())
 
   @@index([userId, strategy, createdAt])
+}
+
+// Static dictionary of learnable skills. Seeded from server/learning/taxonomy.ts
+// via seed-base. Not user-scoped — one row per skill code globally.
+model LearningSkill {
+  code     String @id
+  category String
+  labelEn  String
+  labelZh  String
+  cefrHint String
+}
+
+// Immutable evidence of a learning event. Aggregated at read-time by
+// server/learning/aggregate.ts into per-skill mastery. Retracted or hidden
+// evidence is excluded by joining through Message and ScenarioSession status.
+model LearningSignal {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skillCode       String
+  polarity        String                                      // "success" | "mistake"
+  score           Float    @default(0.0)                      // observed level in [0,1]
+  confidence      Float    @default(0.7)                      // model confidence in [0,1]
+  weight          Float    @default(1.0)                      // extra multiplier for α
+  sourceType      String                                      // "correction" | "scenario_summary" | "conversation_review"
+  sourceRef       String                                      // ref key used with unique index below
+  evidence        String?                                     // short text quote
+  npcId           String?
+  sourceMessageId String?
+  sourceMessage   Message? @relation(fields: [sourceMessageId], references: [id], onDelete: Cascade)
+  scenarioSessionId String?
+  scenarioSession   ScenarioSession? @relation(fields: [scenarioSessionId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, sourceType, sourceRef, skillCode])
+  @@index([userId, skillCode, createdAt])
+  @@index([sourceMessageId])
+  @@index([scenarioSessionId])
 }

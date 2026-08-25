@@ -23,6 +23,7 @@ import * as scenarioFreetype from '@/app/api/scenarios/sessions/[id]/freetype/ro
 import * as scenarioAbort from '@/app/api/scenarios/sessions/[id]/abort/route';
 import * as scenarioPause from '@/app/api/scenarios/sessions/[id]/pause/route';
 import * as scenarioResume from '@/app/api/scenarios/sessions/[id]/resume/route';
+import * as scenarioComplete from '@/app/api/scenarios/sessions/[id]/complete/route';
 import * as memories from '@/app/api/memories/route';
 import * as memoriesRecent from '@/app/api/memories/recent/route';
 import * as memoryById from '@/app/api/memories/[id]/route';
@@ -36,6 +37,10 @@ import * as systemHealth from '@/app/api/system/health/route';
 import * as systemModels from '@/app/api/system/models/route';
 import * as systemReset from '@/app/api/system/reset/route';
 import * as devMemoryEval from '@/app/api/dev/memory-eval/route';
+import * as learnerModel from '@/app/api/learner-model/route';
+import * as scenarioRecommendation from '@/app/api/scenarios/recommendation/route';
+import * as scenarioRecommendationDismiss from '@/app/api/scenarios/recommendation/dismiss/route';
+import * as scenarioTemplateStart from '@/app/api/scenarios/templates/[id]/start/route';
 
 export const app = new Hono();
 
@@ -73,6 +78,7 @@ app.post('/api/scenarios/sessions/:id/freetype', adapt(scenarioFreetype.POST)); 
 app.post('/api/scenarios/sessions/:id/abort', adapt(scenarioAbort.POST));
 app.post('/api/scenarios/sessions/:id/pause', adapt(scenarioPause.POST));
 app.post('/api/scenarios/sessions/:id/resume', adapt(scenarioResume.POST));
+app.post('/api/scenarios/sessions/:id/complete', adapt(scenarioComplete.POST));
 
 // memories
 app.get('/api/memories', adapt(memories.GET));
@@ -99,3 +105,9 @@ app.post('/api/system/reset', adapt(systemReset.POST));
 
 // dev
 app.post('/api/dev/memory-eval', adapt(devMemoryEval.POST));
+
+// learner model
+app.get('/api/learner-model', adapt(learnerModel.GET));
+app.get('/api/scenarios/recommendation', adapt(scenarioRecommendation.GET));
+app.post('/api/scenarios/recommendation/dismiss', adapt(scenarioRecommendationDismiss.POST));
+app.post('/api/scenarios/templates/:id/start', adapt(scenarioTemplateStart.POST));

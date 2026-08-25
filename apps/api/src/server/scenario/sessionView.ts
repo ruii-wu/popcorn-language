@@ -1,7 +1,17 @@
 // src/server/scenario/sessionView.ts
 import type { ScenarioChoice, ScenarioSummary } from '@popcorn/shared';
 import { ChoiceSchema } from './schemas';
+import { buildLearningUpdate, parseSnapshot } from '@/server/learning/learningUpdate';
 interface TemplateLite { id: string; title: string; titleZh: string | null }
+
+interface SummaryRow {
+  grade: string;
+  languageNote: string;
+  pragmaticsNote: string;
+  relationshipNote: string;
+  preLevels?: string | null;
+  postLevels?: string | null;
+}
 
 interface SessionRow {
   id: string;
@@ -13,7 +23,7 @@ interface SessionRow {
   endedAt: Date | null;
   triggerRationale: string | null;
   template: TemplateLite;
-  summary?: ScenarioSummary | null;
+  summary?: SummaryRow | null;
 }
 
 interface MessageRow {
@@ -104,6 +114,10 @@ export function mapSessionDetail(s: SessionRow, messages: MessageRow[], latestCh
       languageNote: s.summary.languageNote,
       pragmaticsNote: s.summary.pragmaticsNote,
       relationshipNote: s.summary.relationshipNote,
+      learningUpdate: buildLearningUpdate(
+        parseSnapshot(s.summary.preLevels ?? null),
+        parseSnapshot(s.summary.postLevels ?? null),
+      ),
     } : null,
   };
 }

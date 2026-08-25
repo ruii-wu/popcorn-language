@@ -2,6 +2,7 @@ import { prisma } from '@/server/db/client';
 import { withUser, json, errorJson } from '@/server/http/respond';
 import { ollamaForUser } from '@/server/llm/userClient';
 import { correctGrammar } from '@/server/correction/grammar';
+import { writeSignals } from '@/server/learning/signals';
 
 export async function POST(
   req: Request,
@@ -11,7 +12,13 @@ export async function POST(
     // user-scoped: a foreign message id must not be correctable. User messages carry userId;
     // restricting to userId also rules out correcting an NPC line (those have userId = null).
     const msg = await prisma.message.findFirst({
-      where: { id: params.msgId, userId, thread: { npcId: params.npcId } },
+      where: {
+        id: params.msgId,
+        userId,
+        thread: { npcId: params.npcId },
+        retractedAt: null,
+        hiddenAt: null,
+      },
     });
     if (!msg) return errorJson(404, 'NOT_FOUND', 'Message not found');
 
@@ -20,6 +27,15 @@ export async function POST(
 
     const payload = { fixed: correction.fixed, noteZh: correction.noteZh, tag: correction.tag };
     await prisma.message.update({ where: { id: msg.id }, data: { correction: JSON.stringify(payload) } });
+    await writeSignals({
+      prisma,
+      userId,
+      sourceType: 'correction',
+      sourceRef: msg.id,
+      signals: correction.signals,
+      npcId: params.npcId,
+      sourceMessageId: msg.id,
+    });
     return json({ correction: payload });
   });
 }

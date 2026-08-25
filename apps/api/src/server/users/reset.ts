@@ -6,8 +6,13 @@ import type { PrismaClient } from '@prisma/client';
 // isolation is the #1 invariant. Children clean up via Prisma's onDelete: Cascade:
 //   relationship  → relationshipEvent
 //   thread        → message, conversationSummary, scenarioSession → scenarioTurn, scenarioSummary
+//
+// LearningSignal cascades from Message and ScenarioSession, but conversation_review signals
+// (introduced in P6) have no source ref — delete them explicitly so "reset" always clears
+// mastery.
 export async function resetUserData(prisma: PrismaClient, userId: string): Promise<void> {
   await prisma.$transaction([
+    prisma.learningSignal.deleteMany({ where: { userId } }),
     prisma.relationship.deleteMany({ where: { userId } }),
     prisma.thread.deleteMany({ where: { userId } }),
     prisma.memory.deleteMany({ where: { userId } }),

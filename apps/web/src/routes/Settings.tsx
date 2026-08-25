@@ -107,6 +107,7 @@ export default function Settings() {
           role: nextProfile.role,
           goal: nextProfile.goal,
           interests: nextProfile.interests,
+          cefrLevel: nextProfile.cefrLevel,
         });
       })
       .catch(() => setProfileStatus('Could not load your learning profile.'));
@@ -142,7 +143,7 @@ export default function Settings() {
     try {
       await api.saveProfile(profileDraft);
       const next = await api.profile();
-      setProfileDraft({ role: next.role, goal: next.goal, interests: next.interests });
+      setProfileDraft({ role: next.role, goal: next.goal, interests: next.interests, cefrLevel: next.cefrLevel });
       setProfileStatus('Saved');
     } catch {
       setProfileStatus('Could not save your learning profile.');
@@ -258,6 +259,34 @@ export default function Settings() {
                     disabled={!profileReady || savingProfile}
                   />
                 ))}
+              </div>
+            </fieldset>
+
+            <fieldset className="mt-5">
+              <legend className="text-[10px] font-mono uppercase tracking-[0.18em]" style={{ color: 'var(--muted)' }}>
+                Current English level
+              </legend>
+              <div className="-mt-3 flex justify-end">
+                <span className="text-[10px] font-mono" style={{ color: 'var(--muted)' }}>
+                  Self-assessed · used only for recommendations
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {(['A2', 'B1', 'B2', 'C1'] as const).map((lv) => (
+                  <ChoiceButton
+                    key={lv}
+                    label={lv}
+                    selected={profileDraft?.cefrLevel === lv}
+                    onClick={() => updateProfile('cefrLevel', lv)}
+                    disabled={!profileReady || savingProfile}
+                  />
+                ))}
+                <ChoiceButton
+                  label="Not sure"
+                  selected={profileReady && !profileDraft.cefrLevel}
+                  onClick={() => updateProfile('cefrLevel', null)}
+                  disabled={!profileReady || savingProfile}
+                />
               </div>
             </fieldset>
 

@@ -7,6 +7,7 @@
     "start": "tsx src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "predb:migrate": "node ../../scripts/ensure-sqlite-db.mjs",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset --force",

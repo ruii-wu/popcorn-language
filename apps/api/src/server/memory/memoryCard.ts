@@ -17,6 +17,7 @@ export interface MemoryCardDeps {
 // Guarded: returns null on any failure (memory generation must never break the end flow).
 export async function generateMemoryCard(deps: MemoryCardDeps): Promise<Memory | null> {
   try {
+    const sourceKey = `${deps.userId}:scenario:${deps.sessionId}`;
     const card = await deps.ollama.chatJson(
       [
         {
@@ -29,15 +30,19 @@ export async function generateMemoryCard(deps: MemoryCardDeps): Promise<Memory |
       ],
       MemoryCardSchema,
     );
-    return await deps.prisma.memory.create({
-      data: {
+    return await deps.prisma.memory.upsert({
+      where: { sourceKey },
+      create: {
         userId: deps.userId,
         title: card.title,
         body: card.body,
         npcId: deps.npcId,
         sourceType: 'scenario',
         sourceRef: deps.sessionId,
+        sourceKey,
       },
+      // The first successfully persisted card remains authoritative across retries.
+      update: {},
     });
   } catch (e) {
     console.error('[memory] generateMemoryCard failed', e);

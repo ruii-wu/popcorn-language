@@ -29,13 +29,30 @@ describe('POST manual correction', () => {
     const thread = await prisma.thread.create({ data: { userId: user.id, npcId: 'lily' } });
     const msg = await prisma.message.create({ data: { threadId: thread.id, userId: user.id, role: 'user', text: 'I go there yesterday.' } });
 
-    ollamaMock = { chatJson: vi.fn().mockResolvedValue({ hasIssue: true, fixed: 'I went there yesterday.', noteZh: '用 went。', tag: 'tense' }) };
+    ollamaMock = {
+      chatJson: vi.fn().mockResolvedValue({
+        hasIssue: true,
+        fixed: 'I went there yesterday.',
+        noteZh: '用 went。',
+        tag: 'tense',
+        learningSignals: [{
+          skillCode: 'grammar.past_tense',
+          polarity: 'mistake',
+          score: 0.25,
+          confidence: 0.95,
+          weight: 1,
+          evidence: 'go there yesterday',
+        }],
+      }),
+    };
     const res = await POST(reqFor(user.id), { params: { npcId: 'lily', msgId: msg.id } });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.correction.fixed).toBe('I went there yesterday.');
     const reloaded = await prisma.message.findUniqueOrThrow({ where: { id: msg.id } });
     expect(JSON.parse(reloaded.correction!).tag).toBe('tense');
+    const signal = await prisma.learningSignal.findFirstOrThrow({ where: { sourceMessageId: msg.id } });
+    expect(signal.skillCode).toBe('grammar.past_tense');
   });
 
   it('404s on a message that is not the caller\'s', async () => {

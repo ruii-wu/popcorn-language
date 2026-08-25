@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { computeStreak } from '@/server/users/streak';
 import { GRADE_RANK, isUnlocked, type AchievementContext } from './rules';
+import { visibleUserMessageWhere } from '@/server/users/visibleActivity';
 
 function safeJson(s: string | null): Record<string, unknown> {
   if (!s) return {};
@@ -8,16 +9,17 @@ function safeJson(s: string | null): Record<string, unknown> {
 }
 
 export async function buildAchievementContext(prisma: PrismaClient, userId: string): Promise<AchievementContext> {
-  const [messageSentCount, completed, npcsAtFriendPlus, totalNpcs, threads, msgEvents] = await Promise.all([
-    prisma.activityEvent.count({ where: { userId, type: 'message_sent' } }),
-    prisma.scenarioSession.findMany({ where: { userId, status: 'completed' }, include: { summary: true } }),
+  const [visibleMessages, completed, npcsAtFriendPlus, totalNpcs] = await Promise.all([
+    prisma.message.findMany({
+      where: visibleUserMessageWhere(userId),
+      select: { threadId: true, langDetect: true, createdAt: true },
+    }),
+    prisma.scenarioSession.findMany({
+      where: { userId, status: 'completed', hiddenAt: null },
+      include: { summary: true },
+    }),
     prisma.relationship.count({ where: { userId, stageValue: { gte: 2 } } }),
     prisma.npc.count(),
-    prisma.thread.findMany({
-      where: { userId },
-      include: { messages: { where: { role: 'user' }, select: { langDetect: true } } },
-    }),
-    prisma.activityEvent.findMany({ where: { userId, type: 'message_sent' }, select: { createdAt: true } }),
   ]);
 
   let bestGrade = '—';
@@ -26,15 +28,21 @@ export async function buildAchievementContext(prisma: PrismaClient, userId: stri
     if ((GRADE_RANK[g] ?? 0) > (GRADE_RANK[bestGrade] ?? 0)) bestGrade = g;
   }
 
-  const hasBilingualThread = threads.some((t) => {
-    const langs = new Set(t.messages.map((m) => m.langDetect));
+  const messagesByThread = new Map<string, Array<string | null>>();
+  for (const message of visibleMessages) {
+    const langs = messagesByThread.get(message.threadId) ?? [];
+    langs.push(message.langDetect);
+    messagesByThread.set(message.threadId, langs);
+  }
+  const hasBilingualThread = Array.from(messagesByThread.values()).some((threadLanguages) => {
+    const langs = new Set(threadLanguages);
     return langs.has('mixed') || (langs.has('zh') && langs.has('en'));
   });
 
-  const streak = computeStreak(msgEvents.map((e) => e.createdAt));
+  const streak = computeStreak(visibleMessages.map((message) => message.createdAt));
 
   return {
-    messageSentCount,
+    messageSentCount: visibleMessages.length,
     completedScenarioCount: completed.length,
     bestGrade,
     npcsAtFriendPlus,

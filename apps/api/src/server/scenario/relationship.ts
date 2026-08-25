@@ -1,5 +1,5 @@
 // src/server/scenario/relationship.ts
-import type { PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import { stageForPoints } from '@/server/relationship/stage';
 
 export { stageForPoints };
@@ -15,7 +15,7 @@ export function gradePoints(grade: string): number {
 // Applies a completed scenario's grade to the relationship: add points, recompute stage,
 // record a RelationshipEvent on a stage-up. Returns the stage change for the SSE payload, or null.
 export async function applyScenarioOutcome(
-  prisma: PrismaClient,
+  prisma: PrismaClient | Prisma.TransactionClient,
   userId: string,
   npcId: string,
   grade: string,

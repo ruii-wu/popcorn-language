@@ -38,6 +38,11 @@ export function declinedReplyToCasualMessage(reply: ScenarioMessage | null) {
   };
 }
 
+export function needsCompletionRetry(state: unknown, summary: ScenarioSummary | null | undefined): boolean {
+  if (summary || !state || typeof state !== 'object') return false;
+  return (state as { turnsLeft?: unknown }).turnsLeft === 0;
+}
+
 function nowTime() {
   return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
@@ -67,6 +72,8 @@ export function useScenarioSession(npcId: string | null) {
   const [pausing, setPausing] = useState(false);
   const [resuming, setResuming] = useState(false);
   const [ending, setEnding] = useState(false);
+  const [completionFailed, setCompletionFailed] = useState(false);
+  const [retryingCompletion, setRetryingCompletion] = useState(false);
   const [reviewingSessionId, setReviewingSessionId] = useState<string | null>(null);
   const [reviewErrorSessionId, setReviewErrorSessionId] = useState<string | null>(null);
   const [declinedReply, setDeclinedReply] = useState<ScenarioMessage | null>(null);
@@ -76,6 +83,7 @@ export function useScenarioSession(npcId: string | null) {
   const declineSeqRef = useRef(0);
   const sessionsSeqRef = useRef(0);
   const resumeSeqRef = useRef(0);
+  const memoryRetrySessionsRef = useRef(new Set<string>());
   liveSidRef.current = session ? session.id : null;
 
   function invalidateResume() {
@@ -90,6 +98,7 @@ export function useScenarioSession(npcId: string | null) {
     return api.sessions('?npcId=' + encodeURIComponent(npcId)).then((list) => {
       if (requestId !== sessionsSeqRef.current) return true;
       setMessages([]); setChoices([]); setHudState(null); setChoiceDisabled(false); setNpcTyping(false);
+      setCompletionFailed(false); setRetryingCompletion(false);
       const invited = list.find((s) => s.status === 'invited');
       const pending = list.find((s) => s.status === 'paused' || s.status === 'active');
       if (invited) {
@@ -111,6 +120,7 @@ export function useScenarioSession(npcId: string | null) {
     setSession(null); setResumable(null); setMessages([]); setChoices([]); setHudState(null);
     setSummary(null); setTranscript([]); setChoiceDisabled(false); setNpcTyping(false); setAccepting(false);
     setDeclining(false); setPausing(false); setResuming(false); setEnding(false);
+    setCompletionFailed(false); setRetryingCompletion(false);
     setReviewingSessionId(null); setReviewErrorSessionId(null); setDeclinedReply(null);
     declineSeqRef.current += 1;
     resumeSeqRef.current += 1;
@@ -134,10 +144,23 @@ export function useScenarioSession(npcId: string | null) {
         setChoices(event.data.choices); setChoiceDisabled(false);
       } else if (event.type === 'scenario_end') {
         setSummary(event.data.summary); setChoices([]); setChoiceDisabled(false);
+        setCompletionFailed(false); setRetryingCompletion(false);
         setSession((prev) => prev ? { ...prev, status: 'completed', grade: event.data.summary.grade } : prev);
+        // Memory is optional for displaying the Summary, but a transient failure
+        // should not silently lose it. Retry once in the background; the completed
+        // route reuses the persisted Summary and only compensates missing work.
+        if (event.data.memoryId === null && !memoryRetrySessionsRef.current.has(sid)) {
+          memoryRetrySessionsRef.current.add(sid);
+          void api.streamCompleteSession(sid, () => {});
+        }
       } else if (event.type === 'error') {
-        setNpcTyping(false); setChoiceDisabled(false);
-        setMessages((prev) => prev.concat({ from: 'system', text: 'Connection error — please try again.' }));
+        setNpcTyping(false);
+        if (event.data.code === 'END_FAILED') {
+          setChoices([]); setChoiceDisabled(true); setCompletionFailed(true);
+        } else {
+          setChoiceDisabled(false);
+          setMessages((prev) => prev.concat({ from: 'system', text: 'Connection error — please try again.' }));
+        }
       }
     };
   }
@@ -148,6 +171,7 @@ export function useScenarioSession(npcId: string | null) {
     invalidateResume();
     setSummary(null); setMessages([]); setChoices([]); setHudState(null); setResumable(null);
     setAccepting(false); setDeclining(false); setEnding(false); setReviewErrorSessionId(null); setDeclinedReply(null);
+    setCompletionFailed(false); setRetryingCompletion(false);
     setSession({ id: sessionId, status: 'invited', scenarioTitle: title, npcId });
   }
 
@@ -252,7 +276,10 @@ export function useScenarioSession(npcId: string | null) {
       setResumable(null);
       setTranscript(detail.transcript || []);
       setMessages(transcriptToMessages(detail.transcript || []));
-      setChoices(detail.choices || []);
+      const completionPending = needsCompletionRetry(detail.state, detail.summary);
+      setCompletionFailed(completionPending);
+      setChoices(completionPending ? [] : (detail.choices || []));
+      setChoiceDisabled(completionPending);
       if (detail.state) setHudState(detail.state as HudState);
     } catch {
       return;
@@ -276,6 +303,7 @@ export function useScenarioSession(npcId: string | null) {
       await api.abortSession(current.id);
       if (requestId !== sessionsSeqRef.current) return;
       setSession(null); setResumable(null); setMessages([]); setChoices([]); setHudState(null); setSummary(null); setTranscript([]);
+      setCompletionFailed(false); setRetryingCompletion(false);
     } catch {
       if (requestId === sessionsSeqRef.current) {
         window.alert('Could not end the scenario. Please try again.');
@@ -289,6 +317,7 @@ export function useScenarioSession(npcId: string | null) {
     invalidateResume();
     setSession(null); setResumable(null); setMessages([]); setChoices([]); setHudState(null); setSummary(null);
     setTranscript([]); setNpcTyping(false); setEnding(false); setReviewingSessionId(null);
+    setCompletionFailed(false); setRetryingCompletion(false);
     setReviewErrorSessionId(null); setDeclinedReply(null);
   }
 
@@ -333,10 +362,23 @@ export function useScenarioSession(npcId: string | null) {
     setSession(null); setResumable(null); setMessages([]); setChoices([]); setHudState(null); setSummary(null);
     setTranscript([]); setNpcTyping(false); setChoiceDisabled(false); setEnding(false);
     setReviewingSessionId(null); setReviewErrorSessionId(null);
+    setCompletionFailed(false); setRetryingCompletion(false);
+  }
+
+  async function retryCompletion() {
+    if (!session || session.status !== 'active' || !completionFailed || retryingCompletion) return;
+    const sid = session.id;
+    setRetryingCompletion(true);
+    setChoiceDisabled(true);
+    try {
+      await api.streamCompleteSession(sid, turnHandler(sid));
+    } finally {
+      if (liveSidRef.current === sid) setRetryingCompletion(false);
+    }
   }
 
   function choose(choice: ScenarioChoice) {
-    if (!session || choiceDisabled) return;
+    if (!session || choiceDisabled || completionFailed) return;
     const sid = session.id;
     setChoiceDisabled(true);
     setChoices([]);
@@ -345,7 +387,7 @@ export function useScenarioSession(npcId: string | null) {
   }
 
   function freetype(text: string) {
-    if (!session || choiceDisabled || !text.trim()) return;
+    if (!session || choiceDisabled || completionFailed || !text.trim()) return;
     const sid = session.id;
     setChoiceDisabled(true);
     setChoices([]); // typing freely supersedes the stale choice cards
@@ -357,8 +399,10 @@ export function useScenarioSession(npcId: string | null) {
   return {
     session, status, resumable, messages, choices, hudState, summary, transcript,
     choiceDisabled, accepting, declining, pausing, resuming, ending,
+    completionFailed, retryingCompletion,
     reviewingSessionId, reviewErrorSessionId, declinedReply, npcTyping,
     offerSession, accept, decline, pause, resume, abort,
-    clearForRecall, clearDeclinedReply, reviewCompleted, continueChatting, refreshSessions, choose, freetype,
+    clearForRecall, clearDeclinedReply, reviewCompleted, continueChatting, refreshSessions,
+    retryCompletion, choose, freetype,
   };
 }

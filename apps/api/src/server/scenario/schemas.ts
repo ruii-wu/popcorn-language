@@ -23,6 +23,9 @@ export const ScenarioSummarySchema = z.object({
   languageNote: z.string(),
   pragmaticsNote: z.string(),
   relationshipNote: z.string(),
+  // Assessment rows are best-effort learning metadata. end.ts normalizes each
+  // item independently so malformed rows do not erase the main summary.
+  skillAssessments: z.unknown().optional(),
 });
 export type ScenarioSummaryJson = z.infer<typeof ScenarioSummarySchema>;
 

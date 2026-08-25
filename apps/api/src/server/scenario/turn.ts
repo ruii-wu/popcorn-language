@@ -51,6 +51,13 @@ export async function* runScenarioTurn(deps: TurnDeps): AsyncGenerator<SseEvent>
   }
 
   const state = JSON.parse(session.state) as ScenarioState;
+  if (state.turnsLeft <= 0) {
+    // The final turn is already durable; only the completion tail needs retrying.
+    // Never turn a summary failure into an extra learner turn.
+    yield { event: 'error', data: { code: 'END_FAILED', message: 'Scenario summary needs to be retried' } };
+    yield { event: 'done', data: {} };
+    return;
+  }
   const userText = deps.text ?? deps.choiceId ?? '';
 
   const userMsg = await prisma.message.create({
