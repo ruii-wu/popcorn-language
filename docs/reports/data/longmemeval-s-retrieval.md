@@ -4,10 +4,10 @@
 
 | Strategy | Recall@5 | Mean latency (ms) | Mean retrieved tokens |
 |---|---:|---:|---:|
-| recency | 0.008 | 29.0 | 934.3 |
-| summary | 0.008 | 29.2 | 94.6 |
-| semantic | 0.624 | 187.5 | 866.3 |
-| hybrid | 0.346 | 63.5 | 928.0 |
+| recency | 0.008 | 27.8 | 934.3 |
+| summary | 0.008 | 28.1 | 94.6 |
+| semantic | 0.624 | 69.4 | 866.3 |
+| hybrid | 0.346 | 69.2 | 928.0 |
 
 | Question type | n | Recency | Summary | Semantic | Hybrid |
 |---|---:|---:|---:|---:|---:|
@@ -22,8 +22,8 @@
 - Dataset SHA-256: d6f21ea9d60a0d56f34a05b609c79c88a451d2ae03597821ea3d5a9678c3a442
 - Adapter: one source conversation turn = one Popcorn ConversationSummary candidate; turns over 2,000 characters are chunked
 - Embedding model: nomic-embed-text (0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f)
-- Git commit: 0c86c9724e86579fcc08bf32229f5e880b1bb5c1 + dirty worktree
-- Run time: 2026-08-31T10:21:09.318Z
+- Git commit: 2c7ce7b919caedc13c2558835c5e725e76b577f0
+- Run time: 2026-08-31T11:01:10.099Z
 - Host: HTGHR2Y6HY / darwin 25.6.0 / Node v24.19.0
 
 This is a retrieval-only external validity check. It does not evaluate answer generation, memory extraction, or educational effectiveness.

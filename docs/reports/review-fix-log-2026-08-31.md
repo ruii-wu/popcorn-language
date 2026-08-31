@@ -60,5 +60,13 @@ All checks below ran on Node `24.19.0`:
 - `git diff --check`: passed; local databases, `.env`, build output, and toolchain caches remain
   ignored.
 
-Commit identifiers are appended after the final candidate and generated evaluation artifacts are
-recorded in Git.
+## Version-control record
+
+- Starting baseline: `0c86c9724e86579fcc08bf32229f5e880b1bb5c1`.
+- Frozen code, tests, demo tooling, and submission documentation:
+  `2c7ce7b919caedc13c2558835c5e725e76b577f0`.
+- The committed LongMemEval-S report was regenerated from a clean checkout of `2c7ce7b`; its JSON
+  and Markdown metadata record that full commit identifier without a dirty-worktree suffix.
+
+The retrieval effectiveness values were stable across the final runs. Latency is retained as a
+host-specific observation rather than treated as an algorithm-independent result.

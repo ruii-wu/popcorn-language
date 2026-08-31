@@ -85,7 +85,7 @@ DEMO_WEB_URL=http://localhost:3100 npm run smoke:web -- journey
 - [x] Schema migrations required by the current Prisma schema are committed.
 - [x] README commands work from a fresh checkout.
 - [ ] Final report screenshots and behavior descriptions match the frozen product.
-- [ ] Final change log records the exact verification results and commit identifiers.
+- [x] Final change log records the exact verification results and commit identifiers.
 - [ ] The final branch is pushed only after the local release gate is green.
 
 ## Assessed scope

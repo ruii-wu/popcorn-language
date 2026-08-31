@@ -1,9 +1,9 @@
 {
   "benchmark": "LongMemEval-S",
   "sourceUrl": "https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned/resolve/main/longmemeval_s_cleaned.json",
-  "runAt": "2026-08-31T10:21:09.318Z",
-  "gitCommit": "0c86c9724e86579fcc08bf32229f5e880b1bb5c1",
-  "worktreeDirty": true,
+  "runAt": "2026-08-31T11:01:10.099Z",
+  "gitCommit": "2c7ce7b919caedc13c2558835c5e725e76b577f0",
+  "worktreeDirty": false,
   "host": "HTGHR2Y6HY / darwin 25.6.0 / Node v24.19.0",
   "embeddingModel": "nomic-embed-text",
   "embeddingModelDigest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
@@ -16,25 +16,25 @@
     {
       "name": "recency",
       "recallAtK": 0.008,
-      "latencyMs": 29,
+      "latencyMs": 27.817,
       "tokenCost": 934.317
     },
     {
       "name": "summary",
       "recallAtK": 0.008,
-      "latencyMs": 29.2,
+      "latencyMs": 28.133,
       "tokenCost": 94.583
     },
     {
       "name": "semantic",
       "recallAtK": 0.624,
-      "latencyMs": 187.533,
+      "latencyMs": 69.4,
       "tokenCost": 866.333
     },
     {
       "name": "hybrid",
       "recallAtK": 0.346,
-      "latencyMs": 63.55,
+      "latencyMs": 69.233,
       "tokenCost": 927.983
     }
   ],
@@ -100,7 +100,7 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 31,
+          "latencyMs": 32,
           "tokenCost": 923
         },
         {
@@ -112,13 +112,13 @@
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 7029,
+          "latencyMs": 94,
           "tokenCost": 559
         },
         {
           "name": "hybrid",
           "recallAtK": 1,
-          "latencyMs": 61,
+          "latencyMs": 66,
           "tokenCost": 629
         }
       ]
@@ -134,25 +134,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 28,
           "tokenCost": 1229
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 31,
           "tokenCost": 37
         },
         {
           "name": "semantic",
           "recallAtK": 0,
-          "latencyMs": 70,
+          "latencyMs": 71,
           "tokenCost": 388
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 70,
+          "latencyMs": 75,
           "tokenCost": 280
         }
       ]
@@ -168,7 +168,7 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 26,
+          "latencyMs": 27,
           "tokenCost": 1255
         },
         {
@@ -180,13 +180,13 @@
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 155,
+          "latencyMs": 70,
           "tokenCost": 564
         },
         {
           "name": "hybrid",
           "recallAtK": 1,
-          "latencyMs": 54,
+          "latencyMs": 64,
           "tokenCost": 1044
         }
       ]
@@ -202,25 +202,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 26,
+          "latencyMs": 25,
           "tokenCost": 1192
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 27,
+          "latencyMs": 29,
           "tokenCost": 96
         },
         {
           "name": "semantic",
           "recallAtK": 0.667,
-          "latencyMs": 71,
+          "latencyMs": 70,
           "tokenCost": 1398
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 62,
+          "latencyMs": 65,
           "tokenCost": 1256
         }
       ]
@@ -236,25 +236,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 31,
+          "latencyMs": 30,
           "tokenCost": 412
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 29,
           "tokenCost": 17
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 72,
+          "latencyMs": 76,
           "tokenCost": 679
         },
         {
           "name": "hybrid",
           "recallAtK": 1,
-          "latencyMs": 63,
+          "latencyMs": 68,
           "tokenCost": 476
         }
       ]
@@ -270,25 +270,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 29,
           "tokenCost": 995
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 28,
           "tokenCost": 87
         },
         {
           "name": "semantic",
           "recallAtK": 0,
-          "latencyMs": 71,
+          "latencyMs": 70,
           "tokenCost": 812
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 63,
+          "latencyMs": 70,
           "tokenCost": 729
         }
       ]
@@ -310,19 +310,19 @@
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 32,
           "tokenCost": 60
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 73,
+          "latencyMs": 72,
           "tokenCost": 722
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 65,
+          "latencyMs": 220,
           "tokenCost": 827
         }
       ]
@@ -338,13 +338,13 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 31,
           "tokenCost": 456
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 31,
           "tokenCost": 27
         },
         {
@@ -372,19 +372,19 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 27,
           "tokenCost": 1483
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 29,
           "tokenCost": 500
         },
         {
           "name": "semantic",
           "recallAtK": 0,
-          "latencyMs": 69,
+          "latencyMs": 68,
           "tokenCost": 344
         },
         {
@@ -406,25 +406,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 29,
           "tokenCost": 763
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 32,
+          "latencyMs": 28,
           "tokenCost": 28
         },
         {
           "name": "semantic",
           "recallAtK": 0,
-          "latencyMs": 71,
+          "latencyMs": 70,
           "tokenCost": 1020
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 65,
+          "latencyMs": 72,
           "tokenCost": 538
         }
       ]
@@ -440,25 +440,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 28,
           "tokenCost": 1025
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 28,
           "tokenCost": 38
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 72,
+          "latencyMs": 70,
           "tokenCost": 673
         },
         {
           "name": "hybrid",
           "recallAtK": 1,
-          "latencyMs": 64,
+          "latencyMs": 68,
           "tokenCost": 247
         }
       ]
@@ -474,19 +474,19 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 27,
           "tokenCost": 768
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 28,
           "tokenCost": 15
         },
         {
           "name": "semantic",
           "recallAtK": 0.5,
-          "latencyMs": 67,
+          "latencyMs": 70,
           "tokenCost": 1075
         },
         {
@@ -508,7 +508,7 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 27,
           "tokenCost": 709
         },
         {
@@ -520,13 +520,13 @@
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 69,
+          "latencyMs": 68,
           "tokenCost": 776
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 62,
+          "latencyMs": 68,
           "tokenCost": 1192
         }
       ]
@@ -542,7 +542,7 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 31,
+          "latencyMs": 30,
           "tokenCost": 1343
         },
         {
@@ -554,13 +554,13 @@
         {
           "name": "semantic",
           "recallAtK": 0.75,
-          "latencyMs": 72,
+          "latencyMs": 70,
           "tokenCost": 951
         },
         {
           "name": "hybrid",
           "recallAtK": 0.25,
-          "latencyMs": 67,
+          "latencyMs": 72,
           "tokenCost": 1011
         }
       ]
@@ -576,7 +576,7 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 27,
           "tokenCost": 1312
         },
         {
@@ -588,13 +588,13 @@
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 94,
+          "latencyMs": 67,
           "tokenCost": 560
         },
         {
           "name": "hybrid",
           "recallAtK": 1,
-          "latencyMs": 63,
+          "latencyMs": 69,
           "tokenCost": 658
         }
       ]
@@ -616,19 +616,19 @@
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 31,
+          "latencyMs": 28,
           "tokenCost": 37
         },
         {
           "name": "semantic",
           "recallAtK": 0.5,
-          "latencyMs": 74,
+          "latencyMs": 78,
           "tokenCost": 1285
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 68,
+          "latencyMs": 65,
           "tokenCost": 1194
         }
       ]
@@ -644,25 +644,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 25,
           "tokenCost": 1146
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 27,
+          "latencyMs": 25,
           "tokenCost": 32
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 68,
+          "latencyMs": 64,
           "tokenCost": 433
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 62,
+          "latencyMs": 65,
           "tokenCost": 1127
         }
       ]
@@ -678,25 +678,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 25,
           "tokenCost": 1084
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 26,
           "tokenCost": 464
         },
         {
           "name": "semantic",
           "recallAtK": 0.333,
-          "latencyMs": 70,
+          "latencyMs": 68,
           "tokenCost": 623
         },
         {
           "name": "hybrid",
           "recallAtK": 0.333,
-          "latencyMs": 63,
+          "latencyMs": 65,
           "tokenCost": 623
         }
       ]
@@ -718,19 +718,19 @@
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 27,
           "tokenCost": 75
         },
         {
           "name": "semantic",
           "recallAtK": 0,
-          "latencyMs": 71,
+          "latencyMs": 70,
           "tokenCost": 1244
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 70,
+          "latencyMs": 65,
           "tokenCost": 837
         }
       ]
@@ -746,25 +746,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 31,
+          "latencyMs": 26,
           "tokenCost": 897
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 27,
           "tokenCost": 117
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 63,
+          "latencyMs": 67,
           "tokenCost": 843
         },
         {
           "name": "hybrid",
           "recallAtK": 0.5,
-          "latencyMs": 59,
+          "latencyMs": 67,
           "tokenCost": 1248
         }
       ]
@@ -780,25 +780,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 31,
+          "latencyMs": 28,
           "tokenCost": 738
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 31,
+          "latencyMs": 28,
           "tokenCost": 282
         },
         {
           "name": "semantic",
           "recallAtK": 0.5,
-          "latencyMs": 70,
+          "latencyMs": 71,
           "tokenCost": 1033
         },
         {
           "name": "hybrid",
           "recallAtK": 0.5,
-          "latencyMs": 63,
+          "latencyMs": 70,
           "tokenCost": 1384
         }
       ]
@@ -820,7 +820,7 @@
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 27,
           "tokenCost": 67
         },
         {
@@ -832,7 +832,7 @@
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 62,
+          "latencyMs": 64,
           "tokenCost": 1279
         }
       ]
@@ -848,19 +848,19 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 27,
           "tokenCost": 428
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 28,
           "tokenCost": 209
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 68,
+          "latencyMs": 69,
           "tokenCost": 1171
         },
         {
@@ -882,25 +882,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 27,
           "tokenCost": 1277
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 27,
           "tokenCost": 39
         },
         {
           "name": "semantic",
           "recallAtK": 0,
-          "latencyMs": 60,
+          "latencyMs": 66,
           "tokenCost": 1205
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 56,
+          "latencyMs": 62,
           "tokenCost": 1205
         }
       ]
@@ -916,25 +916,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 29,
           "tokenCost": 1247
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 31,
+          "latencyMs": 30,
           "tokenCost": 35
         },
         {
           "name": "semantic",
           "recallAtK": 0,
-          "latencyMs": 74,
+          "latencyMs": 69,
           "tokenCost": 1083
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 63,
+          "latencyMs": 65,
           "tokenCost": 1083
         }
       ]
@@ -950,25 +950,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 30,
           "tokenCost": 195
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 27,
           "tokenCost": 7
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 68,
+          "latencyMs": 69,
           "tokenCost": 195
         },
         {
           "name": "hybrid",
           "recallAtK": 1,
-          "latencyMs": 65,
+          "latencyMs": 67,
           "tokenCost": 593
         }
       ]
@@ -984,25 +984,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 27,
           "tokenCost": 1103
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 28,
           "tokenCost": 55
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 67,
+          "latencyMs": 66,
           "tokenCost": 978
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 63,
+          "latencyMs": 66,
           "tokenCost": 760
         }
       ]
@@ -1018,25 +1018,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 28,
           "tokenCost": 1193
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 28,
           "tokenCost": 95
         },
         {
           "name": "semantic",
           "recallAtK": 0,
-          "latencyMs": 69,
+          "latencyMs": 72,
           "tokenCost": 676
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 63,
+          "latencyMs": 66,
           "tokenCost": 757
         }
       ]
@@ -1052,25 +1052,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 31,
+          "latencyMs": 29,
           "tokenCost": 857
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 27,
           "tokenCost": 29
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 68,
+          "latencyMs": 70,
           "tokenCost": 220
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 64,
+          "latencyMs": 66,
           "tokenCost": 448
         }
       ]
@@ -1086,25 +1086,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 27,
           "tokenCost": 571
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 28,
           "tokenCost": 33
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 67,
+          "latencyMs": 68,
           "tokenCost": 731
         },
         {
           "name": "hybrid",
           "recallAtK": 1,
-          "latencyMs": 63,
+          "latencyMs": 71,
           "tokenCost": 1193
         }
       ]
@@ -1120,25 +1120,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 27,
           "tokenCost": 485
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 29,
           "tokenCost": 18
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 74,
+          "latencyMs": 71,
           "tokenCost": 844
         },
         {
           "name": "hybrid",
           "recallAtK": 0.5,
-          "latencyMs": 66,
+          "latencyMs": 69,
           "tokenCost": 207
         }
       ]
@@ -1154,13 +1154,13 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 28,
           "tokenCost": 353
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 32,
           "tokenCost": 16
         },
         {
@@ -1172,7 +1172,7 @@
         {
           "name": "hybrid",
           "recallAtK": 0.333,
-          "latencyMs": 65,
+          "latencyMs": 63,
           "tokenCost": 1562
         }
       ]
@@ -1188,25 +1188,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 27,
           "tokenCost": 2212
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 28,
           "tokenCost": 500
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 67,
+          "latencyMs": 68,
           "tokenCost": 843
         },
         {
           "name": "hybrid",
           "recallAtK": 1,
-          "latencyMs": 61,
+          "latencyMs": 67,
           "tokenCost": 772
         }
       ]
@@ -1222,19 +1222,19 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 27,
           "tokenCost": 440
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 27,
           "tokenCost": 78
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 71,
+          "latencyMs": 69,
           "tokenCost": 233
         },
         {
@@ -1256,19 +1256,19 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 32,
+          "latencyMs": 30,
           "tokenCost": 1111
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 32,
+          "latencyMs": 29,
           "tokenCost": 42
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 71,
+          "latencyMs": 69,
           "tokenCost": 692
         },
         {
@@ -1296,13 +1296,13 @@
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 27,
           "tokenCost": 500
         },
         {
           "name": "semantic",
           "recallAtK": 0.5,
-          "latencyMs": 64,
+          "latencyMs": 67,
           "tokenCost": 1135
         },
         {
@@ -1324,25 +1324,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 26,
           "tokenCost": 1043
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 27,
           "tokenCost": 34
         },
         {
           "name": "semantic",
           "recallAtK": 0.5,
-          "latencyMs": 70,
+          "latencyMs": 69,
           "tokenCost": 1249
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 62,
+          "latencyMs": 65,
           "tokenCost": 487
         }
       ]
@@ -1358,19 +1358,19 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 26,
           "tokenCost": 505
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 27,
           "tokenCost": 21
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 68,
+          "latencyMs": 66,
           "tokenCost": 794
         },
         {
@@ -1392,13 +1392,13 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 29,
           "tokenCost": 883
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 31,
+          "latencyMs": 32,
           "tokenCost": 37
         },
         {
@@ -1432,19 +1432,19 @@
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 32,
+          "latencyMs": 30,
           "tokenCost": 32
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 66,
+          "latencyMs": 70,
           "tokenCost": 285
         },
         {
           "name": "hybrid",
           "recallAtK": 1,
-          "latencyMs": 64,
+          "latencyMs": 63,
           "tokenCost": 285
         }
       ]
@@ -1460,25 +1460,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 27,
           "tokenCost": 855
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 28,
           "tokenCost": 69
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 73,
+          "latencyMs": 66,
           "tokenCost": 374
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 63,
+          "latencyMs": 67,
           "tokenCost": 411
         }
       ]
@@ -1494,25 +1494,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 31,
+          "latencyMs": 29,
           "tokenCost": 528
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 32,
+          "latencyMs": 30,
           "tokenCost": 36
         },
         {
           "name": "semantic",
           "recallAtK": 0.5,
-          "latencyMs": 69,
+          "latencyMs": 71,
           "tokenCost": 510
         },
         {
           "name": "hybrid",
           "recallAtK": 0.5,
-          "latencyMs": 66,
+          "latencyMs": 67,
           "tokenCost": 510
         }
       ]
@@ -1534,19 +1534,19 @@
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 27,
           "tokenCost": 32
         },
         {
           "name": "semantic",
           "recallAtK": 0.5,
-          "latencyMs": 65,
+          "latencyMs": 68,
           "tokenCost": 1285
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 62,
+          "latencyMs": 71,
           "tokenCost": 1033
         }
       ]
@@ -1568,19 +1568,19 @@
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 27,
+          "latencyMs": 29,
           "tokenCost": 25
         },
         {
           "name": "semantic",
           "recallAtK": 0,
-          "latencyMs": 66,
+          "latencyMs": 69,
           "tokenCost": 1166
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 61,
+          "latencyMs": 67,
           "tokenCost": 1234
         }
       ]
@@ -1608,13 +1608,13 @@
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 65,
+          "latencyMs": 67,
           "tokenCost": 1046
         },
         {
           "name": "hybrid",
           "recallAtK": 1,
-          "latencyMs": 63,
+          "latencyMs": 65,
           "tokenCost": 1046
         }
       ]
@@ -1630,25 +1630,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 31,
+          "latencyMs": 30,
           "tokenCost": 1106
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 31,
+          "latencyMs": 29,
           "tokenCost": 26
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 123,
+          "latencyMs": 70,
           "tokenCost": 274
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 58,
+          "latencyMs": 69,
           "tokenCost": 797
         }
       ]
@@ -1664,7 +1664,7 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 28,
           "tokenCost": 969
         },
         {
@@ -1676,13 +1676,13 @@
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 70,
+          "latencyMs": 67,
           "tokenCost": 462
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 63,
+          "latencyMs": 69,
           "tokenCost": 1168
         }
       ]
@@ -1698,25 +1698,25 @@
         {
           "name": "recency",
           "recallAtK": 0.5,
-          "latencyMs": 29,
+          "latencyMs": 27,
           "tokenCost": 1180
         },
         {
           "name": "summary",
           "recallAtK": 0.5,
-          "latencyMs": 28,
+          "latencyMs": 27,
           "tokenCost": 52
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 69,
+          "latencyMs": 71,
           "tokenCost": 1266
         },
         {
           "name": "hybrid",
           "recallAtK": 1,
-          "latencyMs": 61,
+          "latencyMs": 63,
           "tokenCost": 1266
         }
       ]
@@ -1732,25 +1732,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 27,
           "tokenCost": 696
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 27,
           "tokenCost": 37
         },
         {
           "name": "semantic",
           "recallAtK": 0,
-          "latencyMs": 59,
+          "latencyMs": 67,
           "tokenCost": 739
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 61,
+          "latencyMs": 72,
           "tokenCost": 739
         }
       ]
@@ -1766,13 +1766,13 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 26,
           "tokenCost": 666
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 27,
           "tokenCost": 10
         },
         {
@@ -1784,7 +1784,7 @@
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 60,
+          "latencyMs": 63,
           "tokenCost": 1226
         }
       ]
@@ -1800,25 +1800,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 27,
           "tokenCost": 596
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 27,
           "tokenCost": 230
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 65,
+          "latencyMs": 70,
           "tokenCost": 818
         },
         {
           "name": "hybrid",
           "recallAtK": 1,
-          "latencyMs": 67,
+          "latencyMs": 70,
           "tokenCost": 913
         }
       ]
@@ -1834,25 +1834,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 33,
+          "latencyMs": 29,
           "tokenCost": 616
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 28,
           "tokenCost": 257
         },
         {
           "name": "semantic",
           "recallAtK": 0,
-          "latencyMs": 71,
+          "latencyMs": 68,
           "tokenCost": 1280
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 67,
+          "latencyMs": 66,
           "tokenCost": 207
         }
       ]
@@ -1868,25 +1868,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 30,
+          "latencyMs": 29,
           "tokenCost": 1344
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 27,
           "tokenCost": 57
         },
         {
           "name": "semantic",
           "recallAtK": 0,
-          "latencyMs": 70,
+          "latencyMs": 68,
           "tokenCost": 1394
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 65,
+          "latencyMs": 66,
           "tokenCost": 1384
         }
       ]
@@ -1902,13 +1902,13 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 27,
           "tokenCost": 643
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 27,
           "tokenCost": 40
         },
         {
@@ -1920,7 +1920,7 @@
         {
           "name": "hybrid",
           "recallAtK": 0.5,
-          "latencyMs": 65,
+          "latencyMs": 69,
           "tokenCost": 719
         }
       ]
@@ -1936,25 +1936,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 28,
           "tokenCost": 1200
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 27,
           "tokenCost": 88
         },
         {
           "name": "semantic",
           "recallAtK": 0,
-          "latencyMs": 67,
+          "latencyMs": 70,
           "tokenCost": 480
         },
         {
           "name": "hybrid",
           "recallAtK": 0.5,
-          "latencyMs": 66,
+          "latencyMs": 63,
           "tokenCost": 1295
         }
       ]
@@ -1976,19 +1976,19 @@
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 26,
           "tokenCost": 40
         },
         {
           "name": "semantic",
           "recallAtK": 0.333,
-          "latencyMs": 68,
+          "latencyMs": 64,
           "tokenCost": 1622
         },
         {
           "name": "hybrid",
           "recallAtK": 0.333,
-          "latencyMs": 63,
+          "latencyMs": 67,
           "tokenCost": 1622
         }
       ]
@@ -2004,7 +2004,7 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 27,
           "tokenCost": 1255
         },
         {
@@ -2016,13 +2016,13 @@
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 66,
+          "latencyMs": 68,
           "tokenCost": 1560
         },
         {
           "name": "hybrid",
           "recallAtK": 1,
-          "latencyMs": 62,
+          "latencyMs": 68,
           "tokenCost": 1560
         }
       ]
@@ -2044,19 +2044,19 @@
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 27,
+          "latencyMs": 28,
           "tokenCost": 80
         },
         {
           "name": "semantic",
           "recallAtK": 0,
-          "latencyMs": 71,
+          "latencyMs": 69,
           "tokenCost": 1558
         },
         {
           "name": "hybrid",
           "recallAtK": 0.5,
-          "latencyMs": 65,
+          "latencyMs": 67,
           "tokenCost": 1121
         }
       ]
@@ -2072,25 +2072,25 @@
         {
           "name": "recency",
           "recallAtK": 0,
-          "latencyMs": 28,
+          "latencyMs": 27,
           "tokenCost": 1140
         },
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 27,
           "tokenCost": 37
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 69,
+          "latencyMs": 67,
           "tokenCost": 1094
         },
         {
           "name": "hybrid",
           "recallAtK": 0,
-          "latencyMs": 63,
+          "latencyMs": 62,
           "tokenCost": 716
         }
       ]
@@ -2112,19 +2112,19 @@
         {
           "name": "summary",
           "recallAtK": 0,
-          "latencyMs": 29,
+          "latencyMs": 27,
           "tokenCost": 311
         },
         {
           "name": "semantic",
           "recallAtK": 1,
-          "latencyMs": 69,
+          "latencyMs": 68,
           "tokenCost": 1176
         },
         {
           "name": "hybrid",
           "recallAtK": 1,
-          "latencyMs": 67,
+          "latencyMs": 71,
           "tokenCost": 1176
         }
       ]
