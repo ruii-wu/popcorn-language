@@ -1,6 +1,7 @@
 // src/server/scenario/sessionView.ts
 import type { ScenarioChoice, ScenarioSummary } from '@popcorn/shared';
 import { ChoiceSchema } from './schemas';
+import { sanitizeScenarioChoices } from './choiceQuality';
 import { buildLearningUpdate, parseSnapshot } from '@/server/learning/learningUpdate';
 interface TemplateLite { id: string; title: string; titleZh: string | null }
 
@@ -71,7 +72,7 @@ function safeParse(raw: string | null): unknown {
 function safeChoices(raw: string | null | undefined): ScenarioChoice[] {
   const parsed = safeParse(raw ?? null);
   const result = ChoiceSchema.array().safeParse(parsed);
-  return result.success ? result.data : [];
+  return result.success ? sanitizeScenarioChoices(result.data) : [];
 }
 
 export function mapSessionListItem(s: SessionRow): SessionListItem {

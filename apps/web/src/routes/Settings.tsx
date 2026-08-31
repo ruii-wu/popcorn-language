@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
-import { WebI, WebNavRail } from '../components/shared';
+import { WebI, WebNavRail, type WebSectionNavItem } from '../components/shared';
 import {
   mergeProfileOptions,
   PROFILE_GOALS,
@@ -18,6 +18,12 @@ const MEMORY_OPTIONS = [
   { value: 'summary', label: 'Summary' },
   { value: 'recency', label: 'Recency' },
 ] as const;
+
+const SETTINGS_NAV_ITEMS: WebSectionNavItem[] = [
+  { id: 'profile', label: 'Profile', description: 'Role, goals, and interests', icon: WebI.user },
+  { id: 'ai', label: 'AI & Memory', description: 'Model and learning support', icon: WebI.sparkleF },
+  { id: 'account', label: 'Data & Account', description: 'History and session access', icon: WebI.settings },
+];
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -83,6 +89,7 @@ function ChoiceButton({
 
 export default function Settings() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'profile' | 'ai' | 'account'>('profile');
   const [settings, setSettings] = useState<SettingsResponse | null>(null);
   const [draft, setDraft] = useState<SettingsPatch>({});
   const [profileDraft, setProfileDraft] = useState<ProfileBody | null>(null);
@@ -92,6 +99,8 @@ export default function Settings() {
   const [resetStatus, setResetStatus] = useState('');
   const [resetting, setResetting] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [accountStatus, setAccountStatus] = useState('');
+  const settingsScrollRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     api.settings()
@@ -155,13 +164,13 @@ export default function Settings() {
   async function logout() {
     if (loggingOut) return;
     setLoggingOut(true);
-    setStatus('Logging out...');
+    setAccountStatus('Logging out...');
     try {
       await api.logout();
       navigate('/onboarding', { replace: true });
     } catch {
       setLoggingOut(false);
-      setStatus('Could not log out.');
+      setAccountStatus('Could not log out.');
     }
   }
 
@@ -202,17 +211,33 @@ export default function Settings() {
     && profileDraft.interests.length >= 3
     && profileDraft.interests.length <= 5;
 
+  function selectSettingsTab(tab: typeof activeTab) {
+    setActiveTab(tab);
+    settingsScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+  }
+
   return (
     <div className="app-shell">
-      <WebNavRail activeTop="settings" />
-      <section className="pane-main pane-main-scroll" style={{ background: 'var(--bg)' }}>
-        <div className="max-w-[760px] mx-auto px-10 py-8">
-          <span className="text-[10px] font-mono uppercase tracking-[0.22em]" style={{ color: 'var(--muted)' }}>
-            settings
-          </span>
-          <h1 className="font-serif text-[54px] leading-none mt-2">Settings</h1>
+      <WebNavRail activeTop="settings" sectionLabel="Settings · 设置"
+                  items={SETTINGS_NAV_ITEMS} activeItem={activeTab}
+                  onSelectItem={(item) => selectSettingsTab(item as typeof activeTab)} />
+      <section ref={settingsScrollRef} className="pane-main pane-main-scroll" style={{ background: 'var(--bg)' }}>
+        <div className="w-full max-w-[1100px] mx-auto px-10 pb-8">
+          <div className="sticky top-0 z-20 -mx-10 px-10 pt-6 pb-4"
+               style={{
+                 background: 'color-mix(in srgb, var(--bg) 94%, transparent)',
+                 backdropFilter: 'blur(12px)',
+                 borderBottom: '1px solid var(--hairline)',
+               }}>
+            <span className="text-[10px] font-mono uppercase tracking-[0.22em]" style={{ color: 'var(--muted)' }}>
+              preferences · 偏好设置
+            </span>
+            <h1 className="font-serif text-[34px] leading-tight mt-1">Settings</h1>
+          </div>
 
-          <section className="mt-9">
+          {activeTab === 'profile' && (
+          <section role="tabpanel" id="settings-panel-profile" aria-labelledby="settings-tab-profile"
+                   className="max-w-[760px] mt-8 fade-up">
             <div className="flex items-start justify-between gap-6">
               <div>
                 <span className="text-[10px] font-mono uppercase tracking-[0.18em]" style={{ color: 'var(--muted)' }}>
@@ -318,10 +343,10 @@ export default function Settings() {
               </div>
             </fieldset>
 
-            <div className="mt-6 flex items-center justify-between gap-6">
+            <div className="mt-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
               <span
                 aria-live="polite"
-                className="text-[12px]"
+                className="min-w-0 text-[12px] leading-snug"
                 style={{ color: profileStatus === 'Saved' ? 'var(--moss)' : 'var(--muted)' }}
               >
                 {profileStatus || (profileValid ? 'Changes affect future conversations.' : 'Choose 3 to 5 interests.')}
@@ -330,15 +355,18 @@ export default function Settings() {
                 type="button"
                 onClick={saveProfile}
                 disabled={!profileReady || !profileValid || savingProfile}
-                className="rounded-lg px-5 py-2.5 text-[13px] font-medium transition disabled:opacity-40"
+                className="shrink-0 rounded-lg px-5 py-2.5 text-[13px] font-medium transition disabled:opacity-40"
                 style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-ink)' }}
               >
                 {savingProfile ? 'Saving...' : 'Save profile'}
               </button>
             </div>
           </section>
+          )}
 
-          <section className="mt-10 pt-8" style={{ borderTop: '1px solid var(--hairline)' }}>
+          {activeTab === 'ai' && (
+          <section role="tabpanel" id="settings-panel-ai" aria-labelledby="settings-tab-ai"
+                   className="max-w-[760px] mt-8 fade-up">
             <span className="text-[10px] font-mono uppercase tracking-[0.18em]" style={{ color: 'var(--muted)' }}>
               local AI
             </span>
@@ -379,23 +407,27 @@ export default function Settings() {
               />
             </div>
 
-            <div className="mt-7 flex items-center justify-between">
-              <span className="text-[12px]" style={{ color: status === 'Saved' ? 'var(--moss)' : 'var(--muted)' }}>
+            <div className="mt-7 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+              <span className="min-w-0 text-[12px] leading-snug"
+                    style={{ color: status === 'Saved' ? 'var(--moss)' : 'var(--muted)' }}>
                 {status || 'Changes affect the next model request.'}
               </span>
               <button
                 onClick={save}
                 disabled={!ready}
-                className="rounded-full px-6 py-3 text-[14px] font-medium transition disabled:opacity-40"
+                className="shrink-0 rounded-full px-6 py-3 text-[14px] font-medium transition disabled:opacity-40"
                 style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-ink)' }}
               >
                 Save
               </button>
             </div>
           </section>
+          )}
 
-          <section className="mt-10 pt-7 flex items-center justify-between gap-6"
-                   style={{ borderTop: '1px solid var(--hairline)' }}>
+          {activeTab === 'account' && (
+          <div role="tabpanel" id="settings-panel-account" aria-labelledby="settings-tab-account"
+               className="max-w-[760px] fade-up">
+          <section className="mt-8 flex items-center justify-between gap-6">
             <div>
               <h2 className="text-[14px] font-medium">Reset chat history</h2>
               <p className="text-[12px] mt-1 max-w-[460px]" style={{ color: 'var(--muted)' }}>
@@ -424,6 +456,12 @@ export default function Settings() {
               <p className="text-[12px] mt-1" style={{ color: 'var(--muted)' }}>
                 End this session and return to sign in.
               </p>
+              {accountStatus && (
+                <p className="text-[11px] mt-2"
+                   style={{ color: accountStatus === 'Could not log out.' ? 'var(--coral-ink)' : 'var(--muted)' }}>
+                  {accountStatus}
+                </p>
+              )}
             </div>
             <button
               type="button"
@@ -436,6 +474,8 @@ export default function Settings() {
               {loggingOut ? 'Logging out...' : 'Log out'}
             </button>
           </section>
+          </div>
+          )}
         </div>
       </section>
     </div>

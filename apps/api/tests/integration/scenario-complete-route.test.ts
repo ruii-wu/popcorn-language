@@ -30,7 +30,7 @@ describe('POST /api/scenarios/sessions/:id/complete', () => {
     const session = await prisma.scenarioSession.create({
       data: {
         userId: user.id, npcId: 'lily', threadId: thread.id, templateId: 'mock_interview', status: 'active',
-        state: JSON.stringify({ impression: 6, stress: 'Low', turnsLeft: 0, turnIndex: 3 }),
+        state: JSON.stringify({ impression: 6, stress: 'Low', turnsLeft: 0, turnIndex: 3, completionPending: true }),
       },
     });
     await prisma.message.create({

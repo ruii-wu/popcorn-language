@@ -85,6 +85,7 @@ export interface LearnerSkillState {
   status: LearnerSkillStatus;
   trend: LearnerTrend;
   lastObservedAt: string | null;
+  practiceAdvice: string;
 }
 
 export interface LearnerModelResponse {
@@ -120,7 +121,7 @@ export interface StartScenarioResponse {
 // GET /api/journey/summary
 export interface JourneySummaryResponse {
   days: number;
-  conversations: number;
+  practiceTurns: number;
   scenarios: number;
   memories: number;
 }
@@ -131,7 +132,6 @@ export interface RelationshipCard {
   name: string;
   stage: string;
   stageValue: number;
-  sub: string;
   note: string | null;
   last: string | null; // already an ISO string (lastInteractionAt.toISOString())
 }
@@ -253,5 +253,5 @@ export interface NpcDetail {
   relationship: string; // stage
   relationshipSince: string | Date | null;
   knownFacts: string[]; // per-NPC, factToText-formatted
-  chatStats: { messages: number; conversationCount: number };
+  chatStats: { visibleMessages: number; practiceTurns: number };
 }

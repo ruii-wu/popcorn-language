@@ -9,6 +9,7 @@ import { PrismaClient } from '@prisma/client';
 import { runMemoryEval } from '@/server/memory/eval/harness';
 import { renderAblationReport } from '@/server/memory/eval/report';
 import { fixtureOllama } from '@/server/memory/eval/fixtureEmbed';
+import { REPORT_DATASET_ID } from '@/server/memory/eval/dataset';
 
 const prisma = new PrismaClient();
 const CALLER = '__w9_ablation_gen__';
@@ -22,7 +23,7 @@ afterAll(async () => {
 describe('ablation report generator', () => {
   it('runs the four strategies on the fixture, writes the figure, and locks the ordering', async () => {
     const caller = await prisma.user.create({ data: { username: CALLER, password: 'pw' } });
-    const result = await runMemoryEval(prisma, fixtureOllama, caller.id, { k: 3 });
+    const result = await runMemoryEval(prisma, fixtureOllama, caller.id, { datasetId: REPORT_DATASET_ID });
     expect(result.perStrategy).toHaveLength(4);
 
     // Research hypothesis (deterministic on this fixture).

@@ -6,6 +6,7 @@ node_modules/
 .env.*
 !.env.example
 .agents/
+.cache/
 *.local.json
 dev.db
 next-env.d.ts

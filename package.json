@@ -15,7 +15,10 @@
     "dev:api": "npm run dev -w apps/api",
     "dev:web": "npm run dev -w apps/web",
     "build:web": "npm run build -w apps/web",
-    "test": "npm run test -w apps/api",
+    "demo": "node scripts/check-node.mjs && npm run build:web && node scripts/start-demo.mjs",
+    "test:api": "npm run test -w apps/api",
+    "test:web": "npm run test -w apps/web",
+    "test": "npm run test:api && npm run test:web",
     "typecheck": "npm run typecheck -w apps/api && npm run typecheck -w apps/web",
     "db:migrate": "npm run db:migrate -w apps/api",
     "db:seed": "npm run db:seed -w apps/api",
@@ -23,7 +26,10 @@
     "db:reset": "npm run db:reset -w apps/api",
     "db:generate": "npm run db:generate -w apps/api",
     "demo:check": "node scripts/demo-check.mjs",
+    "verify": "node scripts/check-node.mjs && node scripts/verify-fresh-db.mjs && npm run typecheck && npm test && npm run build:web",
+    "verify:eval": "node scripts/check-node.mjs && npm run report:ablation && npm run eval:memory:longmemeval -- --limit=60 --k=5",
     "report:ablation": "npm run report:ablation -w apps/api",
+    "eval:memory:longmemeval": "npm run eval:memory:longmemeval -w apps/api --",
     "smoke:web": "node scripts/smoke-web.mjs"
   },
   "devDependencies": {

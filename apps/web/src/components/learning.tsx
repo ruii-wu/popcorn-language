@@ -34,7 +34,15 @@ export function trendGlyph(trend: LearnerTrend): string {
 
 // ---------- Learning Focus ----------
 
-export function LearningFocus({ focus, skills = [] }: { focus: LearnerSkillState[]; skills?: LearnerSkillState[] }) {
+export function LearningFocus({
+  focus,
+  skills = [],
+  onViewPractice,
+}: {
+  focus: LearnerSkillState[];
+  skills?: LearnerSkillState[];
+  onViewPractice: (skill: LearnerSkillState) => void;
+}) {
   if (focus.length === 0) {
     const hasReliableEvidence = skills.some((skill) => skill.evidenceN >= 3);
     return (
@@ -50,18 +58,27 @@ export function LearningFocus({ focus, skills = [] }: { focus: LearnerSkillState
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
       {focus.map((skill) => (
-        <SkillFocusCard key={skill.skillCode} skill={skill} />
+        <SkillFocusCard key={skill.skillCode} skill={skill} onViewPractice={onViewPractice} />
       ))}
     </div>
   );
 }
 
-function SkillFocusCard({ skill }: { skill: LearnerSkillState }) {
+function SkillFocusCard({
+  skill,
+  onViewPractice,
+}: {
+  skill: LearnerSkillState;
+  onViewPractice: (skill: LearnerSkillState) => void;
+}) {
   const color = statusColor(skill.status);
   const glyph = trendGlyph(skill.trend);
   return (
-    <div className="rounded-xl p-4"
-         style={{ background: 'var(--surface)', border: '1px solid var(--hairline)' }}>
+    <button type="button"
+            onClick={() => onViewPractice(skill)}
+            aria-label={`View recommended practice for ${skill.labelEn}`}
+            className="group flex h-full w-full flex-col rounded-xl p-4 text-left transition-colors hover:bg-[var(--surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--plum)] focus-visible:ring-offset-2"
+            style={{ background: 'var(--surface)', border: '1px solid var(--hairline)' }}>
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="min-w-0">
           <div className="text-[13.5px] font-medium leading-tight">{skill.labelEn}</div>
@@ -69,23 +86,39 @@ function SkillFocusCard({ skill }: { skill: LearnerSkillState }) {
             {skill.labelZh} · {skill.category}
           </div>
         </div>
-        <span aria-label={`trend ${skill.trend}`} className="text-[13px]"
-              style={{ color: skill.trend === 'improving' ? 'var(--moss)'
-                     : skill.trend === 'declining' ? 'var(--coral-ink)'
-                     : 'var(--muted)' }}>
-          {glyph}
+        <span aria-hidden="true"
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[15px] transition-transform group-hover:translate-x-0.5"
+              style={{ background: 'var(--surface-2)', color: 'var(--ink-2)' }}>
+          →
         </span>
       </div>
-      <div className="flex items-center justify-between gap-2 mt-3">
-        <span className="text-[10.5px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded"
-              style={{ background: color.bg, color: color.ink }}>
-          {STATUS_LABEL[skill.status]}
-        </span>
-        <span className="text-[10.5px] font-mono" style={{ color: 'var(--muted)' }}>
+      <div className="mt-3 flex-1 pt-3" style={{ borderTop: '1px dashed var(--hairline)' }}>
+        <div className="text-[9.5px] font-mono uppercase tracking-[0.14em] mb-1"
+             style={{ color: 'var(--plum-ink)' }}>
+          Try next
+        </div>
+        <p className="text-[12px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>
+          {skill.practiceAdvice}
+        </p>
+      </div>
+      <div className="mt-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="shrink-0 whitespace-nowrap text-[9.5px] font-mono uppercase tracking-[0.06em] px-1.5 py-0.5 rounded"
+                style={{ background: color.bg, color: color.ink }}>
+            {STATUS_LABEL[skill.status]}
+          </span>
+        <span className="shrink-0 whitespace-nowrap text-[10.5px] font-mono" style={{ color: 'var(--muted)' }}>
           {skill.evidenceN} evidence
         </span>
+        </div>
+        {skill.trend !== 'stable' && (
+          <div className="mt-1 text-[10px] font-mono capitalize"
+               style={{ color: skill.trend === 'improving' ? 'var(--moss)' : 'var(--coral-ink)' }}>
+            {glyph} {skill.trend}
+          </div>
+        )}
       </div>
-    </div>
+    </button>
   );
 }
 

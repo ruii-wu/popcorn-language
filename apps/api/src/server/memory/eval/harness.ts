@@ -4,7 +4,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { OllamaClient } from '@/server/llm/ollama';
 import type { StrategyName } from '@/server/memory/types';
 import { getMemoryStrategy } from '@/server/memory/getStrategy';
-import { getDataset } from './dataset';
+import { getDataset, type EvalDataset } from './dataset';
 import { estimateTokens, recallAtK } from './metrics';
 
 const ALL_STRATEGIES: StrategyName[] = ['recency', 'summary', 'semantic', 'hybrid'];
@@ -36,10 +36,22 @@ export async function runMemoryEval(
   prisma: PrismaClient,
   ollama: Pick<OllamaClient, 'embed'>,
   callerUserId: string,
-  opts: { datasetId?: string; k?: number } = {},
+  opts: {
+    datasetId?: string;
+    dataset?: EvalDataset;
+    k?: number;
+    writeLogs?: boolean;
+    recallOllama?: Pick<OllamaClient, 'embed'>;
+  } = {},
 ): Promise<MemoryEvalResult> {
-  const dataset = getDataset(opts.datasetId);
+  const dataset = opts.dataset ?? getDataset(opts.datasetId);
   const k = opts.k ?? dataset.defaultK;
+  const explicitTimes = dataset.corpus.flatMap((item) => item.createdAt ? [Date.parse(item.createdAt)] : []);
+  const evalNow = dataset.evaluationTime
+    ? Date.parse(dataset.evaluationTime)
+    : explicitTimes.length > 0
+      ? Math.max(...explicitTimes) + 60_000
+      : SEED_EPOCH + (dataset.corpus.length + 1) * 60_000;
 
   const evalUser = await prisma.user.create({
     data: { username: `__memeval__${randomUUID()}`, password: 'x' },
@@ -52,7 +64,7 @@ export async function runMemoryEval(
 
     for (let i = 0; i < dataset.corpus.length; i++) {
       const item = dataset.corpus[i];
-      const createdAt = new Date(SEED_EPOCH + i * 60_000);
+      const createdAt = item.createdAt ? new Date(item.createdAt) : new Date(SEED_EPOCH + i * 60_000);
       if (item.kind === 'fact') {
         const embedding = JSON.stringify(await ollama.embed(item.value)); // matches factExtract.ts
         const row = await prisma.memoryFact.create({
@@ -87,7 +99,11 @@ export async function runMemoryEval(
     const perStrategy: PerStrategyResult[] = [];
 
     for (const name of ALL_STRATEGIES) {
-      const strategy = getMemoryStrategy(name, { prisma, ollama });
+      const strategy = getMemoryStrategy(
+        name,
+        { prisma, ollama: opts.recallOllama ?? ollama },
+        { now: () => evalNow },
+      );
       let recallSum = 0;
       let latencySum = 0;
       let tokenSum = 0;
@@ -109,17 +125,19 @@ export async function runMemoryEval(
         latencySum += latencyMs;
         tokenSum += tokenCost;
 
-        await prisma.memoryRetrievalLog.create({
-          data: {
-            userId: callerUserId,
-            strategy: name,
-            queryText: probe.queryText,
-            retrievedIds: JSON.stringify(topkIds),
-            k,
-            latencyMs,
-            tokenCost,
-          },
-        });
+        if (opts.writeLogs !== false) {
+          await prisma.memoryRetrievalLog.create({
+            data: {
+              userId: callerUserId,
+              strategy: name,
+              queryText: probe.queryText,
+              retrievedIds: JSON.stringify(topkIds),
+              k,
+              latencyMs,
+              tokenCost,
+            },
+          });
+        }
       }
 
       const n = dataset.probes.length;

@@ -42,8 +42,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   const state = parseState(session.state);
-  if (session.status === 'active' && (!state || state.turnsLeft > 0)) {
-    return errorJson(409, 'NOT_READY', 'Scenario still has turns remaining');
+  if (session.status === 'active' && (!state || state.completionPending !== true)) {
+    return errorJson(409, 'NOT_READY', 'Scenario has not reached a completed exchange');
   }
   // Completed sessions re-enter only to compensate optional post-commit work
   // (currently Memory generation), so a persisted Summary is required.

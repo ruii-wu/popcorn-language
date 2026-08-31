@@ -25,4 +25,25 @@ describe('npc detail knownFacts', () => {
     expect(d.knownFacts).toContain('has pet: a cat named Mochi');
     expect(d.knownFacts).not.toContain('works as: engineer'); // chen-only fact absent for lily
   });
+
+  it('derives chat statistics from visible messages instead of the relationship cache', async () => {
+    await prisma.user.deleteMany({ where: { username: U } });
+    const user = await prisma.user.create({ data: { username: U, password: 'pw' } });
+    const thread = await prisma.thread.create({ data: { userId: user.id, npcId: 'lily' } });
+    await prisma.relationship.create({
+      data: { userId: user.id, npcId: 'lily', conversationCount: 99 },
+    });
+    await prisma.message.create({
+      data: { threadId: thread.id, userId: user.id, role: 'user', text: 'visible turn' },
+    });
+    await prisma.message.create({
+      data: { threadId: thread.id, userId: null, role: 'npc', text: 'visible reply' },
+    });
+    await prisma.message.create({
+      data: { threadId: thread.id, userId: user.id, role: 'user', text: 'retracted', retractedAt: new Date() },
+    });
+
+    const d = await (await detail(req(user.id), { params: { id: 'lily' } })).json();
+    expect(d.chatStats).toEqual({ visibleMessages: 2, practiceTurns: 1 });
+  });
 });

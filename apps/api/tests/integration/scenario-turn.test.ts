@@ -12,7 +12,7 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-async function activeSession(turnsLeft: number) {
+async function activeSession(turnsLeft: number, options: { turnIndex?: number; completionPending?: boolean } = {}) {
   await prisma.user.deleteMany({ where: { username: U } });
   const user = await prisma.user.create({ data: { username: U, password: 'pw' } });
   const thread = await prisma.thread.create({ data: { userId: user.id, npcId: 'lily' } });
@@ -20,7 +20,13 @@ async function activeSession(turnsLeft: number) {
   const session = await prisma.scenarioSession.create({
     data: {
       userId: user.id, npcId: 'lily', threadId: thread.id, templateId: 'mock_interview', status: 'active',
-      startedAt: new Date(), state: JSON.stringify({ impression: 5, stress: 'Medium', turnsLeft, turnIndex: 0 }),
+      startedAt: new Date(), state: JSON.stringify({
+        impression: 5,
+        stress: 'Medium',
+        turnsLeft,
+        turnIndex: options.turnIndex ?? 0,
+        ...(options.completionPending ? { completionPending: true } : {}),
+      }),
     },
   });
   return { user, thread, session };
@@ -86,8 +92,52 @@ describe('runScenarioTurn (non-final)', () => {
     expect(JSON.parse(reloaded.state).turnsLeft).toBe(3); // still advanced
   });
 
+  it('continues past the estimated turn target when the exchange is not naturally complete', async () => {
+    const { user, session } = await activeSession(0, { turnIndex: 6 });
+    const ollama = {
+      chatJson: vi.fn().mockResolvedValue({
+        npcReply: 'Could you give me one concrete example?',
+        stateDelta: { impression: 0, stress: 'Medium' },
+        isFinalTurn: false,
+        suggestedChoicesNext: [
+          { id: 'a', text: 'I led a launch that increased sign-ups.', tone: 'Specific', desc: '' },
+          { id: 'b', text: 'I can describe a university campaign.', tone: 'Reflective', desc: '' },
+          { id: 'c', text: 'Could I use a volunteer project as an example?', tone: 'Diplomatic', desc: '' },
+        ],
+      }),
+      embed: vi.fn(),
+    };
+    const events: SseEvent[] = [];
+    for await (const event of runScenarioTurn({
+      prisma, ollama, userId: user.id, sessionId: session.id, text: 'I enjoy collaborative work.',
+    })) events.push(event);
+
+    expect(events.map((event) => event.event)).toContain('choices');
+    expect(events.map((event) => event.event)).not.toContain('scenario_end');
+    const reloaded = await prisma.scenarioSession.findUniqueOrThrow({ where: { id: session.id } });
+    expect(reloaded.status).toBe('active');
+    expect(JSON.parse(reloaded.state)).toMatchObject({ turnsLeft: 0, turnIndex: 7, completionPending: false });
+  });
+
+  it('uses a natural fallback closing at the hard safety limit', async () => {
+    const { user, session } = await activeSession(0, { turnIndex: 8 });
+    const ollama = { chatJson: vi.fn().mockRejectedValue(new Error('LLM down')), embed: vi.fn() };
+    const events: SseEvent[] = [];
+    for await (const event of runScenarioTurn({
+      prisma, ollama, userId: user.id, sessionId: session.id, text: 'That covers my experience.',
+    })) events.push(event);
+
+    expect(events.map((event) => event.event)).toContain('scenario_end');
+    const closing = await prisma.message.findFirstOrThrow({
+      where: { scenarioSessionId: session.id, role: 'npc-roleplay' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(closing.text).toContain('wrap up here');
+    expect(closing.text).not.toContain('?');
+  });
+
   it('does not persist an extra turn when completion is waiting to be retried', async () => {
-    const { user, session } = await activeSession(0);
+    const { user, session } = await activeSession(0, { completionPending: true });
     const ollama = { chatJson: vi.fn(), embed: vi.fn() };
     const events: SseEvent[] = [];
     for await (const event of runScenarioTurn({

@@ -18,7 +18,6 @@ export function ScenChatHeader({ intense, session, hudState, npc, onPause, onEnd
   pauseDisabled?: boolean;
   endDisabled?: boolean;
 }) {
-  const turnsLeft = hudState ? hudState.turnsLeft : 0;
   const titleLabel = session ? session.scenarioTitle : '';
   return (
     <header className="px-6 py-3.5 flex items-center justify-between chat-bg"
@@ -48,7 +47,7 @@ export function ScenChatHeader({ intense, session, hudState, npc, onPause, onEnd
           <div className="text-[11px] mt-0.5"
                style={{ color: intense ? 'var(--coral-ink)' : 'var(--muted)' }}>
             {intense
-              ? ('Active scenario · ' + turnsLeft + ' turn' + (turnsLeft === 1 ? '' : 's') + ' left')
+              ? 'Active scenario'
               : npc.status}
           </div>
         </div>
@@ -604,14 +603,14 @@ function RightPanelActive({ session, hudState }: { session: any; hudState: any }
   const title = session ? session.scenarioTitle : 'Scenario';
   const impression = hudState ? hudState.impression : 5;
   const stress = hudState ? hudState.stress : 'Medium';
-  const turnsLeft = hudState ? hudState.turnsLeft : '?';
+  const progress = hudState?.turnsLeft <= 0 ? 'Wrapping up' : 'In progress';
   return (
     <aside className="pane-right">
       <SidebarHeader title={title} coral />
       <DiagBlock label="Current state" coral>
         <DiagItem>Impression: <span style={{ color: 'var(--ink)' }} className="font-medium">{impression} / 10</span></DiagItem>
         <DiagItem>Stress: <span style={{ color: 'var(--ink)' }} className="font-medium">{stress}</span></DiagItem>
-        <DiagItem>Turns remaining: <span style={{ color: 'var(--ink)' }} className="font-medium">{turnsLeft}</span></DiagItem>
+        <DiagItem>Progress: <span style={{ color: 'var(--ink)' }} className="font-medium">{progress}</span></DiagItem>
       </DiagBlock>
       <DiagBlock label="Tip">
         <DiagItem>Choose thoughtfully — each response affects impression and stress.</DiagItem>

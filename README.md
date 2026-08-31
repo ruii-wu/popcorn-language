@@ -1,16 +1,14 @@
 # Popcorn Language
 
-NUS Master of Computing capstone — a **local-LLM-powered, bilingual (中→EN) language-learning platform** with persistent AI NPCs and embedded scenario gameplay. Built on Hono + Vite/React + TypeScript + Prisma/SQLite + Ollama. See [`docs/context.md`](docs/context.md) for background.
+NUS Master of Computing capstone — a **local-LLM-powered, bilingual (中→EN) language-learning platform** with persistent AI NPCs, structured memory, an evidence-based Learner Model, and adaptive scenario practice. Built on Hono + Vite/React + TypeScript + Prisma/SQLite + Ollama. See [`docs/context.md`](docs/context.md) for background.
 
-> ⚠️ **Local demo only.** Authentication is intentionally minimal (see [A note on auth](#a-note-on-auth)). **Never deploy this beyond localhost.**
-
-> **Project status: backend complete (W1–W8) + web client wired (W10).** Chat (SSE streaming), the pluggable memory engine + ablation harness, scenario gameplay, grammar correction, relationships/progression, achievements (static + dynamic), the Journey dashboard, Settings, system/reset, and reversible message recall are implemented and tested. 254 API Vitest cases and 17 Web tests pass; `typecheck` is clean. The frontend is a **Vite + React + TypeScript SPA** (`apps/web/`) that proxies `/api` to the Hono backend — open `http://localhost:5173/` to use the product end-to-end. The chat model is `qwen3.5:9b`.
+> **Submission candidate.** The assessed product flow is feature-complete and frozen for reproducibility and final-report alignment. Chat, memory retrieval, grammar correction, reversible recall, relationship progression, scenario gameplay, learning-signal aggregation, adaptive recommendations, Journey, Settings, evaluation harnesses, and reset/seed flows are implemented and covered by automated tests.
 
 ---
 
 ## Prerequisites
 
-- **Node.js 24 LTS** (`node -v`). The repo is pinned with `.nvmrc` and
+- **Node.js 24.19.0 LTS** (`node -v`). The repo is pinned with `.nvmrc`, `.npmrc`, and
   `engines.node` so everyone runs the same toolchain. With `nvm`:
   ```bash
   nvm install
@@ -28,7 +26,7 @@ NUS Master of Computing capstone — a **local-LLM-powered, bilingual (中→EN)
 ## Setup
 
 ```bash
-nvm use                            # or otherwise switch to Node 24 LTS
+nvm use                            # switches to the exact version in .nvmrc
 npm install
 cp apps/api/.env.example apps/api/.env
 npm run db:migrate                 # creates the SQLite schema (prisma/dev.db)
@@ -42,13 +40,20 @@ PowerShell equivalent for the env file:
 Copy-Item apps/api/.env.example apps/api/.env
 ```
 
-## Run
+## Run in development
 
 ```bash
 npm run dev                        # API on :3100, Vite UI on :5173
 ```
 Then open the web client at **`http://localhost:5173/`** (the Vite SPA proxies `/api/*` to the
 Hono backend on :3100, so the session cookie and API calls just work).
+
+The Vite proxy exists only in development. The submission/demo command builds the SPA and lets
+Hono serve both the web assets and `/api/*` from one origin:
+
+```bash
+npm run demo                       # one process and one port: http://localhost:3100
+```
 
 Health check:
 ```
@@ -57,54 +62,57 @@ GET http://localhost:3100/api/system/health
 ```
 `"reachable": false` is expected when Ollama isn't running — it does not block development.
 
-## Test & typecheck
+## Verification
 
 ```bash
-npm run test          # vitest: unit (no DB/Ollama) + integration (SQLite, mocked Ollama)
-npm run typecheck     # tsc --noEmit
-npm run report:ablation   # regenerate docs/reports/memory-ablation.md (deterministic)
+npm run verify        # offline release gate: fresh DB, migrations/seeds, types, tests, build
+npm run verify:eval   # research evaluation: ablation + LongMemEval-S retrieval benchmark
 ```
 
-No test calls a live model.
+`verify` is deterministic and does not call a live model. It rebuilds a temporary database from all
+migrations, runs both seeds at a fixed time anchor, typechecks both apps, runs all API and Web tests,
+and creates the production web bundle. `verify:eval` is intentionally separate because LongMemEval
+downloads the public dataset into ignored `.cache/eval/` and uses the configured Ollama embedding
+model. Evaluation outputs are written under `docs/reports/data/`.
 
 ## Demo
 
 ```bash
 nvm use
 npm run db:seed && npm run db:seed:demo
-npm run dev
+npm run demo
 ```
 
-Before a live demo, keep the development services running in one terminal and verify the full
-local environment in another:
+Before a live demo, keep the app running in one terminal and verify the full environment in another:
 
 ```bash
 nvm use
-npm run demo:check
+DEMO_WEB_URL=http://localhost:3100 DEMO_API_URL=http://localhost:3100 npm run demo:check
 ```
 
-The check fails fast when Node 24, Vite, Hono, SQLite migrations, Ollama, or either required model
-is unavailable. It also warns when the chat model is installed but still cold.
-Open `http://localhost:5173/` and log in as **`demo` / `demo`** (the
-onboarding page at `http://localhost:5173/onboarding` has the login form; new accounts are created
+The check fails fast when the pinned Node version, Hono app, SQLite migrations, Ollama, or either
+required model is unavailable. It also warns when the chat model is installed but still cold.
+Open `http://localhost:3100/` and log in as **`demo` / `demo`** (the
+onboarding page at `http://localhost:3100/onboarding` has the login form; new accounts are created
 by running its wizard) — a learner pre-populated with three relationships (Lily = close, Chen =
 friend, Emma = friend), memory facts + a memory card, one completed graded scenario,
-unlocked achievements, and a multi-day streak. `db:seed:demo` is additive and idempotent.
+unlocked achievements, three Learning Focus areas, and a multi-day streak. `db:seed:demo` is
+additive and idempotent. Set `DEMO_SEED_NOW=<ISO timestamp>` to reproduce its relative dates exactly.
 
 For a reliable course demo, check these before presenting:
 
 ```bash
-node -v                            # should print v24.x
-npm run typecheck
-npm run test
+node -v                            # must print v24.19.0
+npm run verify
 curl http://localhost:3100/api/system/health
 ```
 
 If Ollama is not running, the health response will show `"reachable": false`; the app still opens,
 but live chat/scenario generation needs Ollama running with the configured chat model installed.
 
-A headless end-to-end smoke of the wired UI (drives the installed Edge against a running dev
-server) lives at `npm run smoke:web` (`node scripts/smoke-web.mjs <api|chat|journey|scenario|all>`).
+A headless end-to-end smoke of the wired UI lives at `npm run smoke:web`
+(`node scripts/smoke-web.mjs <api|chat|journey|scenario|all>`). Set
+`DEMO_WEB_URL=http://localhost:3100` when checking the single-port build.
 
 ## API surface (36 routes)
 
@@ -147,6 +155,8 @@ Scenario completion persists the final turn before generating the review. The co
 learning signals, mastery snapshots, summary, and progression then commit atomically. If that tail
 fails, the UI replaces the composer with `Retry review`; the server refuses extra roleplay turns and
 reuses an already-persisted summary when compensating optional Memory generation.
+Template turn counts are pacing targets rather than forced endings: the roleplay completes after an
+in-character closing with no new question, with a three-turn safety margin to prevent an endless session.
 
 `npm run db:migrate` runs a SQLite preflight that creates a missing database file before Prisma starts.
 This keeps a fresh clone from hitting Prisma 5's empty `Schema engine error` on first migration.
@@ -159,12 +169,14 @@ This keeps a fresh clone from hitting Prisma 5's empty `Schema engine error` on 
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Local Ollama HTTP API |
 | `OLLAMA_CHAT_MODEL` | `qwen3.5:9b` | Chat / JSON generation model |
 | `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Embedding model (semantic memory recall) |
+| `PORT` | `3100` | Hono listen port |
+| `APP_STATIC_DIR` | unset | Built SPA directory; injected automatically by `npm run demo` |
 
 ## Project structure
 
 ```
 apps/api/src/app/api/.../route.ts # Web-standard route handlers mounted by Hono
-src/server/
+apps/api/src/server/
   auth/                     # minimal session cookie (pop_uid) + requireUser / withUser
   llm/ollama.ts             # Ollama client: health / chat (stream) / chatJson (+Zod retry) / embed
   prompt/                   # PromptBuilder (persona + memory + bilingual + scenario modes)
@@ -173,11 +185,11 @@ src/server/
   relationship/ correction/ achievements/   # Modules 5 / 6 / 7 (+ dynamic achievements)
   http/respond.ts           # json / errorJson / withUser
   db/client.ts              # Prisma client singleton
-prisma/
+apps/api/prisma/
   schema.prisma             # 19-model schema
   seed.ts / seed-data.ts    # base seed (3 NPCs, 2 scenarios, 6 achievements)
   seedDemo.ts / seed-demo.ts # rich demo user (npm run db:seed:demo)
-tests/ unit/ integration/   # pure-logic + SQLite-backed tests (mocked Ollama)
+apps/api/tests/ unit/ integration/   # pure-logic + SQLite-backed tests (mocked Ollama)
 scripts/smoke-web.mjs       # headless Edge end-to-end smoke of the wired UI
 docs/                       # background, specs, plans, and reports (figures)
 apps/web/                   # Vite + React + TypeScript SPA; proxies /api/* to Hono on :3100
@@ -189,14 +201,15 @@ public/app/                 # legacy static prototype/dev-tool reference
 - **Design spec (v2):** [`docs/superpowers/specs/2026-05-25-backend-roadmap-design.md`](docs/superpowers/specs/2026-05-25-backend-roadmap-design.md)
 - **Master plan (W1–W9):** [`docs/superpowers/plans/2026-05-25-backend-overall-plan.md`](docs/superpowers/plans/2026-05-25-backend-overall-plan.md)
 - **Per-phase plans:** `docs/superpowers/plans/2026-05-*-backend-w{1..9}-*.md`
-- **Report figures:** [`docs/reports/memory-ablation.md`](docs/reports/memory-ablation.md) · [`docs/reports/architecture.md`](docs/reports/architecture.md)
+- **Report figures:** [`docs/reports/memory-ablation.md`](docs/reports/memory-ablation.md) · [`docs/reports/data/longmemeval-s-retrieval.md`](docs/reports/data/longmemeval-s-retrieval.md) · [`docs/reports/architecture.md`](docs/reports/architecture.md)
 - **UAT SOP:** [`docs/uat-sop.md`](docs/uat-sop.md) — manual user-acceptance-test procedure for the web client (17 test cases keyed to the demo seed)
 
 ## Web client
 
 The frontend is a **Vite + React + TypeScript SPA** (`apps/web/`) that proxies `/api/*` to the
 Hono backend on :3100, so the `pop_uid` cookie and API calls work with no CORS configuration
-needed. `npm run dev` starts both the API server and the Vite dev server together. Open:
+needed. `npm run dev` starts both the API server and the Vite dev server together. For the
+single-port production-style build, use the equivalent routes on `http://localhost:3100`.
 
 - **Main app (chat):** `http://localhost:5173/`
 - **Onboarding / Journey:** `http://localhost:5173/onboarding`
@@ -206,6 +219,11 @@ Use the in-app navigation and direct routes above to move between screens. The o
 web-demo dock is no longer part of the product UI. `public/app/` retains legacy prototype files as
 a design reference, but the product runtime is the Vite SPA.
 
-## A note on auth
+## Submission deployment scope
 
-Authentication is **intentionally minimal** for this local capstone demo: a plaintext password compared by a single DB query, with the user id stored in an httpOnly cookie (`pop_uid`). There is no bcrypt, Auth.js, or CSRF protection. This is **not secure and must never be deployed beyond localhost.** Auth is not a contribution of this project; the engineering focus is local-LLM engagement and memory architecture.
+The account layer is scoped to a single-machine course assessment: it provides deterministic
+multi-user data separation and an httpOnly session cookie without introducing an external identity
+provider. Internet deployment is outside the assessed product scope; a public deployment would
+replace this layer with password hashing, CSRF protection, secure cookie policy, rate limiting, and
+a production identity/session service. The capstone contribution is the conversational learning,
+memory, Learner Model, and adaptive practice architecture.

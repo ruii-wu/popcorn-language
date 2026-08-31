@@ -1,10 +1,9 @@
 // Shared design primitives for the web UI variant.
 // Ported from public/app/src/shared.jsx — faithful ES-module + TypeScript translation.
 
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../api/client';
-import type { JourneySummaryResponse, NpcListItem } from '@popcorn/shared';
+import type { NpcListItem } from '@popcorn/shared';
 
 // API NpcListItem → the flat view-model the avatar/header components consume.
 export function npcView(item: NpcListItem) {
@@ -60,6 +59,16 @@ export const RELATIONSHIP_LABEL: Record<string, string> = {
   close: 'Close friend'
 };
 
+export function filterConversations(npcs: any[], query: string): any[] {
+  const normalized = query.trim().toLocaleLowerCase();
+  if (!normalized) return npcs;
+  return npcs.filter((npc) => [
+    npc.name,
+    npc.lastPreview,
+    RELATIONSHIP_LABEL[npc.relationship],
+  ].some((value) => String(value || '').toLocaleLowerCase().includes(normalized)));
+}
+
 export function WebAvatar({ npc, size = 40, hasSomething }: { npc: any; size?: number; hasSomething?: boolean }) {
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
@@ -99,131 +108,192 @@ export function WebRelationshipDots({ value, size = 5 }: { value: number; size?:
 
 }
 
-// Left nav rail — shared between web app and journey screens
-export function WebNavRail({ activeTop = 'chats' }: { activeTop?: string }) {
-  const [j, setJ] = useState<JourneySummaryResponse | null>(null);
-  useEffect(() => {
-    api.journey().then(setJ).catch(() => {});
-  }, []);
-  const items = [
+type WebPrimaryDestination = 'chats' | 'journey' | 'settings';
+
+const PRIMARY_NAV_ITEMS = [
   { id: 'chats', label: 'Chats', icon: WebI.msgs, href: '/' },
-  { id: 'journey', label: 'Your Journey', icon: WebI.book, href: '/onboarding' },
-  { id: 'settings', label: 'Settings', icon: WebI.settings, href: '/settings' }];
+  { id: 'journey', label: 'Journey', icon: WebI.book, href: '/onboarding' },
+  { id: 'settings', label: 'Settings', icon: WebI.settings, href: '/settings' },
+] as const;
 
+function WebPrimaryNav({ active }: { active: WebPrimaryDestination }) {
   return (
-    <nav className="pane-nav flex flex-col h-full">
-      {/* Brand */}
-      <div className="px-5 pt-6 pb-5">
-        <div className="flex items-center gap-2.5">
-          <div className="rounded-lg grid place-items-center"
-          style={{ width: 32, height: 32, background: 'var(--brand-bg)', color: 'var(--brand-ink)' }}>
-            <span style={{ fontWeight: 700, fontSize: 18, lineHeight: 1 }}>P</span>
-          </div>
-          <div className="leading-tight">
-            <div className="font-serif text-[18px]">Popcorn</div>
-            <div className="text-[9.5px] font-mono uppercase tracking-[0.18em]" style={{ color: 'var(--muted)' }}>
-              Language
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Streak strip */}
-      <div className="mx-4 mb-4 rounded-xl px-3 py-2.5 flex items-center gap-2"
-      style={{ background: 'var(--surface-2)', border: '1px solid var(--hairline)' }}>
-        <span style={{ color: 'var(--coral-ink)' }} className="w-4 h-4">{WebI.flame}</span>
-        <div className="leading-tight">
-          <div className="text-[11.5px]" style={{ color: 'var(--ink)' }}>
-            {j ? `${j.days}-day streak` : '—'}
-          </div>
-          <div className="text-[9.5px]" style={{ color: 'var(--muted)' }}>
-            {j ? `${j.conversations} conversations` : 'Loading…'}
-          </div>
-        </div>
-      </div>
-
-      {/* Nav links */}
-      <div className="px-2.5 flex-1">
-        {items.map((item) =>
-        item.href.startsWith('/') ? (
-        <Link key={item.id} to={item.href}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition no-underline"
-        style={{
-          background: activeTop === item.id ? 'var(--surface)' : 'transparent',
-          color: activeTop === item.id ? 'var(--ink)' : 'var(--ink-2)',
-          border: activeTop === item.id ? '1px solid var(--hairline)' : '1px solid transparent'
-        }}>
+    <nav aria-label="Primary navigation" className="grid grid-cols-3 gap-1 px-3 py-3"
+         style={{ borderTop: '1px solid var(--hairline)' }}>
+      {PRIMARY_NAV_ITEMS.map((item) => {
+        const selected = active === item.id;
+        return (
+          <Link key={item.id} to={item.href} aria-current={selected ? 'page' : undefined}
+                className="min-w-0 rounded-lg py-2 flex flex-col items-center justify-center gap-1 transition no-underline"
+                style={{
+                  minHeight: 50,
+                  background: selected ? 'var(--surface)' : 'transparent',
+                  color: selected ? 'var(--ink)' : 'var(--muted)',
+                  border: `1px solid ${selected ? 'var(--hairline)' : 'transparent'}`,
+                }}>
             <span className="w-4 h-4">{item.icon}</span>
-            <span className="text-[13px]" style={{ fontWeight: activeTop === item.id ? 500 : 400 }}>
-              {item.label}
-            </span>
+            <span className="text-[9.5px] leading-none truncate max-w-full">{item.label}</span>
           </Link>
-        ) : (
-        <a key={item.id} href="#" onClick={(e) => e.preventDefault()}
-        className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition no-underline"
-        style={{
-          background: activeTop === item.id ? 'var(--surface)' : 'transparent',
-          color: activeTop === item.id ? 'var(--ink)' : 'var(--ink-2)',
-          border: activeTop === item.id ? '1px solid var(--hairline)' : '1px solid transparent'
-        }}>
-            <span className="w-4 h-4">{item.icon}</span>
-            <span className="text-[13px]" style={{ fontWeight: activeTop === item.id ? 500 : 400 }}>
-              {item.label}
-            </span>
-          </a>
-        )
+        );
+      })}
+    </nav>
+  );
+}
+
+function WebSidebarBrand() {
+  return (
+    <div className="px-5 pt-5 pb-3 flex items-center gap-2.5">
+      <div className="rounded-lg grid place-items-center"
+           style={{ width: 30, height: 30, background: 'var(--brand-bg)', color: 'var(--brand-ink)' }}>
+        <span style={{ fontWeight: 700, fontSize: 16, lineHeight: 1 }}>P</span>
+      </div>
+      <div className="leading-tight">
+        <div className="font-serif text-[17px]" style={{ fontFamily: 'Outfit' }}>Popcorn</div>
+        <div className="text-[9.5px] font-mono uppercase tracking-[0.18em]" style={{ color: 'var(--muted)' }}>
+          Language
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export interface WebSectionNavItem {
+  id: string;
+  label: string;
+  description: string;
+  icon: ReactNode;
+}
+
+export function filterSectionNavItems(items: WebSectionNavItem[], query: string): WebSectionNavItem[] {
+  const normalized = query.trim().toLocaleLowerCase();
+  if (!normalized) return items;
+  return items.filter((item) => [item.label, item.description]
+    .some((value) => value.toLocaleLowerCase().includes(normalized)));
+}
+
+function WebSidebarSearch({
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <div className="px-4 pb-2">
+      <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted)' }}>
+          {WebI.search}
+        </span>
+        <input placeholder="Search…" aria-label={ariaLabel} autoComplete="off"
+               value={value} onChange={(event) => onChange(event.target.value)}
+               className="w-full pl-9 pr-8 py-2 rounded-lg text-[12.5px] outline-none"
+               style={{ background: 'var(--surface)', border: '1px solid var(--hairline)' }} />
+        {value && (
+          <button type="button" title="Clear search" aria-label="Clear search"
+                  onClick={() => onChange('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 grid place-items-center rounded-full transition hover:bg-[var(--bg-warm)]"
+                  style={{ color: 'var(--muted)' }}>
+            ×
+          </button>
         )}
       </div>
+    </div>
+  );
+}
 
-      {/* User footer */}
-      <div className="px-4 py-3 flex items-center gap-2.5"
-      style={{ borderTop: '1px solid var(--hairline)' }}>
-        <div className="w-8 h-8 rounded-full grid place-items-center text-[12px] font-medium"
-        style={{ background: 'oklch(0.92 0.04 110)', color: 'oklch(0.38 0.08 110)' }}>
-          Y
+// Journey and Settings use this rail for their page-specific tabs.
+export function WebNavRail({
+  activeTop,
+  sectionLabel,
+  items,
+  activeItem,
+  onSelectItem,
+}: {
+  activeTop: Exclude<WebPrimaryDestination, 'chats'>;
+  sectionLabel: string;
+  items: WebSectionNavItem[];
+  activeItem: string;
+  onSelectItem: (id: string) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const visibleItems = filterSectionNavItems(items, query);
+
+  return (
+    <aside className="pane-nav h-full flex flex-col chat-bg"
+           style={{ background: 'var(--bg-warm)', borderRight: '1px solid var(--hairline-2)' }}>
+      <WebSidebarBrand />
+      <WebSidebarSearch value={query} onChange={setQuery} ariaLabel={`Search ${sectionLabel} sections`} />
+      <div className="px-4 pt-3">
+        <div className="px-1 pb-1.5 text-[9.5px] font-mono uppercase tracking-[0.18em]"
+             style={{ color: 'var(--muted)' }}>
+          {sectionLabel}
         </div>
-        <div className="leading-tight flex-1 min-w-0">
-          <div className="text-[12px] font-medium truncate">You · 你</div>
-          <div className="text-[9.5px] font-mono" style={{ color: 'var(--muted)' }}>
-            EN ← 中文 · B1
+        <div role="tablist" aria-label={`${sectionLabel} sections`} aria-orientation="vertical" className="grid gap-1">
+          {visibleItems.map((item) => {
+            const selected = activeItem === item.id;
+            return (
+              <button key={item.id} type="button" role="tab"
+                      id={`${activeTop}-tab-${item.id}`}
+                      aria-selected={selected}
+                      aria-controls={`${activeTop}-panel-${item.id}`}
+                      onClick={() => onSelectItem(item.id)}
+                      className="w-full rounded-lg px-3 py-2.5 flex items-center gap-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--plum)]"
+                      style={{
+                        background: selected ? 'var(--surface)' : 'transparent',
+                        border: `1px solid ${selected ? 'var(--hairline)' : 'transparent'}`,
+                        color: selected ? 'var(--ink)' : 'var(--ink-2)',
+                      }}>
+                <span className="w-4 h-4 shrink-0" style={{ color: selected ? 'var(--accent-ink)' : 'var(--muted)' }}>
+                  {item.icon}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[12.5px] font-medium truncate">{item.label}</span>
+                  <span className="block mt-0.5 text-[9.5px] truncate" style={{ color: 'var(--muted)' }}>
+                    {item.description}
+                  </span>
+                </span>
+                {selected && <span aria-hidden="true" className="w-3.5 h-3.5 shrink-0">{WebI.chevR}</span>}
+              </button>
+            );
+          })}
+        </div>
+        {visibleItems.length === 0 && (
+          <div className="px-2 py-8 text-center text-[11px]" style={{ color: 'var(--muted)' }}>
+            No sections found
           </div>
-        </div>
+        )}
       </div>
-    </nav>);
-
+      <div className="flex-1" />
+      <WebPrimaryNav active={activeTop} />
+    </aside>
+  );
 }
 
 // Conversations sub-rail (used in chat views)
-export function WebConversationsRail({ npcs = [], activeId, onSelect, intense }: { npcs?: any[]; activeId?: string; onSelect?: (id: string) => void; intense?: boolean }) {
+export function WebConversationsRail({
+  npcs = [],
+  activeId,
+  activeTop = 'chats',
+  onSelect,
+  intense,
+}: {
+  npcs?: any[];
+  activeId?: string;
+  activeTop?: WebPrimaryDestination;
+  onSelect?: (id: string) => void;
+  intense?: boolean;
+}) {
+  const [query, setQuery] = useState('');
+  const visibleNpcs = filterConversations(npcs, query);
+
   return (
     <div className="pane-nav h-full flex flex-col chat-bg"
     style={{ background: intense ? 'var(--bg-warm-c)' : 'var(--bg-warm)',
       borderRight: intense ? '1px solid var(--hairline-c)' : '1px solid var(--hairline-2)' }}>
-      {/* Brand row */}
-      <div className="px-5 pt-5 pb-3 flex items-center gap-2.5">
-        <div className="rounded-lg grid place-items-center"
-        style={{ width: 30, height: 30, background: 'var(--brand-bg)', color: 'var(--brand-ink)' }}>
-          <span style={{ fontWeight: 700, fontSize: 16, lineHeight: 1 }}>P</span>
-        </div>
-        <div className="leading-tight">
-          <div className="font-serif text-[17px]" style={{ fontFamily: "Outfit" }}>Popcorn</div>
-          <div className="text-[9.5px] font-mono uppercase tracking-[0.18em]" style={{ color: 'var(--muted)' }}>
-            Language
-          </div>
-        </div>
-      </div>
-
-      {/* Search */}
-      <div className="px-4 pb-2">
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted)' }}>
-            {WebI.search}
-          </span>
-          <input placeholder="Search…"
-          className="w-full pl-9 pr-3 py-2 rounded-lg text-[12.5px] outline-none"
-          style={{ background: 'var(--surface)', border: '1px solid var(--hairline)' }} />
-        </div>
-      </div>
+      <WebSidebarBrand />
+      <WebSidebarSearch value={query} onChange={setQuery} ariaLabel="Search conversations" />
 
       {/* Section label */}
       <div className="px-5 pt-3 pb-1.5 flex items-center justify-between">
@@ -233,7 +303,7 @@ export function WebConversationsRail({ npcs = [], activeId, onSelect, intense }:
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 pb-3">
-        {npcs.map((npc) =>
+        {visibleNpcs.map((npc) =>
         <button key={npc.id} onClick={() => onSelect && onSelect(npc.id)}
         className="w-full flex items-start gap-2.5 px-2.5 py-2.5 rounded-lg transition text-left mb-0.5"
         style={{
@@ -258,22 +328,14 @@ export function WebConversationsRail({ npcs = [], activeId, onSelect, intense }:
             </div>
           </button>
         )}
+        {visibleNpcs.length === 0 && (
+          <div className="px-3 py-8 text-center text-[11px]" style={{ color: 'var(--muted)' }}>
+            No conversations found
+          </div>
+        )}
       </div>
 
-      {/* Nav buttons */}
-      <div className="px-4 py-3 flex items-center gap-2"
-      style={{ borderTop: intense ? '1px solid var(--hairline-c)' : '1px solid var(--hairline)' }}>
-        <Link to="/onboarding"
-        className="flex-1 text-[11px] py-2 px-2.5 rounded-lg flex items-center gap-1.5 transition no-underline"
-        style={{ color: 'var(--ink-2)', border: '1px solid var(--hairline)' }}>
-          <span className="w-3.5 h-3.5">{WebI.book}</span> Journey
-        </Link>
-        <Link to="/settings" title="Settings" aria-label="Settings"
-        className="text-[11px] py-2 px-2.5 rounded-lg flex items-center transition no-underline"
-        style={{ color: 'var(--muted)' }}>
-          <span className="w-3.5 h-3.5">{WebI.settings}</span>
-        </Link>
-      </div>
+      <WebPrimaryNav active={activeTop} />
     </div>);
 
 }

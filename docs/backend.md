@@ -34,8 +34,8 @@
 | Main App · 右侧 "Memories from this chat" | 加载 | 拉取本 thread 关联的 AI memory |
 | Scenario · State B · NPC 主动邀请卡 | 自动触发 | 判定逻辑（轮数 + 关系阈值 + 话题匹配）→ 生成 invitation 消息和 scenario draft |
 | Scenario · State B · "Yeah let's do it" / "Maybe later" | 点击 | 接受 → 创建 scenario_session、切换 mode；拒绝 → 记录 decline、回归 casual |
-| Scenario · State C · HUD（Impression / Stress / 剩余轮数） | 实时 | 每轮 LLM 返回结构化 JSON 状态 → 更新 session |
-| Scenario · State C · 3 选项卡 | 自动生成 | 每轮 NPC 输出后再 LLM 调用生成 3 个 stylized 选项（tone + 副标） |
+| Scenario · State C · HUD（Impression / Stress / 对话进度） | 实时 | 每轮 LLM 返回结构化 JSON 状态 → 更新 session；预计轮数仅用于内部节奏控制 |
+| Scenario · State C · 3 选项卡 | 自动生成 | 每轮结构化 NPC 输出同时生成 3 个与当前问题直接相关且不重复的选项（tone + 副标） |
 | Scenario · State C · 用户选择 A/B/C | 点击 | 落库 user choice；推进 turn；NPC 下一轮响应（流式） |
 | Scenario · State C · Pause | 点击 | 暂停 session（状态保留） |
 | Scenario · State D · Summary 卡 | scenario 结束自动 | 生成 summary（Language/Pragmatics/Relationship 三栏 + 字母成绩） |
@@ -112,7 +112,7 @@
 
 | Method | Path | 用途 | Request | Response |
 |---|---|---|---|---|
-| `GET` | `/api/journey/summary` | 顶部 KPI（17 days / 86 conversations / 4 scenarios / 4 memories） | — | `{ days, conversations, scenarios, memories }` |
+| `GET` | `/api/journey/summary` | 顶部 KPI（current streak / practice turns / scenarios / memories） | — | `{ days, practiceTurns, scenarios, memories }` |
 | `GET` | `/api/journey/relationships` | 三个 NPC 的关系卡数据 | — | `[{ npcId, name, stage, stageValue, sub, note, last }, ...]` |
 | `GET` | `/api/journey/streak` | streak strip 数据 | — | `{ days, weekCount, perDay[7] }` |
 
@@ -241,7 +241,7 @@ data: {}
   3. **强制 JSON 输出**：`{ npcReply, stateDelta: {impression, stress}, isFinalTurn, suggestedChoicesNext: [...] }`
   4. 更新 `scenario_session.state`、写 `scenario_turn`
   5. 推送 SSE `token` → `state_update` → `choices`
-  6. 若 `isFinalTurn=true` 或 `turnsLeft<=0` → 触发 end flow
+  6. `isFinalTurn=true` 且 NPC 已给出无新问题的自然收尾 → 触发 end flow；预计轮数是软目标，安全上限为预计轮数 + 3
 - **End flow**：
   1. 调用 LLM 生成 summary（Language / Pragmatics / Relationship 三栏 + 字母成绩）
   2. 写入 `scenario_summary`
@@ -484,7 +484,7 @@ model ScenarioSession {
   template     ScenarioTemplate @relation(fields: [templateId], references: [id])
 
   status       String   // invited | accepted | active | paused | completed | declined | aborted
-  state        Json     // { impression: 6, stress: 'Medium', turnsLeft: 5, customFlags: {...} }
+  state        Json     // { impression, stress, turnsLeft: softPacingValue, turnIndex, completionPending? }
   invitedAt    DateTime @default(now())
   startedAt    DateTime?
   endedAt      DateTime?
@@ -662,7 +662,7 @@ trigger judge HIT
 6. First NPC roleplay message via LLM (JSON-formatted with state) 
    → persist Message (role='npc-roleplay', scenarioSessionId)
    → persist ScenarioTurn (turnIndex=0)
-7. Generate next-turn choices (separate LLM call OR embedded in JSON output)
+7. Read next-turn choices embedded in the same structured LLM output; filter current and cross-turn duplicates
 8. SSE: state_update + choices
 
 [loop: user picks choice]
@@ -673,7 +673,7 @@ trigger judge HIT
 11. Persist NPC Message + ScenarioTurn(stateBefore/stateAfter/nextChoices)
 12. SSE: token → message_complete → state_update → choices
 
-[when isFinalTurn=true OR turnsLeft<=0]
+[when isFinalTurn=true after a natural closing, or at the estimated-turns + 3 safety limit]
   ↓
 13. LLM generate summary JSON (grade + 3 notes)
 14. Persist ScenarioSummary + Message (role='summary')

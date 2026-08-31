@@ -56,7 +56,7 @@ describe('whole-system smoke (REST happy path)', () => {
 
     // journey summary has the expected shape
     const summary = await (await journeySummary(withCookie(userId))).json();
-    for (const key of ['days', 'conversations', 'scenarios', 'memories'])
+    for (const key of ['days', 'practiceTurns', 'scenarios', 'memories'])
       expect(summary).toHaveProperty(key);
 
     // achievements list includes the static defs

@@ -17,7 +17,7 @@ export async function GET(req: Request): Promise<Response> {
     ]);
     const { days } = computeStreak(messages.map((message) => message.createdAt));
 
-    const out: JourneySummaryResponse = { days, conversations: messages.length, scenarios, memories };
+    const out: JourneySummaryResponse = { days, practiceTurns: messages.length, scenarios, memories };
     return json(out);
   });
 }

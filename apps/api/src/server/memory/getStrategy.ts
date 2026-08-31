@@ -5,7 +5,11 @@ import { SummaryStrategy } from './strategies/summary';
 import { SemanticStrategy } from './strategies/semantic';
 import { HybridStrategy } from './strategies/hybrid';
 
-export function getMemoryStrategy(name: string, deps: StrategyDeps): MemoryStrategy {
+export function getMemoryStrategy(
+  name: string,
+  deps: StrategyDeps,
+  options: { now?: () => number } = {},
+): MemoryStrategy {
   switch (name) {
     case 'recency':
       return new RecencyStrategy(deps);
@@ -15,6 +19,6 @@ export function getMemoryStrategy(name: string, deps: StrategyDeps): MemoryStrat
       return new SemanticStrategy(deps);
     case 'hybrid':
     default:
-      return new HybridStrategy(deps);
+      return new HybridStrategy(deps, options.now);
   }
 }

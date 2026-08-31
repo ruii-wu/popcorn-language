@@ -30,7 +30,7 @@ describe('GET /api/journey/summary', () => {
     const res = await GET(get(user.id));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.conversations).toBe(1);
+    expect(body.practiceTurns).toBe(1);
     expect(body.scenarios).toBe(0);
     expect(body.memories).toBe(1);
     expect(body.days).toBe(1);
@@ -51,7 +51,7 @@ describe('GET /api/journey/summary', () => {
     });
 
     const body = await (await GET(get(user.id))).json();
-    expect(body.conversations).toBe(0);
+    expect(body.practiceTurns).toBe(0);
     expect(body.scenarios).toBe(0);
     expect(body.days).toBe(0);
   });

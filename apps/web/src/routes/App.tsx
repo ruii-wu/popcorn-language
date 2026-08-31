@@ -1,7 +1,7 @@
 // Popcorn Language — Web Main App
 // 3-pane layout: Conversations rail + Chat + Right context panel
 
-import { useState, useEffect, useRef } from 'react';
+import { Fragment, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import type { ThreadMessage, NpcDetail, MemoryItem, ScenarioChoice } from '@popcorn/shared';
@@ -14,7 +14,12 @@ import {
   npcView,
 } from '../components/shared';
 import { declinedReplyToCasualMessage, useScenarioSession } from '../components/scenario/useScenarioSession';
-import { isCasualComposerDisabled } from './chatState';
+import {
+  correctionNotice,
+  isCasualComposerDisabled,
+  messageDayKey,
+  messageDayLabel,
+} from './chatState';
 import {
   ScenChatHeader,
   ScenarioHUD,
@@ -39,13 +44,14 @@ function fmtTime(iso: any) {
 function mapMsg(m: ThreadMessage) {
   return { id: m.id, kind: m.kind, from: m.from, text: m.text,
            time: m.createdAt ? fmtTime(m.createdAt) : '',
+           createdAt: m.createdAt,
            correction: m.correction || null, retracted: m.retracted, retractedText: m.retractedText,
            scenarioSessionId: m.scenarioSessionId, scenarioTitle: m.scenarioTitle, scenarioGrade: m.scenarioGrade };
 }
 
 // ---------- Chat header ----------
 
-function WebChatHeader({ npc, onJourney }: { npc: any; onJourney?: () => void }) {
+function WebChatHeader({ npc }: { npc: any }) {
   return (
     <header className="px-6 py-3.5 flex items-center justify-between"
             style={{ borderBottom: '1px solid var(--hairline)', background: 'var(--surface-2)' }}>
@@ -70,18 +76,12 @@ function WebChatHeader({ npc, onJourney }: { npc: any; onJourney?: () => void })
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-1.5">
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
-             style={{ background: 'var(--surface)', border: '1px solid var(--hairline)' }}>
-          <WebRelationshipDots value={npc.stageValue} />
-          <span className="text-[11px] font-medium" style={{ color: 'var(--ink-2)' }}>
-            {RELATIONSHIP_LABEL[npc.relationship]}
-          </span>
-        </div>
-        <button className="w-9 h-9 rounded-full grid place-items-center hover:bg-[var(--bg-warm)] transition"
-                style={{ color: 'var(--muted)' }}>
-          {WebI.more}
-        </button>
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
+           style={{ background: 'var(--surface)', border: '1px solid var(--hairline)' }}>
+        <WebRelationshipDots value={npc.stageValue} />
+        <span className="text-[11px] font-medium" style={{ color: 'var(--ink-2)' }}>
+          {RELATIONSHIP_LABEL[npc.relationship]}
+        </span>
       </div>
     </header>
   );
@@ -169,7 +169,7 @@ function MessageRow({ npc, msg, showCorrection, onToggle, onRecall, onEdit, onRe
             <button onClick={onToggle} className="inline-flex items-center gap-1 text-[10.5px]"
                     style={{ color: 'var(--coral-ink)' }}>
               <span className="w-3 h-3">{WebI.pencil}</span>
-              {showCorrection ? 'hide' : 'Lily noticed something — click to see'}
+              {correctionNotice(npc.name, showCorrection)}
             </button>
           )}
         </div>
@@ -220,12 +220,13 @@ function Typing({ npc }: { npc: any }) {
 }
 
 // ---------- Composer ----------
-function Composer({ onSend, disabled, draftValue, onDraftChange, focusSignal }: {
+function Composer({ onSend, disabled, draftValue, onDraftChange, focusSignal, showSuggestions = true }: {
   onSend: (text: string) => void;
   disabled: boolean;
   draftValue?: string;
   onDraftChange?: (value: string) => void;
   focusSignal?: number;
+  showSuggestions?: boolean;
 }) {
   const [draft, setDraft] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -244,18 +245,20 @@ function Composer({ onSend, disabled, draftValue, onDraftChange, focusSignal }: 
   return (
     <div className="px-6 pb-4 pt-3">
       <div className="max-w-[820px] mx-auto">
-        <div className="flex items-center gap-2 mb-2.5">
-          <span className="text-[10px] font-mono uppercase tracking-wider shrink-0" style={{ color: 'var(--muted)' }}>
-            ✨ Suggest
-          </span>
-          {chips.map(c => (
-            <button key={c} onClick={() => { setDraft(c); onDraftChange?.(c); }}
-                    className="shrink-0 px-3 py-1.5 rounded-full text-[12.5px] transition hover:bg-[var(--surface)]"
-                    style={{ background: 'var(--surface-2)', border: '1px solid var(--hairline)', color: 'var(--ink-2)' }}>
-              {c}
-            </button>
-          ))}
-        </div>
+        {showSuggestions !== false && (
+          <div className="flex items-center gap-2 mb-2.5">
+            <span className="text-[10px] font-mono uppercase tracking-wider shrink-0" style={{ color: 'var(--muted)' }}>
+              ✨ Suggest
+            </span>
+            {chips.map(c => (
+              <button key={c} onClick={() => { setDraft(c); onDraftChange?.(c); }}
+                      className="shrink-0 px-3 py-1.5 rounded-full text-[12.5px] transition hover:bg-[var(--surface)]"
+                      style={{ background: 'var(--surface-2)', border: '1px solid var(--hairline)', color: 'var(--ink-2)' }}>
+                {c}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex items-end gap-2 rounded-2xl p-2 pl-3"
              style={{ background: 'var(--surface)', border: '1px solid var(--hairline-2)' }}>
           <button className="w-9 h-9 rounded-full grid place-items-center hover:bg-[var(--bg-warm)] transition"
@@ -292,9 +295,6 @@ function RightPanel({ detail, memories }: { detail: NpcDetail | null; memories: 
   if (!detail) return <aside className="pane-right" />;
   const lp = detail.languageProfile;
   const langLabel = (c: string) => (({ en: 'EN', zh: '中文', ja: '日本語' } as Record<string, string>)[c] || c.toUpperCase());
-  const weeks = detail.relationshipSince
-    ? Math.max(1, Math.round((Date.now() - new Date(detail.relationshipSince).getTime()) / (7 * 86400000)))
-    : 0;
   const dots = detail.relationship === 'close' ? 3 : detail.relationship === 'friend' ? 2 : 1;
   const isCJK = /[一-龥]/.test(detail.avatar.glyph);
   return (
@@ -322,9 +322,9 @@ function RightPanel({ detail, memories }: { detail: NpcDetail | null; memories: 
           <span className="text-[13px] font-medium">{RELATIONSHIP_LABEL[detail.relationship] || detail.relationship}</span>
         </div>
         <p className="text-[11px] leading-relaxed" style={{ color: 'var(--muted)' }}>
-          {detail.chatStats.conversationCount > 0
-            ? <>You've chatted <span style={{ color: 'var(--ink-2)' }} className="font-medium">{detail.chatStats.conversationCount} times</span>{weeks > 0 && <> over <span style={{ color: 'var(--ink-2)' }} className="font-medium">{weeks} week{weeks === 1 ? '' : 's'}</span></>}.</>
-            : 'You haven’t chatted yet.'}
+          {detail.chatStats.practiceTurns > 0
+            ? <><span style={{ color: 'var(--ink-2)' }} className="font-medium">{detail.chatStats.practiceTurns} practice turn{detail.chatStats.practiceTurns === 1 ? '' : 's'}</span> together.</>
+            : 'No practice turns yet.'}
         </p>
       </div>
 
@@ -488,8 +488,9 @@ export default function App() {
       if (terminal || activeIdRef.current !== sendNpcId || chatStreamSeqRef.current !== streamSeq) return;
       switch (ev.type) {
         case 'user_message_saved':
+          const userCreatedAt = ev.data.createdAt || new Date().toISOString();
           setMessages((m) => m.concat([{ id: ev.data.messageId, from: 'user', text: text,
-            time: fmtTime(ev.data.createdAt || Date.now()), correction: null }]));
+            time: fmtTime(userCreatedAt), createdAt: userCreatedAt, correction: null }]));
           break;
         case 'typing_start': setTyping(true); break;
         case 'token':
@@ -499,9 +500,10 @@ export default function App() {
           break;
         case 'typing_end': setTyping(false); break;
         case 'message_complete':
+          const npcCreatedAt = new Date().toISOString();
           setStreaming('');
           setMessages((m) => m.concat([{ id: ev.data.messageId, from: 'npc',
-            text: ev.data.fullText || acc, time: fmtTime(Date.now()), correction: null }]));
+            text: ev.data.fullText || acc, time: fmtTime(npcCreatedAt), createdAt: npcCreatedAt, correction: null }]));
           break;
         case 'correction':
           setMessages((m) => m.map((x) => x.id === ev.data.targetMessageId
@@ -642,20 +644,25 @@ export default function App() {
               </>
             ) : (
               <>
-                <DayDivider label="Today · 今天" />
                 {messages.map((m, i) => (
-                  m.kind === 'scenario' ? (
-                    <ScenarioHistoryCard key={m.id || i} npc={npc} item={m}
-                                         reviewing={scen.reviewingSessionId === m.scenarioSessionId}
-                                         reviewFailed={scen.reviewErrorSessionId === m.scenarioSessionId}
-                                         onReview={() => m.scenarioSessionId && scen.reviewCompleted(m.scenarioSessionId)} />
-                  ) : (
-                    <MessageRow key={m.id || i} npc={npc} msg={m}
-                                showCorrection={!!m.correction && expanded === i}
-                                onToggle={() => setExpanded(expanded === i ? -1 : i)}
-                                onRecall={recallMessage} onEdit={editRecalledMessage} onRestore={restoreRecalledMessage}
-                                recalling={recallingId === m.id} />
-                  )
+                  <Fragment key={m.id || i}>
+                    {m.createdAt && (i === 0 || !messages[i - 1]?.createdAt
+                      || messageDayKey(m.createdAt) !== messageDayKey(messages[i - 1].createdAt)) && (
+                      <DayDivider label={messageDayLabel(m.createdAt)} />
+                    )}
+                    {m.kind === 'scenario' ? (
+                      <ScenarioHistoryCard npc={npc} item={m}
+                                           reviewing={scen.reviewingSessionId === m.scenarioSessionId}
+                                           reviewFailed={scen.reviewErrorSessionId === m.scenarioSessionId}
+                                           onReview={() => m.scenarioSessionId && scen.reviewCompleted(m.scenarioSessionId)} />
+                    ) : (
+                      <MessageRow npc={npc} msg={m}
+                                  showCorrection={!!m.correction && expanded === i}
+                                  onToggle={() => setExpanded(expanded === i ? -1 : i)}
+                                  onRecall={recallMessage} onEdit={editRecalledMessage} onRestore={restoreRecalledMessage}
+                                  recalling={recallingId === m.id} />
+                    )}
+                  </Fragment>
                 ))}
                 {scen.declinedReply && (
                   <MessageRow npc={npc} msg={{ from: scen.declinedReply.from === 'user' ? 'user' : 'npc', text: scen.declinedReply.text, time: scen.declinedReply.time || '' }}
@@ -685,7 +692,7 @@ export default function App() {
               {scen.choices.length > 0 && (
                 <ChoiceComposer choices={scen.choices} onChoose={(c: ScenarioChoice) => scen.choose(c)} disabled={scen.choiceDisabled} />
               )}
-              <Composer onSend={(t: string) => scen.freetype(t)} disabled={scen.choiceDisabled} />
+              <Composer onSend={(t: string) => scen.freetype(t)} disabled={scen.choiceDisabled} showSuggestions={false} />
             </>
           )
         ) : scen.status === 'completed' ? null : (

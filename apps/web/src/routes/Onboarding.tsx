@@ -1,7 +1,7 @@
 // Popcorn Language — Web Onboarding + Your Journey
 // Onboarding is full-bleed (no app shell). Journey uses the 3-pane shell.
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import type {
@@ -13,10 +13,11 @@ import type {
   LearnerModelResponse,
   ScenarioRecommendation,
 } from '@popcorn/shared';
-import { WebI, RELATIONSHIP_LABEL, WebRelationshipDots, WebNavRail } from '../components/shared';
+import { WebI, RELATIONSHIP_LABEL, WebRelationshipDots, WebNavRail, type WebSectionNavItem } from '../components/shared';
 import { ScenarioSummaryCard } from '../components/scenario/parts';
 import { LearningFocus, RecommendationCard, RecommendationEmpty } from '../components/learning';
 import { PROFILE_GOALS, PROFILE_INTERESTS, PROFILE_ROLES } from '../profileOptions';
+import { countFriendships, formatLastChat } from './journeyView';
 
 // ============================================================
 // ONBOARDING — full-bleed, 3 steps
@@ -609,6 +610,13 @@ const NPC_VISUAL: Record<string, { glyph: string; bg: string; ink: string }> = {
   emma:  { glyph: 'E',  bg: 'oklch(0.93 0.04 340)',          ink: 'oklch(0.48 0.10 340)' },
 };
 
+const JOURNEY_NAV_ITEMS: WebSectionNavItem[] = [
+  { id: 'overview', label: 'Overview', description: 'Progress and relationships', icon: WebI.globe },
+  { id: 'learning', label: 'Learning', description: 'Focus and next practice', icon: WebI.sparkleF },
+  { id: 'scenarios', label: 'Scenarios', description: 'Completed roleplays', icon: WebI.bldg },
+  { id: 'achievements', label: 'Achievements', description: 'Unlocked milestones', icon: WebI.checkF },
+];
+
 function JourneyLoadState({ message, action, onAction }: {
   message: string;
   action?: string;
@@ -630,6 +638,7 @@ function JourneyLoadState({ message, action, onAction }: {
 }
 
 function JourneyDashboard() {
+  const [activeTab, setActiveTab] = useState<'overview' | 'learning' | 'scenarios' | 'achievements'>('overview');
   const [journey, setJourney] = useState<JourneySummaryResponse | null>(null);
   const [rels, setRels] = useState<RelationshipCard[]>([]);
   const [achs, setAchs] = useState<Achievement[]>([]);
@@ -644,6 +653,7 @@ function JourneyDashboard() {
   const [recommendationLoading, setRecommendationLoading] = useState(true);
   const [recommendationBusy, setRecommendationBusy] = useState<'start' | 'dismiss' | null>(null);
   const [recommendationError, setRecommendationError] = useState('');
+  const journeyScrollRef = useRef<HTMLElement | null>(null);
   const navigate = useNavigate();
 
   const loadLearnerModel = useCallback(async () => {
@@ -727,146 +737,156 @@ function JourneyDashboard() {
     }
   }
 
+  function showRecommendedPractice() {
+    const target = document.getElementById('recommended-practice');
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    target.focus({ preventScroll: true });
+  }
+
+  function selectJourneyTab(tab: typeof activeTab) {
+    setActiveTab(tab);
+    journeyScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+  }
+
   const days          = journey ? journey.days          : '—';
-  const conversations = journey ? journey.conversations : '—';
+  const practiceTurns = journey ? journey.practiceTurns : '—';
   const scenarios     = journey ? journey.scenarios     : '—';
   const memories      = journey ? journey.memories      : '—';
-  const friendCount   = rels.length || 3;
+  const friendCount   = journey ? countFriendships(rels) : '—';
 
   return (
     <div className="app-shell" data-screen-label="04 Web · Your Journey">
-      <WebNavRail activeTop="journey" />
+      <WebNavRail activeTop="journey" sectionLabel="Journey · 旅程"
+                  items={JOURNEY_NAV_ITEMS} activeItem={activeTab}
+                  onSelectItem={(item) => selectJourneyTab(item as typeof activeTab)} />
 
-      <section className="pane-main pane-main-scroll" style={{ background: 'var(--bg)' }}>
-        <div className="max-w-[1100px] mx-auto px-10 py-8">
-          {/* Header */}
-          <div className="fade-up">
-            <span className="text-[10px] font-mono uppercase tracking-[0.22em]" style={{ color: 'var(--muted)' }}>
-              your journey · 你的旅程
-            </span>
-            <div className="flex items-end justify-between gap-8 mt-2 flex-wrap">
-              <h1 className="font-serif text-[58px] leading-[0.95]">
-                {days} days,<br /><span style={{ color: 'var(--accent-ink)' }}>{friendCount} friendships.</span>
-              </h1>
-              <div className="grid grid-cols-4 gap-2 min-w-[460px]">
-                <StatBox label="days"          value={String(days)} />
-                <StatBox label="conversations" value={String(conversations)} />
-                <StatBox label="scenarios"     value={String(scenarios)} />
-                <StatBox label="memories"      value={String(memories)} plum />
+      <section ref={journeyScrollRef} className="pane-main pane-main-scroll" style={{ background: 'var(--bg)' }}>
+        <div className="w-full max-w-[1100px] mx-auto px-10 pb-8">
+          <div className="sticky top-0 z-20 -mx-10 px-10 pt-6 pb-4"
+               style={{
+                 background: 'color-mix(in srgb, var(--bg) 94%, transparent)',
+                 backdropFilter: 'blur(12px)',
+                 borderBottom: '1px solid var(--hairline)',
+               }}>
+            <div className="flex items-end justify-between gap-6">
+              <div>
+                <span className="text-[10px] font-mono uppercase tracking-[0.22em]" style={{ color: 'var(--muted)' }}>
+                  your journey · 你的旅程
+                </span>
+                <h1 className="font-serif text-[34px] leading-tight mt-1">Learning and relationship progress</h1>
               </div>
+              <p className="shrink-0 pb-1 text-[12px] font-mono" style={{ color: 'var(--muted)' }}>
+                {journey ? `${days}-day streak · ${friendCount} friendship${friendCount === 1 ? '' : 's'}` : 'Loading your progress...'}
+              </p>
             </div>
           </div>
 
-          {/* Relationships */}
-          <Section eyebrow="Relationships" zh="关系"
-                   title="People you talk to" mt={12}>
-            <div className="grid grid-cols-3 gap-3">
-              {rels.length > 0
-                ? rels.map((r) => <LiveRelationshipCard key={r.npcId} r={r} />)
-                : <p className="text-[13px] col-span-3" style={{ color: 'var(--muted)' }}>Loading…</p>
-              }
-            </div>
-          </Section>
-
-          {/* Learning Focus */}
-          <Section eyebrow="Learning Focus" zh="学习重点"
-                   title="Where practice will help most"
-                   desc="Skills backed by at least a few observations from your chats and scenarios." mt={12} plum>
-            {learnerModelLoading ? (
-              <JourneyLoadState message="Loading your learning profile..." />
-            ) : learnerModelError ? (
-              <JourneyLoadState message={learnerModelError} action="Retry" onAction={loadLearnerModel} />
-            ) : (
-              <LearningFocus focus={learnerModel?.focus ?? []} skills={learnerModel?.skills ?? []} />
-            )}
-          </Section>
-
-          {/* Recommended Practice */}
-          <Section eyebrow="Recommended Practice" zh="推荐练习"
-                   title="A scenario tailored to you" mt={12} plum>
-            {recommendationLoading
-              ? <JourneyLoadState message="Finding a practice scenario..." />
-              : recommendationError && !recommendation
-                ? <JourneyLoadState message={recommendationError} action="Retry" onAction={loadRecommendation} />
-                : recommendation
-              ? (
-                <RecommendationCard
-                  recommendation={recommendation}
-                  onStart={handleStart}
-                  onDismiss={handleDismiss}
-                  busy={recommendationBusy}
-                />
-              )
-              : <RecommendationEmpty />
-            }
-            {recommendationError && recommendation && (
-              <p className="text-[12px] mt-3" style={{ color: 'var(--coral-ink)' }}>{recommendationError}</p>
-            )}
-          </Section>
-
-          {/* Scenario history */}
-          <Section eyebrow="Scenarios" zh="情景练习"
-                   title="Completed roleplays" desc="Reopen the persisted transcript and feedback from any completed practice." mt={12}>
-            {scenarioHistory.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3">
-                {scenarioHistory.map((session) => {
-                  const selected = selectedScenario?.session.id === session.id;
-                  return (
-                    <div key={session.id} className="rounded-lg p-4 flex items-center justify-between gap-4"
-                         style={{
-                           background: 'var(--surface)',
-                           border: `1px solid ${selected ? 'var(--coral)' : 'var(--hairline)'}`,
-                         }}>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[14px] font-medium truncate">{session.scenarioTitle}</span>
-                          <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded"
-                                style={{ background: 'var(--moss-soft)', color: 'var(--moss)' }}>
-                            Grade {session.grade || '—'}
-                          </span>
-                        </div>
-                        <div className="text-[10.5px] font-mono mt-1 uppercase" style={{ color: 'var(--muted)' }}>
-                          {session.npcId} · {session.startedAt ? new Date(session.startedAt).toLocaleDateString() : 'Completed'}
-                        </div>
-                      </div>
-                      <button type="button" onClick={() => showScenario(session)}
-                              disabled={scenarioLoadingId === session.id}
-                              className="shrink-0 inline-flex items-center gap-1.5 text-[12px] font-medium transition disabled:opacity-50"
-                              style={{ color: 'var(--coral-ink)' }}>
-                        {scenarioLoadingId === session.id ? 'Loading...' : selected ? 'Close' : 'View results'}
-                        {!selected && scenarioLoadingId !== session.id && <span className="w-3.5 h-3.5">{WebI.arrowR}</span>}
-                      </button>
-                    </div>
-                  );
-                })}
+          {activeTab === 'overview' && (
+            <div role="tabpanel" id="journey-panel-overview" aria-labelledby="journey-tab-overview" className="fade-up pt-8">
+              <div className="grid grid-cols-4 gap-3">
+                <StatBox label="current streak" value={journey ? `${days}d` : '—'} />
+                <StatBox label="practice turns" value={String(practiceTurns)} />
+                <StatBox label="scenarios" value={String(scenarios)} />
+                <StatBox label="memories" value={String(memories)} plum />
               </div>
-            ) : (
-              <p className="text-[13px]" style={{ color: 'var(--muted)' }}>No completed scenarios yet.</p>
-            )}
-            {selectedScenario && (
-              <div className="mt-4">
-                <ScenarioSummaryCard
-                  session={selectedScenario.session}
-                  transcript={selectedScenario.transcript}
-                  summaryData={selectedScenario.summary}
-                />
-              </div>
-            )}
-            {scenarioError && (
-              <p className="text-[12px] mt-3" style={{ color: 'var(--coral-ink)' }}>{scenarioError}</p>
-            )}
-          </Section>
-
-          {/* Achievements */}
-          <Section eyebrow="Achievements" zh="成就"
-                   title="What you've unlocked" mt={12}>
-            <div className="grid grid-cols-2 gap-3">
-              {achs.length > 0
-                ? achs.map((a) => <AchievementCard key={a.id} a={a} />)
-                : <p className="text-[13px] col-span-2" style={{ color: 'var(--muted)' }}>Loading…</p>
-              }
+              <Section eyebrow="Relationships" zh="关系" title="People you talk to" mt={10}>
+                <div className="grid grid-cols-3 gap-3">
+                  {rels.length > 0
+                    ? rels.map((r) => <LiveRelationshipCard key={r.npcId} r={r} />)
+                    : <p className="text-[13px] col-span-3" style={{ color: 'var(--muted)' }}>Loading…</p>}
+                </div>
+              </Section>
             </div>
-          </Section>
+          )}
+
+          {activeTab === 'learning' && (
+            <div role="tabpanel" id="journey-panel-learning" aria-labelledby="journey-tab-learning" className="fade-up pt-2">
+              <Section eyebrow="Learning Focus" zh="学习重点" title="Where practice will help most"
+                       desc="Evidence-backed focus areas, each with a concrete action for your next conversation." mt={8} plum>
+                {learnerModelLoading ? (
+                  <JourneyLoadState message="Loading your learning profile..." />
+                ) : learnerModelError ? (
+                  <JourneyLoadState message={learnerModelError} action="Retry" onAction={loadLearnerModel} />
+                ) : (
+                  <LearningFocus focus={learnerModel?.focus ?? []} skills={learnerModel?.skills ?? []}
+                                 onViewPractice={showRecommendedPractice} />
+                )}
+              </Section>
+              <div id="recommended-practice" tabIndex={-1} className="scroll-mt-32 focus:outline-none">
+                <Section eyebrow="Recommended Practice" zh="推荐练习" title="A scenario tailored to you" mt={10} plum>
+                  {recommendationLoading
+                    ? <JourneyLoadState message="Finding a practice scenario..." />
+                    : recommendationError && !recommendation
+                      ? <JourneyLoadState message={recommendationError} action="Retry" onAction={loadRecommendation} />
+                      : recommendation
+                        ? <RecommendationCard recommendation={recommendation} onStart={handleStart}
+                                              onDismiss={handleDismiss} busy={recommendationBusy} />
+                        : <RecommendationEmpty />}
+                  {recommendationError && recommendation && (
+                    <p className="text-[12px] mt-3" style={{ color: 'var(--coral-ink)' }}>{recommendationError}</p>
+                  )}
+                </Section>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'scenarios' && (
+            <div role="tabpanel" id="journey-panel-scenarios" aria-labelledby="journey-tab-scenarios" className="fade-up pt-2">
+              <Section eyebrow="Scenarios" zh="情景练习" title="Completed roleplays"
+                       desc="Reopen the persisted transcript and feedback from any completed practice." mt={8}>
+                {scenarioHistory.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    {scenarioHistory.map((session) => {
+                      const selected = selectedScenario?.session.id === session.id;
+                      return (
+                        <div key={session.id} className="rounded-lg p-4 flex items-center justify-between gap-4"
+                             style={{ background: 'var(--surface)', border: `1px solid ${selected ? 'var(--coral)' : 'var(--hairline)'}` }}>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[14px] font-medium truncate">{session.scenarioTitle}</span>
+                              <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded"
+                                    style={{ background: 'var(--moss-soft)', color: 'var(--moss)' }}>
+                                Grade {session.grade || '—'}
+                              </span>
+                            </div>
+                            <div className="text-[10.5px] font-mono mt-1 uppercase" style={{ color: 'var(--muted)' }}>
+                              {session.npcId} · {session.startedAt ? new Date(session.startedAt).toLocaleDateString() : 'Completed'}
+                            </div>
+                          </div>
+                          <button type="button" onClick={() => showScenario(session)} disabled={scenarioLoadingId === session.id}
+                                  className="shrink-0 inline-flex items-center gap-1.5 text-[12px] font-medium transition disabled:opacity-50"
+                                  style={{ color: 'var(--coral-ink)' }}>
+                            {scenarioLoadingId === session.id ? 'Loading...' : selected ? 'Close' : 'View results'}
+                            {!selected && scenarioLoadingId !== session.id && <span className="w-3.5 h-3.5">{WebI.arrowR}</span>}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : <p className="text-[13px]" style={{ color: 'var(--muted)' }}>No completed scenarios yet.</p>}
+                {selectedScenario && (
+                  <div className="mt-4">
+                    <ScenarioSummaryCard session={selectedScenario.session} transcript={selectedScenario.transcript}
+                                         summaryData={selectedScenario.summary} />
+                  </div>
+                )}
+                {scenarioError && <p className="text-[12px] mt-3" style={{ color: 'var(--coral-ink)' }}>{scenarioError}</p>}
+              </Section>
+            </div>
+          )}
+
+          {activeTab === 'achievements' && (
+            <div role="tabpanel" id="journey-panel-achievements" aria-labelledby="journey-tab-achievements" className="fade-up pt-2">
+              <Section eyebrow="Achievements" zh="成就" title="What you've unlocked" mt={8}>
+                <div className="grid grid-cols-2 gap-3">
+                  {achs.length > 0
+                    ? achs.map((a) => <AchievementCard key={a.id} a={a} />)
+                    : <p className="text-[13px] col-span-2" style={{ color: 'var(--muted)' }}>Loading…</p>}
+                </div>
+              </Section>
+            </div>
+          )}
 
           {/* Engine footer */}
           <div className="mt-12 pt-5 flex items-center justify-between text-[10px] font-mono uppercase tracking-wider"
@@ -886,9 +906,8 @@ function LiveRelationshipCard({ r }: { r: RelationshipCard }) {
   const stageLabel = RELATIONSHIP_LABEL[r.stage] || r.stage || '—';
   const stageValue = r.stageValue != null ? r.stageValue
                    : r.stage === 'close' ? 3 : r.stage === 'friend' ? 2 : 1;
-  const sub  = r.sub  || '';
   const note = r.note || '';
-  const last = r.last || '';
+  const last = formatLastChat(r.last);
 
   return (
     <div className="rounded-xl p-4"
@@ -900,17 +919,19 @@ function LiveRelationshipCard({ r }: { r: RelationshipCard }) {
           {visual.glyph}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[15px] font-medium truncate">{r.name}</span>
-            {last && <span className="text-[10px] font-mono" style={{ color: 'var(--muted)' }}>{last}</span>}
-          </div>
-          <div className="flex items-center gap-1.5 mt-0.5">
+          <div className="text-[15px] font-medium truncate">{r.name}</div>
+          <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
             <WebRelationshipDots value={stageValue} />
-            <span className="text-[11px]" style={{ color: 'var(--muted)' }}>{stageLabel}</span>
+            <span className="text-[11px] truncate" style={{ color: 'var(--muted)' }}>{stageLabel}</span>
+            {last && (
+              <span className="ml-auto text-[9.5px] font-mono shrink-0 whitespace-nowrap"
+                    style={{ color: 'var(--muted)' }}>
+                Last chat {last}
+              </span>
+            )}
           </div>
         </div>
       </div>
-      {sub && <div className="text-[11.5px]" style={{ color: 'var(--ink-2)' }}>{sub}</div>}
       {note && (
         <p className="text-[12px] mt-2 leading-snug" style={{ color: 'var(--ink-2)' }}>
           {note}

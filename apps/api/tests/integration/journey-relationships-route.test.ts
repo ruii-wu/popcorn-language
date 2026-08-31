@@ -36,14 +36,31 @@ describe('GET /api/journey/relationships', () => {
     const lily = cards.find((c: { npcId: string }) => c.npcId === 'lily');
     expect(lily.stage).toBe('friend');
     expect(lily.stageValue).toBe(2);
-    expect(lily.sub).toBe('Friend');
-    expect(lily.note).toBe('acquaintance → friend');
+    expect(lily.note).toBe('Acquaintance → Friend');
     expect(lily.last).not.toBeNull();
+    expect(cards[0].npcId).toBe('lily');
 
     const chen = cards.find((c: { npcId: string }) => c.npcId === 'chen');
     expect(chen.stage).toBe('acquaintance');
     expect(chen.stageValue).toBe(1);
     expect(chen.note).toBeNull();
     expect(chen.last).toBeNull();
+  });
+
+  it('describes the transition that produced the current stage', async () => {
+    await prisma.user.deleteMany({ where: { username: U } });
+    const user = await prisma.user.create({ data: { username: U, password: 'pw' } });
+    const rel = await prisma.relationship.create({
+      data: { userId: user.id, npcId: 'lily', stage: 'close', stageValue: 3 },
+    });
+    await prisma.relationshipEvent.createMany({
+      data: [
+        { relationshipId: rel.id, fromStage: 'acquaintance', toStage: 'friend', reason: 'messages' },
+        { relationshipId: rel.id, fromStage: 'friend', toStage: 'close', reason: 'scenario' },
+      ],
+    });
+
+    const cards = await (await GET(get(user.id))).json();
+    expect(cards.find((card: { npcId: string }) => card.npcId === 'lily').note).toBe('Friend → Close friend');
   });
 });

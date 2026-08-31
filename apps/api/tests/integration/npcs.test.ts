@@ -44,7 +44,8 @@ describe('npc routes', () => {
     expect(d.avatar.glyph).toBe('☕');
     expect(Array.isArray(d.topicInterests)).toBe(true);
     expect('relationshipSince' in d).toBe(true);
-    expect(typeof d.chatStats.conversationCount).toBe('number');
+    expect(typeof d.chatStats.practiceTurns).toBe('number');
+    expect(typeof d.chatStats.visibleMessages).toBe('number');
     expect((await detail(req(user.id), { params: { id: 'nope' } })).status).toBe(404);
   });
 

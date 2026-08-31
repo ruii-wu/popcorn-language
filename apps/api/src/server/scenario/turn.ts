@@ -3,11 +3,12 @@ import type { PrismaClient } from '@prisma/client';
 import type { OllamaClient } from '@/server/llm/ollama';
 import type { SseEvent } from '@/server/sse/events';
 import type { ZodType } from 'zod';
-import { applyDelta, type ScenarioState } from './state';
+import { applyDelta, hardTurnLimit, type ScenarioState } from './state';
 import { buildScenarioMessages } from './prompt';
 import { ScenarioTurnSchema, type ScenarioTurnJson } from './schemas';
 import { resolveRole } from './role';
 import { runScenarioEnd } from './end';
+import { choiceTextsFromJson, sanitizeScenarioChoices } from './choiceQuality';
 
 export interface TurnDeps {
   prisma: PrismaClient;
@@ -19,7 +20,15 @@ export interface TurnDeps {
   text?: string;
 }
 
-function fallbackTurn(state: ScenarioState): ScenarioTurnJson {
+function fallbackTurn(state: ScenarioState, mustConclude: boolean): ScenarioTurnJson {
+  if (mustConclude) {
+    return {
+      npcReply: 'Thanks — that gives me what I need. We can wrap up here.',
+      stateDelta: { impression: 0, stress: state.stress },
+      isFinalTurn: true,
+      suggestedChoicesNext: [],
+    };
+  }
   return {
     npcReply: '(One moment — let me follow up on that.) Could you say a bit more?',
     stateDelta: { impression: 0, stress: state.stress },
@@ -51,13 +60,14 @@ export async function* runScenarioTurn(deps: TurnDeps): AsyncGenerator<SseEvent>
   }
 
   const state = JSON.parse(session.state) as ScenarioState;
-  if (state.turnsLeft <= 0) {
+  if (state.completionPending) {
     // The final turn is already durable; only the completion tail needs retrying.
     // Never turn a summary failure into an extra learner turn.
     yield { event: 'error', data: { code: 'END_FAILED', message: 'Scenario summary needs to be retried' } };
     yield { event: 'done', data: {} };
     return;
   }
+  const mustConclude = state.turnIndex + 1 >= hardTurnLimit(session.template);
   const userText = deps.text ?? deps.choiceId ?? '';
 
   const userMsg = await prisma.message.create({
@@ -70,17 +80,27 @@ export async function* runScenarioTurn(deps: TurnDeps): AsyncGenerator<SseEvent>
   yield { event: 'typing_start', data: { npcId: session.npcId } };
 
   const { roleName } = resolveRole(session.npc, session.template);
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  const history = await prisma.message.findMany({
-    where: { scenarioSessionId: session.id, role: { in: ['user', 'npc-roleplay'] } },
-    orderBy: { createdAt: 'asc' },
-  });
+  const [user, history, priorTurns] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId } }),
+    prisma.message.findMany({
+      where: { scenarioSessionId: session.id, role: { in: ['user', 'npc-roleplay'] } },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.scenarioTurn.findMany({
+      where: { sessionId: session.id },
+      orderBy: { turnIndex: 'asc' },
+      select: { nextChoices: true },
+    }),
+  ]);
+  const previousChoiceTexts = choiceTextsFromJson(priorTurns.map((prior) => prior.nextChoices));
   const messages = buildScenarioMessages({
     roleName,
     instructions: session.template.systemPrompt,
     userLanguage: user?.language ?? 'zh-CN',
     state,
     history: history.map((m) => ({ role: m.role, text: m.text, userId: m.userId })),
+    previousChoiceTexts,
+    mustConclude,
   });
 
   let turn: ScenarioTurnJson;
@@ -88,10 +108,17 @@ export async function* runScenarioTurn(deps: TurnDeps): AsyncGenerator<SseEvent>
     turn = await ollama.chatJson(messages, ScenarioTurnSchema as unknown as ZodType<ScenarioTurnJson>, { options: { temperature: 0.7 } });
   } catch (e) {
     console.error('[scenario] turn generation failed, using fallback', e);
-    turn = fallbackTurn(state);
+    turn = fallbackTurn(state, mustConclude);
   }
+  const isFinal = turn.isFinalTurn || mustConclude;
+  turn.suggestedChoicesNext = isFinal
+    ? []
+    : sanitizeScenarioChoices(turn.suggestedChoicesNext, previousChoiceTexts, 3);
 
-  const stateAfter = applyDelta(state, turn.stateDelta);
+  const stateAfter: ScenarioState = {
+    ...applyDelta(state, turn.stateDelta),
+    completionPending: isFinal,
+  };
   const npcMsg = await prisma.message.create({
     data: {
       threadId: session.threadId, userId: null, role: 'npc-roleplay', text: turn.npcReply,
@@ -114,7 +141,6 @@ export async function* runScenarioTurn(deps: TurnDeps): AsyncGenerator<SseEvent>
   yield { event: 'message_complete', data: { messageId: npcMsg.id, fullText: turn.npcReply } };
   yield { event: 'state_update', data: { impression: stateAfter.impression, stress: stateAfter.stress, turnsLeft: stateAfter.turnsLeft } };
 
-  const isFinal = turn.isFinalTurn || stateAfter.turnsLeft <= 0;
   if (!isFinal) {
     yield { event: 'choices', data: { choices: turn.suggestedChoicesNext } };
   } else {

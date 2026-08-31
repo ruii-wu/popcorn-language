@@ -35,6 +35,14 @@ describe('scenario view mappers', () => {
     expect(mapSessionDetail({ ...base, summary: null }, [], '{bad').choices).toEqual([]);
   });
 
+  it('does not expose duplicate persisted choices after resume', () => {
+    const choices = [
+      { id: 'c1', text: 'I can start on Monday.', tone: 'Direct', desc: '' },
+      { id: 'c2', text: 'I can start on Monday!', tone: 'Friendly', desc: '' },
+    ];
+    expect(mapSessionDetail({ ...base, summary: null }, [], JSON.stringify(choices)).choices).toHaveLength(1);
+  });
+
   it('returns the persisted completed summary with an empty learningUpdate when no pre/post is stored', () => {
     const detail = mapSessionDetail(base, []);
     expect(detail.summary?.grade).toBe('A');

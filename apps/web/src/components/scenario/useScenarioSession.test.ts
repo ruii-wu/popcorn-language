@@ -33,12 +33,13 @@ describe('declinedReplyToCasualMessage', () => {
 
 describe('needsCompletionRetry', () => {
   it('detects a durable final turn without a summary', () => {
-    expect(needsCompletionRetry({ turnsLeft: 0 }, null)).toBe(true);
+    expect(needsCompletionRetry({ turnsLeft: 0, completionPending: true }, null)).toBe(true);
   });
 
   it('does not flag unfinished or already-summarized sessions', () => {
     expect(needsCompletionRetry({ turnsLeft: 1 }, null)).toBe(false);
-    expect(needsCompletionRetry({ turnsLeft: 0 }, {
+    expect(needsCompletionRetry({ turnsLeft: 0 }, null)).toBe(false);
+    expect(needsCompletionRetry({ turnsLeft: 0, completionPending: true }, {
       grade: 'B', languageNote: '', pragmaticsNote: '', relationshipNote: '',
     })).toBe(false);
   });

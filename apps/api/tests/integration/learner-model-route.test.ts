@@ -31,6 +31,7 @@ describe('GET /api/learner-model', () => {
     const pt = body.skills.find((s: any) => s.skillCode === 'grammar.past_tense');
     expect(pt.status).toBe('gathering');
     expect(pt.evidenceN).toBe(0);
+    expect(pt.practiceAdvice).toContain('Retell one finished event');
     // level 6-digit rounded per route serializer
     expect(typeof pt.level).toBe('number');
   });
@@ -48,5 +49,7 @@ describe('GET /api/learner-model', () => {
     const body = await res.json();
     expect(body.focus.length).toBeGreaterThanOrEqual(1);
     expect(body.focus.some((s: any) => s.skillCode === 'pragmatics.polite_disagreement')).toBe(true);
+    const focus = body.focus.find((s: any) => s.skillCode === 'pragmatics.polite_disagreement');
+    expect(focus.practiceAdvice).toContain('I see your point');
   });
 });

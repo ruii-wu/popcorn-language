@@ -40,7 +40,7 @@ export function declinedReplyToCasualMessage(reply: ScenarioMessage | null) {
 
 export function needsCompletionRetry(state: unknown, summary: ScenarioSummary | null | undefined): boolean {
   if (summary || !state || typeof state !== 'object') return false;
-  return (state as { turnsLeft?: unknown }).turnsLeft === 0;
+  return (state as { completionPending?: unknown }).completionPending === true;
 }
 
 function nowTime() {

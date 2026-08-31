@@ -1,7 +1,17 @@
-import { describe, it, expect, afterAll } from 'vitest';
+import { describe, it, expect, afterAll, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { POST } from '@/app/api/threads/[npcId]/messages/route';
 import { SESSION_COOKIE } from '@/server/auth/session';
+
+const llm = vi.hoisted(() => ({
+  chat: vi.fn(() => (async function* () { throw new Error('offline'); })()),
+  chatJson: vi.fn(),
+  embed: vi.fn(),
+}));
+vi.mock('@/server/llm/userClient', () => ({
+  ollamaForUser: vi.fn().mockResolvedValue(llm),
+}));
+
+import { POST } from '@/app/api/threads/[npcId]/messages/route';
 
 const prisma = new PrismaClient();
 const U = '__w2_msgpost_user__';

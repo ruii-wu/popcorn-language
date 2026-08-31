@@ -4,8 +4,9 @@ export type Stress = 'Low' | 'Medium' | 'High';
 export interface ScenarioState {
   impression: number; // 0..10
   stress: Stress;
-  turnsLeft: number;
+  turnsLeft: number; // soft pacing target; reaching zero does not force completion
   turnIndex: number;
+  completionPending?: boolean;
 }
 
 export interface StateDelta {
@@ -36,5 +37,11 @@ export function applyDelta(state: ScenarioState, delta: StateDelta): ScenarioSta
     stress: delta.stress ?? state.stress,
     turnsLeft: Math.max(0, state.turnsLeft - 1),
     turnIndex: state.turnIndex + 1,
+    ...(state.completionPending === undefined ? {} : { completionPending: state.completionPending }),
   };
+}
+
+export function hardTurnLimit(template: { estimatedTurns: number }): number {
+  const target = template.estimatedTurns > 0 ? template.estimatedTurns : 6;
+  return target + 3;
 }

@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import dotenv from 'dotenv';
 
 dotenv.config({ path: 'apps/api/.env', quiet: true });
@@ -32,9 +33,9 @@ function modelInstalled(names, required) {
   return names.some((name) => name === required || name.startsWith(`${required}:`));
 }
 
-const nodeMajor = Number(process.versions.node.split('.')[0]);
-if (nodeMajor === 24) pass('Node.js', process.version);
-else fail('Node.js', `${process.version}; run "nvm use" in the repository (Node 24 required)`);
+const requiredNode = readFileSync(new URL('../.nvmrc', import.meta.url), 'utf8').trim().replace(/^v/, '');
+if (process.versions.node === requiredNode) pass('Node.js', process.version);
+else fail('Node.js', `${process.version}; run "nvm use" in the repository (v${requiredNode} required)`);
 
 try {
   const response = await fetch(webUrl, { signal: AbortSignal.timeout(4000) });

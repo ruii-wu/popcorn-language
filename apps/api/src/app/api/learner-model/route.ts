@@ -2,6 +2,7 @@ import type { LearnerModelResponse } from '@popcorn/shared';
 import { prisma } from '@/server/db/client';
 import { withUser, json } from '@/server/http/respond';
 import { computeLearnerModel } from '@/server/learning/aggregate';
+import { practiceAdviceFor } from '@/server/learning/advice';
 
 export async function GET(req: Request): Promise<Response> {
   return withUser(req, async (userId) => {
@@ -19,6 +20,7 @@ export async function GET(req: Request): Promise<Response> {
         status: s.status,
         trend: s.trend,
         lastObservedAt: s.lastObservedAt ? s.lastObservedAt.toISOString() : null,
+        practiceAdvice: practiceAdviceFor(s.skillCode),
       })),
       focus: model.focus.map((s) => ({
         skillCode: s.skillCode,
@@ -32,6 +34,7 @@ export async function GET(req: Request): Promise<Response> {
         status: s.status,
         trend: s.trend,
         lastObservedAt: s.lastObservedAt ? s.lastObservedAt.toISOString() : null,
+        practiceAdvice: practiceAdviceFor(s.skillCode),
       })),
     };
     return json(out);

@@ -14,6 +14,7 @@
     "db:generate": "prisma generate",
     "typecheck": "tsc --noEmit",
     "report:ablation": "vitest run tests/integration/ablation-report",
+    "eval:memory:longmemeval": "tsx scripts/longmemeval-retrieval.ts",
     "db:seed:demo": "tsx prisma/seed-demo.ts"
   },
   "prisma": {

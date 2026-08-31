@@ -1,6 +1,6 @@
 // tests/unit/scenario-state.test.ts
 import { describe, it, expect } from 'vitest';
-import { initState, applyDelta, clampImpression, type ScenarioState } from '@/server/scenario/state';
+import { initState, applyDelta, clampImpression, hardTurnLimit, type ScenarioState } from '@/server/scenario/state';
 
 describe('scenario state', () => {
   it('initState seeds impression 5, role stress, turnsLeft from template, turnIndex 0', () => {
@@ -26,5 +26,10 @@ describe('scenario state', () => {
     const after = applyDelta({ impression: 9, stress: 'Low', turnsLeft: 0, turnIndex: 9 }, { impression: 5, stress: 'Low' });
     expect(after.impression).toBe(10);
     expect(after.turnsLeft).toBe(0);
+  });
+
+  it('allows three safety turns beyond the pacing target', () => {
+    expect(hardTurnLimit({ estimatedTurns: 6 })).toBe(9);
+    expect(hardTurnLimit({ estimatedTurns: 0 })).toBe(9);
   });
 });

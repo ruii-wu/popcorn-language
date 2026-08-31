@@ -6,7 +6,6 @@ export interface RelationshipCard {
   name: string;
   stage: string;
   stageValue: number;
-  sub: string;
   note: string | null;
   last: string | null;
 }
@@ -23,21 +22,21 @@ export async function buildRelationshipCards(prisma: PrismaClient, userId: strin
   const npcs = await prisma.npc.findMany({ orderBy: { id: 'asc' } });
   const rels = await prisma.relationship.findMany({
     where: { userId },
-    include: { events: { orderBy: { createdAt: 'desc' }, take: 1 } },
+    include: { events: { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }] } },
   });
   const byNpc = new Map(rels.map((r) => [r.npcId, r]));
+  const orderedNpcs = [...npcs].sort((a, b) => Number(b.id === 'lily') - Number(a.id === 'lily'));
 
-  return npcs.map((n) => {
+  return orderedNpcs.map((n) => {
     const rel = byNpc.get(n.id);
     const stage = rel?.stage ?? 'acquaintance';
-    const ev = rel?.events[0];
+    const ev = rel?.events.find((event) => event.toStage === stage) ?? rel?.events[0];
     return {
       npcId: n.id,
       name: n.name,
       stage,
       stageValue: rel?.stageValue ?? 1,
-      sub: SUB_LABEL[stage] ?? 'Acquaintance',
-      note: ev ? `${ev.fromStage} → ${ev.toStage}` : null,
+      note: ev ? `${SUB_LABEL[ev.fromStage] ?? ev.fromStage} → ${SUB_LABEL[ev.toStage] ?? ev.toStage}` : null,
       last: rel?.lastInteractionAt?.toISOString() ?? null,
     };
   });

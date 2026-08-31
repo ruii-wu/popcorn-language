@@ -8,6 +8,7 @@ import { buildScenarioMessages } from './prompt';
 import { ScenarioTurnSchema, type ScenarioTurnJson } from './schemas';
 import { resolveRole } from './role';
 import { mapSessionDetail, type SessionDetail } from './sessionView';
+import { sanitizeScenarioChoices } from './choiceQuality';
 
 export class ScenarioError extends Error {
   constructor(public code: string, message: string) { super(message); this.name = 'ScenarioError'; }
@@ -64,6 +65,9 @@ export async function acceptScenario(deps: AcceptDeps): Promise<AcceptResult> {
       suggestedChoicesNext: [],
     };
   }
+  // Accept always creates the opening exchange; completion is only valid after a learner turn.
+  turn.isFinalTurn = false;
+  turn.suggestedChoicesNext = sanitizeScenarioChoices(turn.suggestedChoicesNext, [], 3);
 
   const npcMsg = await prisma.message.create({
     data: {

@@ -1,10 +1,12 @@
 // src/server/memory/eval/report.ts
 import type { MemoryEvalResult } from './harness';
+import { getDataset } from './dataset';
 
 // Renders the canonical, deterministic ablation document. Only recall@k is committed (it is
 // stable across runs); latency and token cost depend on the in-memory mock embedder and the
 // host, so they are obtained from the documented live run rather than committed.
 export function renderAblationReport(result: MemoryEvalResult): string {
+  const dataset = getDataset(result.datasetId);
   const k = result.k;
   const header = `| Strategy | recall@${k} |\n|---|---|`;
   const rows = result.perStrategy.map((s) => `| ${s.name} | ${s.recallAtK} |`).join('\n');
@@ -16,17 +18,17 @@ export function renderAblationReport(result: MemoryEvalResult): string {
   return `# Memory-Strategy Ablation (W7 Harness)
 
 > Generated deterministically by \`npm run report:ablation\` from the fixed eval corpus
-> (\`dataset: ${result.datasetId}\`, k=${k}, 4 strategies × 4 probes) using an in-memory
+> (\`dataset: ${result.datasetId}\`, ${dataset.corpus.length} memories, k=${k},
+> 4 strategies × ${dataset.probes.length} probes) using an in-memory
 > topic-classifier embedder — **no Ollama required, byte-stable across runs.**
 
 ${header}
 ${rows}
 
-**Reading.** On a corpus where the topical facts sit *outside* the recency window, the recency
-baseline recovers only ${recency} of the relevant items, the summary strategy ${summary}, while
-the semantic and hybrid strategies recover all of them (${semantic}). This is the ablation result
-cited in the report's memory chapter: embedding-based recall closes the gap that a pure
-recency buffer leaves open.
+**Reading.** The controlled corpus distributes relevant memories across old, middle, and recent
+positions and includes unrelated distractors. The recency baseline recovers ${recency} of the
+relevant items and the summary strategy ${summary}; semantic retrieval reaches ${semantic}.
+The fixture isolates retrieval-policy behavior rather than claiming real-user effectiveness.
 
 > **Latency and token cost are intentionally omitted above** — the fixture uses a sub-millisecond
 > mock embedder, so those numbers are not representative and not deterministic. To capture real
@@ -36,7 +38,7 @@ recency buffer leaves open.
 > \`\`\`
 > curl -s -X POST http://localhost:3100/api/dev/memory-eval \\
 >   -H 'content-type: application/json' \\
->   -b 'pop_uid=<your-user-id>' -d '{"k":3}' | jq .perStrategy
+>   -b 'pop_uid=<your-user-id>' -d '{"datasetId":"expanded-v1","k":5}' | jq .perStrategy
 > \`\`\`
 >
 > The endpoint returns \`{ datasetId, k, perStrategy: [{ name, recallAtK, latencyMs, tokenCost }] }\`

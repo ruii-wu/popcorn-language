@@ -1,13 +1,14 @@
 // scripts/smoke-web.mjs — headless browser smoke for the Vite web client.
-// Drives Microsoft Edge (channel: 'msedge') against a running dev setup:
-//   Vite SPA on :5173 (proxies /api -> Next.js on :3100).
+// Drives an installed Chromium browser against a running web endpoint.
+// Defaults to Vite on :5173; set DEMO_WEB_URL=http://localhost:3100 for single-port demo mode.
 // Proves the UI renders values from the live API and degrades gracefully when Ollama is down.
 //
 // Usage:  node scripts/smoke-web.mjs <flow>     flow in api|chat|journey|scenario|all
 // Pre-req: `npm run dev` is up (API :3100 + Vite :5173), and `npm run db:seed:demo` has run.
 import { chromium } from 'playwright';
 
-const BASE = 'http://localhost:5173';
+const BASE = process.env.DEMO_WEB_URL ?? 'http://localhost:5173';
+const BROWSER_CHANNEL = process.env.DEMO_BROWSER_CHANNEL;
 const flow = process.argv[2] || 'all';
 let failures = 0;
 
@@ -128,14 +129,18 @@ async function flowChat(browser) {
     assert(roleplay, 'accepting starts the roleplay inline (choice cards / roleplay header)');
     assert(new URL(page.url()).pathname === '/', 'roleplay runs on "/" — never left the conversation');
 
-    // ---- exit: "End roleplay" aborts back to casual chat ----
-    const endBtn = page.locator('button', { hasText: /End roleplay/i }).first();
-    assert(await endBtn.count() > 0, 'roleplay shows an "End roleplay" button (exit exists)');
-    await endBtn.click();
-    const backToCasual = await page.waitForFunction(
-      () => !/Choose your response/i.test(document.body.innerText) && !!document.querySelector('textarea'),
-      null, { timeout: 15000 }).then(() => true).catch(() => false);
-    assert(backToCasual, 'ending the roleplay returns to casual chat (text composer, no choice cards)');
+    // ---- exit: End aborts back to casual chat ----
+    const endBtn = page.getByRole('button', { name: /^(End|End roleplay)$/i }).first();
+    const hasEnd = await endBtn.count() > 0;
+    assert(hasEnd, 'roleplay shows an End button (exit exists)');
+    if (hasEnd) {
+      page.once('dialog', (dialog) => dialog.accept());
+      await endBtn.click();
+      const backToCasual = await page.waitForFunction(
+        () => !/Choose your response/i.test(document.body.innerText) && !!document.querySelector('textarea'),
+        null, { timeout: 15000 }).then(() => true).catch(() => false);
+      assert(backToCasual, 'ending the roleplay returns to casual chat (text composer, no choice cards)');
+    }
   } else {
     ok('accept button not present (offer may not have fired this run) — skipped accept assertion');
   }
@@ -168,7 +173,20 @@ async function flowScenario(browser) {
 
 const FLOWS = { api: flowApi, chat: flowChat, journey: flowJourney, scenario: flowScenario };
 
-const browser = await chromium.launch({ channel: 'msedge', headless: true });
+async function launchBrowser() {
+  const candidates = BROWSER_CHANNEL ? [BROWSER_CHANNEL] : ['chrome', 'msedge', null];
+  const failures = [];
+  for (const channel of candidates) {
+    try {
+      return await chromium.launch(channel ? { channel, headless: true } : { headless: true });
+    } catch (error) {
+      failures.push(`${channel ?? 'playwright-chromium'}: ${error.message.split('\n')[0]}`);
+    }
+  }
+  throw new Error(`No Chromium browser could be launched. ${failures.join(' | ')}`);
+}
+
+const browser = await launchBrowser();
 try {
   const run = flow === 'all' ? Object.keys(FLOWS) : [flow];
   for (const f of run) {
