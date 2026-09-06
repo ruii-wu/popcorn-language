@@ -1,0 +1,546 @@
+$ npm run predb:migrate -w apps/api
+
+> popcorn-api@0.1.0 predb:migrate
+> node ../../scripts/ensure-sqlite-db.mjs
+
+
+$ npm exec -w apps/api -- prisma migrate deploy
+Environment variables loaded from .env
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": SQLite database "evaluation.db" at "file:/var/folders/jl/3c7nbf191g3bjthw9zgpjjy40000gn/T/popcorn-scoring-YBh77p/evaluation.db"
+
+13 migrations found in prisma/migrations
+
+Applying migration `20260524184559_init`
+Applying migration `20260530162046_chat_model_qwen35`
+Applying migration `20260715133000_mock_interview_acquaintance`
+Applying migration `20260715143000_message_retract`
+Applying migration `20260715145000_message_retract_truncate`
+Applying migration `20260715152000_reversible_recall`
+Applying migration `20260722090000_lily_initial_friend`
+Applying migration `20260722143000_emma_initial_friend`
+Applying migration `20260722160000_retract_ownership`
+Applying migration `20260722161000_retract_ownership_backfill_fallback`
+Applying migration `20260724100000_learning_model`
+Applying migration `20260724150000_scenario_summary_levels`
+Applying migration `20260812120000_memory_source_key`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20260524184559_init/
+    └─ migration.sql
+  └─ 20260530162046_chat_model_qwen35/
+    └─ migration.sql
+  └─ 20260715133000_mock_interview_acquaintance/
+    └─ migration.sql
+  └─ 20260715143000_message_retract/
+    └─ migration.sql
+  └─ 20260715145000_message_retract_truncate/
+    └─ migration.sql
+  └─ 20260715152000_reversible_recall/
+    └─ migration.sql
+  └─ 20260722090000_lily_initial_friend/
+    └─ migration.sql
+  └─ 20260722143000_emma_initial_friend/
+    └─ migration.sql
+  └─ 20260722160000_retract_ownership/
+    └─ migration.sql
+  └─ 20260722161000_retract_ownership_backfill_fallback/
+    └─ migration.sql
+  └─ 20260724100000_learning_model/
+    └─ migration.sql
+  └─ 20260724150000_scenario_summary_levels/
+    └─ migration.sql
+  └─ 20260812120000_memory_source_key/
+    └─ migration.sql
+
+All migrations have been successfully applied.
+
+$ npm run db:seed -w apps/api
+
+> popcorn-api@0.1.0 db:seed
+> prisma db seed
+
+Environment variables loaded from .env
+Running seed command `tsx prisma/seed.ts` ...
+Seeded 3 NPCs, 2 scenario(s), 6 achievements, 30 learning skills.
+
+🌱  The seed command has been executed.
+
+$ npm run test:api
+
+> popcorn-language@0.1.0 test:api
+> npm run test -w apps/api
+
+
+> popcorn-api@0.1.0 test
+> vitest run
+
+
+ RUN  v2.0.5 /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api
+
+ ✓ tests/integration/scenario-end.test.ts  (5 tests) 116ms
+ ✓ tests/integration/recommend.test.ts  (22 tests) 139ms
+ ✓ tests/integration/learner-model.test.ts  (13 tests) 90ms
+ ✓ tests/integration/message-retract.test.ts  (4 tests) 76ms
+ ✓ tests/integration/stream-chat.test.ts  (6 tests) 80ms
+ ✓ tests/integration/scenario-concurrency.test.ts  (11 tests) 91ms
+ ✓ tests/integration/scenario-turn.test.ts  (6 tests) 65ms
+ ✓ tests/integration/learning-signals.test.ts  (12 tests) 31ms
+ ✓ tests/integration/thread-history.test.ts  (6 tests) 32ms
+ ✓ tests/integration/scenario-trigger.test.ts  (9 tests) 73ms
+ ✓ tests/integration/fact-extract.test.ts  (5 tests) 27ms
+ ✓ tests/unit/scenario-view.test.ts  (10 tests) 3ms
+ ✓ tests/integration/learning-cross-module.test.ts  (2 tests) 42ms
+ ✓ tests/integration/scenario-e2e.test.ts  (1 test) 43ms
+ ✓ tests/integration/stream-chat-scenario.test.ts  (2 tests) 41ms
+ ✓ tests/integration/relationship-progression.test.ts  (5 tests) 58ms
+ ✓ tests/integration/scenario-complete-route.test.ts  (2 tests) 38ms
+ ✓ tests/integration/scenario-lifecycle.test.ts  (4 tests) 27ms
+ ✓ tests/integration/correction-route.test.ts  (3 tests) 32ms
+ ✓ tests/integration/seed-demo.test.ts  (1 test) 81ms
+ ✓ tests/integration/memory-card.test.ts  (4 tests) 21ms
+ ✓ tests/integration/scenario-accept.test.ts  (3 tests) 32ms
+ ✓ tests/integration/achievement-engine.test.ts  (4 tests) 31ms
+ ✓ tests/integration/correction-grammar.test.ts  (8 tests) 4ms
+ ✓ tests/integration/smoke.test.ts  (1 test) 24ms
+ ✓ tests/integration/reset-user-data.test.ts  (1 test) 29ms
+ ✓ tests/integration/stream-chat-correction.test.ts  (2 tests) 36ms
+ ✓ tests/integration/scenario-read-routes.test.ts  (1 test) 22ms
+ ✓ tests/integration/summarize.test.ts  (3 tests) 28ms
+ ✓ tests/integration/achievements-dynamic-route.test.ts  (3 tests) 24ms
+ ✓ tests/integration/recall.test.ts  (4 tests) 19ms
+ ✓ tests/integration/scenario-flat-viewing.test.ts  (3 tests) 26ms
+ ✓ tests/integration/dynamic-achievement.test.ts  (3 tests) 23ms
+ ✓ tests/integration/scenario-relationship.test.ts  (4 tests) 19ms
+ ✓ tests/integration/seed-refresh.test.ts  (1 test) 18ms
+ ✓ tests/unit/longmemeval-adapter.test.ts  (5 tests) 7ms
+ ✓ tests/integration/journey-relationships-route.test.ts  (3 tests) 20ms
+ ✓ tests/integration/memory-eval-route.test.ts  (4 tests) 58ms
+ ✓ tests/integration/memory-eval-harness.test.ts  (1 test) 37ms
+ ✓ tests/integration/onboarding.test.ts  (2 tests) 28ms
+ ✓ tests/integration/npcs.test.ts  (3 tests) 17ms
+ ✓ tests/unit/taxonomy.test.ts  (8 tests) 2ms
+ ✓ tests/integration/scenario-offer.test.ts  (2 tests) 25ms
+ ✓ tests/unit/scenario-grade.test.ts  (9 tests) 1ms
+ ✓ tests/integration/journey-summary-route.test.ts  (3 tests) 22ms
+ ✓ tests/integration/ablation-report.test.ts  (1 test) 149ms
+ ✓ tests/integration/stream-chat-memory.test.ts  (1 test) 27ms
+ ✓ tests/integration/learner-model-route.test.ts  (3 tests) 18ms
+ ✓ tests/integration/npc-known-facts.test.ts  (2 tests) 22ms
+ ✓ tests/unit/prompt-builder.test.ts  (6 tests) 1ms
+ ✓ tests/unit/memory-eval-dataset.test.ts  (5 tests) 6ms
+ ✓ tests/integration/strategy-hybrid.test.ts  (2 tests) 17ms
+ ✓ tests/unit/achievement-rules.test.ts  (8 tests) 1ms
+ ✓ tests/integration/memories-routes.test.ts  (2 tests) 18ms
+ ✓ tests/integration/settings-route.test.ts  (5 tests) 16ms
+ ✓ tests/integration/strategy-semantic.test.ts  (2 tests) 17ms
+ ✓ tests/integration/hono-app.test.ts  (3 tests) 4ms
+ ✓ tests/unit/scenario-prompt.test.ts  (3 tests) 2ms
+ ✓ tests/integration/messages-post.test.ts  (3 tests) 22ms
+ ✓ tests/unit/scenario-choice-quality.test.ts  (3 tests) 2ms
+ ✓ tests/unit/ollama-models.test.ts  (3 tests) 2ms
+ ✓ tests/integration/strategy-summary.test.ts  (1 test) 16ms
+ ✓ tests/integration/profile.test.ts  (3 tests) 18ms
+ ✓ tests/integration/system-reset-route.test.ts  (3 tests) 19ms
+ ✓ tests/integration/static-app.test.ts  (3 tests) 7ms
+ ✓ tests/integration/scenario-decline-validation.test.ts  (2 tests) 19ms
+ ✓ tests/integration/memories-delete.test.ts  (1 test) 15ms
+ ✓ tests/integration/auth-me.test.ts  (3 tests) 18ms
+ ✓ tests/integration/auth-routes.test.ts  (4 tests) 15ms
+ ✓ tests/integration/settings-service.test.ts  (3 tests) 13ms
+ ✓ tests/integration/strategy-recency.test.ts  (1 test) 16ms
+ ✓ tests/unit/scenario-state.test.ts  (5 tests) 1ms
+ ✓ tests/integration/achievements-route.test.ts  (2 tests) 16ms
+ ✓ tests/unit/ablation-report.test.ts  (2 tests)
+ ✓ tests/integration/chat-model-route.test.ts  (1 test) 38ms
+ ✓ tests/integration/post-turn-memory.test.ts  (1 test) 15ms
+ ✓ tests/unit/memory-eval-metrics.test.ts  (5 tests) 1ms
+ ✓ tests/unit/scenario-schemas.test.ts  (4 tests) 2ms
+ ✓ tests/unit/ollama-chatjson.test.ts  (2 tests) 2ms
+ ✓ tests/unit/auth.test.ts  (5 tests) 2ms
+ ✓ tests/unit/scoring-formulas.test.ts  (3 tests) 1ms
+ ✓ tests/integration/accounts.test.ts  (3 tests) 11ms
+ ✓ tests/unit/ollama-chat.test.ts  (1 test) 1ms
+ ✓ tests/integration/journey-streak-route.test.ts  (2 tests) 13ms
+ ✓ tests/unit/streak.test.ts  (4 tests) 2ms
+ ✓ tests/integration/seed-demo-facts.test.ts  (1 test) 42ms
+ ✓ tests/integration/system-models-route.test.ts  (2 tests) 3ms
+ ✓ tests/unit/scenario-transitions.test.ts  (3 tests) 1ms
+ ✓ tests/unit/ollama-health.test.ts  (2 tests) 1ms
+ ✓ tests/unit/sse-events.test.ts  (3 tests) 2ms
+ ✓ tests/unit/http-respond.test.ts  (4 tests) 3ms
+ ✓ tests/unit/seed-data.test.ts  (3 tests) 1ms
+ ✓ tests/integration/schema.test.ts  (1 test) 11ms
+ ✓ tests/unit/scenario-invitation.test.ts  (2 tests) 1ms
+ ✓ tests/unit/ollama-embed.test.ts  (2 tests) 2ms
+ ✓ tests/integration/chat-model-default.test.ts  (2 tests) 2ms
+ ✓ tests/unit/get-strategy.test.ts  (2 tests) 1ms
+ ✓ tests/unit/memory-format.test.ts  (2 tests) 2ms
+ ✓ tests/unit/relationship-stage.test.ts  (1 test) 1ms
+ ✓ tests/unit/cosine.test.ts  (3 tests) 1ms
+ ✓ tests/unit/learning-advice.test.ts  (2 tests) 1ms
+ ✓ tests/unit/lang-detect.test.ts  (4 tests) 1ms
+ ✓ tests/unit/sanity.test.ts  (1 test) 1ms
+
+ Test Files  103 passed (103)
+      Tests  370 passed (370)
+   Start at  18:42:04
+   Duration  14.74s (transform 431ms, setup 0ms, collect 1.99s, tests 2.42s, environment 6ms, prepare 2.66s)
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vitejs.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+stderr | tests/integration/scenario-end.test.ts > runScenarioEnd > falls back to grade "—" and still completes when the summary LLM fails
+[scenario] summary generation failed, using fallback Error: down
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/scenario-end.test.ts:60:58
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:11)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+    at startTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1182:3)
+    at file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:130:11
+    at withEnv (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:94:5)
+    at run (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:116:3)
+    at runBaseTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/base.CC5R_kgU.js:31:3)
+
+stderr | tests/integration/scenario-end.test.ts > runScenarioEnd > falls back to grade "—" and still completes when the summary LLM fails
+[memory] generateMemoryCard failed Error: down
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/scenario-end.test.ts:60:58
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:11)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+    at startTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1182:3)
+    at file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:130:11
+    at withEnv (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:94:5)
+    at run (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:116:3)
+    at runBaseTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/base.CC5R_kgU.js:31:3)
+
+stderr | tests/integration/scenario-end.test.ts > runScenarioEnd > retries a failed Memory card without re-evaluating a completed scenario
+[memory] generateMemoryCard failed Error: memory unavailable
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/scenario-end.test.ts:283:78
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:11)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+    at startTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1182:3)
+    at file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:130:11
+    at withEnv (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:94:5)
+    at run (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:116:3)
+    at runBaseTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/base.CC5R_kgU.js:31:3)
+
+stderr | tests/integration/stream-chat.test.ts > streamChat > saves user + npc messages and emits the W2 event sequence
+[correction] grammar check failed OllamaError: chatJson failed after 3 attempts: TypeError: res.json is not a function
+    at OllamaClient.chatJson (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/llm/ollama.ts:155:11)
+    at Module.correctGrammar (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/correction/grammar.ts:60:17)
+    at streamCasualReply (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/chat/streamChat.ts:143:26)
+    at Module.streamChat (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/chat/streamChat.ts:225:3)
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/stream-chat.test.ts:49:22
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:11)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+    at startTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1182:3)
+
+stderr | tests/integration/stream-chat.test.ts > streamChat > saves user + npc messages and emits the W2 event sequence
+[memory] factExtract failed OllamaError: chatJson failed after 3 attempts: TypeError: res.json is not a function
+    at OllamaClient.chatJson (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/llm/ollama.ts:155:11)
+    at Module.extractAndStoreFacts (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/memory/factExtract.ts:46:15)
+    at Module.runPostTurnMemory (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/memory/postTurn.ts:21:5)
+    at streamCasualReply (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/chat/streamChat.ts:165:3)
+    at Module.streamChat (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/chat/streamChat.ts:225:3)
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/stream-chat.test.ts:49:22
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:11)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+
+stderr | tests/integration/stream-chat.test.ts > streamChat > levels up the relationship from a casual chat when points cross a threshold
+[correction] grammar check failed OllamaError: chatJson failed after 3 attempts: TypeError: res.json is not a function
+    at OllamaClient.chatJson (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/llm/ollama.ts:155:11)
+    at Module.correctGrammar (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/correction/grammar.ts:60:17)
+    at streamCasualReply (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/chat/streamChat.ts:143:26)
+    at Module.streamChat (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/chat/streamChat.ts:225:3)
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/stream-chat.test.ts:121:22
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:11)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+    at startTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1182:3)
+
+stderr | tests/integration/stream-chat.test.ts > streamChat > levels up the relationship from a casual chat when points cross a threshold
+[memory] factExtract failed OllamaError: chatJson failed after 3 attempts: TypeError: res.json is not a function
+    at OllamaClient.chatJson (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/llm/ollama.ts:155:11)
+    at Module.extractAndStoreFacts (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/memory/factExtract.ts:46:15)
+    at Module.runPostTurnMemory (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/memory/postTurn.ts:21:5)
+    at streamCasualReply (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/chat/streamChat.ts:165:3)
+    at Module.streamChat (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/chat/streamChat.ts:225:3)
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/stream-chat.test.ts:121:22
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:11)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+
+stderr | tests/integration/scenario-turn.test.ts > runScenarioTurn (non-final) > falls back (no throw) and still advances when chatJson fails
+[scenario] turn generation failed, using fallback Error: LLM down
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/scenario-turn.test.ts:87:58
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:11)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+    at startTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1182:3)
+    at file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:130:11
+    at withEnv (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:94:5)
+    at run (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:116:3)
+    at runBaseTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/base.CC5R_kgU.js:31:3)
+
+stderr | tests/integration/scenario-turn.test.ts > runScenarioTurn (non-final) > uses a natural fallback closing at the hard safety limit
+[scenario] turn generation failed, using fallback Error: LLM down
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/scenario-turn.test.ts:125:58
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:11)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+    at startTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1182:3)
+    at file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:130:11
+    at withEnv (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:94:5)
+    at run (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:116:3)
+    at runBaseTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/base.CC5R_kgU.js:31:3)
+
+stderr | tests/integration/scenario-turn.test.ts > runScenarioTurn (non-final) > uses a natural fallback closing at the hard safety limit
+[scenario] summary generation failed, using fallback Error: LLM down
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/scenario-turn.test.ts:125:58
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:11)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+    at startTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1182:3)
+    at file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:130:11
+    at withEnv (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:94:5)
+    at run (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:116:3)
+    at runBaseTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/base.CC5R_kgU.js:31:3)
+
+stderr | tests/integration/scenario-turn.test.ts > runScenarioTurn (non-final) > uses a natural fallback closing at the hard safety limit
+[memory] generateMemoryCard failed Error: LLM down
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/scenario-turn.test.ts:125:58
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:11)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+    at startTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1182:3)
+    at file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:130:11
+    at withEnv (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:94:5)
+    at run (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:116:3)
+    at runBaseTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/base.CC5R_kgU.js:31:3)
+
+stderr | tests/integration/fact-extract.test.ts > extractAndStoreFacts > stores facts with null embedding when embed fails (does not throw)
+[memory] embed failed for fact, storing without embedding Error: embed down
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/fact-extract.test.ts:48:40
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:11)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+    at startTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1182:3)
+    at file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:130:11
+    at withEnv (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:94:5)
+    at run (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:116:3)
+    at runBaseTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/base.CC5R_kgU.js:31:3)
+
+stderr | tests/integration/memory-card.test.ts > generateMemoryCard > returns null (never throws) when the LLM fails
+[memory] generateMemoryCard failed Error: down
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/memory-card.test.ts:50:58
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:11)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+    at startTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1182:3)
+    at file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:130:11
+    at withEnv (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:94:5)
+    at run (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:116:3)
+    at runBaseTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/base.CC5R_kgU.js:31:3)
+
+stderr | tests/integration/scenario-accept.test.ts > acceptScenario > still activates with a fallback opening when the LLM fails
+[scenario] opening generation failed, using fallback Error: LLM down
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/scenario-accept.test.ts:58:58
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:11)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+    at startTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1182:3)
+    at file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:130:11
+    at withEnv (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:94:5)
+    at run (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:116:3)
+    at runBaseTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/base.CC5R_kgU.js:31:3)
+
+stderr | tests/integration/correction-grammar.test.ts > correctGrammar > returns null (never throws) when the model call fails
+[correction] grammar check failed Error: LLM down
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/correction-grammar.test.ts:18:58
+    at file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:146:14
+    at file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:61:7
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:17)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+    at startTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1182:3)
+    at file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:130:11
+
+stderr | tests/integration/achievements-dynamic-route.test.ts > dynamic achievement route + isolation > POST returns { achievement: null } gracefully when the LLM is down
+[achievements] dynamic generation failed OllamaError: chatJson failed after 3 attempts: OllamaError: chatJson HTTP 500
+    at OllamaClient.chatJson (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/llm/ollama.ts:155:11)
+    at Module.generateDynamicAchievement (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/achievements/dynamic.ts:59:17)
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/app/api/achievements/generate/route.ts:9:25
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/achievements-dynamic-route.test.ts:72:17
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:11)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+    at startTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1182:3)
+    at file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:130:11
+
+stderr | tests/integration/dynamic-achievement.test.ts > generateDynamicAchievement > returns null (and creates nothing) when the LLM fails
+[achievements] dynamic generation failed Error: LLM down
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/dynamic-achievement.test.ts:46:58
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:11)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+    at startTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1182:3)
+    at file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:130:11
+    at withEnv (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:94:5)
+    at run (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:116:3)
+    at runBaseTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/base.CC5R_kgU.js:31:3)
+
+stderr | tests/integration/stream-chat-memory.test.ts > streamChat memory integration > recalls a known fact into the system prompt for the turn
+[correction] grammar check failed OllamaError: chatJson failed after 3 attempts: [
+  {
+    "code": "invalid_type",
+    "expected": "boolean",
+    "received": "undefined",
+    "path": [
+      "hasIssue"
+    ],
+    "message": "Required"
+  }
+]
+    at OllamaClient.chatJson (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/llm/ollama.ts:155:11)
+    at Module.correctGrammar (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/correction/grammar.ts:60:17)
+    at streamCasualReply (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/chat/streamChat.ts:143:26)
+    at Module.streamChat (/Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/src/server/chat/streamChat.ts:225:3)
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/stream-chat-memory.test.ts:49:22
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:11)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+    at startTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1182:3)
+
+stderr | tests/integration/post-turn-memory.test.ts > runPostTurnMemory > extracts facts and is fully guarded against LLM failure
+[memory] factExtract failed Error: llm down
+    at /Users/bytedance/Desktop/Popcorn/popcorn_language/apps/api/tests/integration/post-turn-memory.test.ts:28:59
+    at runTest (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:960:11)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runSuite (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1116:15)
+    at runFiles (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1173:5)
+    at startTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/@vitest/runner/dist/index.js:1182:3)
+    at file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:130:11
+    at withEnv (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:94:5)
+    at run (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/runBaseTests.CyvqmuC9.js:116:3)
+    at runBaseTests (file:///Users/bytedance/Desktop/Popcorn/popcorn_language/node_modules/vitest/dist/chunks/base.CC5R_kgU.js:31:3)
+
+
+$ npm exec -w apps/api -- tsx scripts/recommendation-sensitivity.ts
+{
+  "ablations": [
+    {
+      "id": "default",
+      "weights": {
+        "weakness": 0.55,
+        "evidence": 0.2,
+        "cefr": 0.15,
+        "profile": 0.1
+      },
+      "changedTop1": 0,
+      "ties": 0
+    },
+    {
+      "id": "equal",
+      "weights": {
+        "weakness": 0.25,
+        "evidence": 0.25,
+        "cefr": 0.25,
+        "profile": 0.25
+      },
+      "changedTop1": 8,
+      "ties": 0
+    },
+    {
+      "id": "weakness-only",
+      "weights": {
+        "weakness": 1,
+        "evidence": 0,
+        "cefr": 0,
+        "profile": 0
+      },
+      "changedTop1": 19,
+      "ties": 12
+    },
+    {
+      "id": "without-weakness",
+      "weights": {
+        "weakness": 0,
+        "evidence": 0.44444444444444453,
+        "cefr": 0.33333333333333337,
+        "profile": 0.22222222222222227
+      },
+      "changedTop1": 8,
+      "ties": 0
+    },
+    {
+      "id": "without-evidence",
+      "weights": {
+        "weakness": 0.6875,
+        "evidence": 0,
+        "cefr": 0.18749999999999997,
+        "profile": 0.125
+      },
+      "changedTop1": 0,
+      "ties": 0
+    },
+    {
+      "id": "without-cefr",
+      "weights": {
+        "weakness": 0.6470588235294118,
+        "evidence": 0.23529411764705885,
+        "cefr": 0,
+        "profile": 0.11764705882352942
+      },
+      "changedTop1": 7,
+      "ties": 0
+    },
+    {
+      "id": "without-profile",
+      "weights": {
+        "weakness": 0.6111111111111112,
+        "evidence": 0.22222222222222224,
+        "cefr": 0.16666666666666666,
+        "profile": 0
+      },
+      "changedTop1": 19,
+      "ties": 0
+    }
+  ],
+  "boundaryChecks": [
+    "relationship removes flat viewing (one candidate)",
+    "dismiss cooldown (one candidate)",
+    "open session plus dismissal (zero candidates)",
+    "completion cooldown plus dismissal (zero candidates)",
+    "hidden completion no longer suppresses flat viewing",
+    "CEFR excludes too-hard candidate (temporary template)",
+    "retracted correction excluded from aggregation",
+    "cascade-hidden correction excluded from aggregation",
+    "hidden scenario evidence excluded from aggregation"
+  ],
+  "casesWithAnyFlip": 12,
+  "flippedComparisons": 90,
+  "comparisonCount": 4680
+}

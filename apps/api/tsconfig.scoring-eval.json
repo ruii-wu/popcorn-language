@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["scripts/hybrid-sensitivity.ts", "scripts/recommendation-sensitivity.ts"],
+  "exclude": ["node_modules"]
+}

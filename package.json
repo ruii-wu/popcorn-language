@@ -30,6 +30,9 @@
     "verify:eval": "node scripts/check-node.mjs && npm run report:ablation && npm run eval:memory:longmemeval -- --limit=60 --k=5",
     "report:ablation": "npm run report:ablation -w apps/api",
     "eval:memory:longmemeval": "npm run eval:memory:longmemeval -w apps/api --",
+    "eval:hybrid:sensitivity": "node scripts/check-node.mjs && npm exec -w apps/api -- tsx scripts/hybrid-sensitivity.ts",
+    "eval:recommendation:sensitivity": "node scripts/check-node.mjs && node scripts/eval-recommendation-sensitivity.mjs",
+    "typecheck:scoring-eval": "npm exec -w apps/api -- tsc --noEmit -p tsconfig.scoring-eval.json",
     "smoke:web": "node scripts/smoke-web.mjs"
   },
   "devDependencies": {

@@ -75,6 +75,20 @@ and creates the production web bundle. `verify:eval` is intentionally separate b
 downloads the public dataset into ignored `.cache/eval/` and uses the configured Ollama embedding
 model. Evaluation outputs are written under `docs/reports/data/`.
 
+Exploratory scoring evaluations are separate from the release gate and do not change
+the production weights:
+
+```bash
+npm run eval:hybrid:sensitivity          # existing LongMemEval cache + Ollama embedder
+npm run eval:recommendation:sensitivity  # synthetic profiles in disposable SQLite; offline
+npm run typecheck:scoring-eval           # typecheck the two evaluation scripts
+```
+
+The Hybrid scan reuses the same 60 questions as the original benchmark, so it is not
+a held-out test. Recommendation ablations measure ranking behavior, not teaching
+quality. See [the scoring evaluation notes](docs/reports/scoring-evaluation.md) for
+results, limitations, and follow-up validation.
+
 ## Demo
 
 ```bash

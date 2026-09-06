@@ -3,9 +3,15 @@ import type { MemoryStrategy, RecallQuery, RecalledItem, StrategyDeps } from '..
 import { loadCandidates } from '../candidates';
 import { cosineSimilarity } from '../cosine';
 
-const HALF_LIFE_HOURS = 72; // recency weight halves every 3 days
-const SEMANTIC_WEIGHT = 0.7;
-const RECENCY_WEIGHT = 0.3;
+export const HYBRID_PARAMETERS = { semanticWeight: 0.7, recencyWeight: 0.3, halfLifeHours: 72 };
+
+export function hybridScore(semantic: number, ageHours: number, params = HYBRID_PARAMETERS): number {
+  if (!Number.isFinite(params.halfLifeHours) || params.halfLifeHours <= 0) {
+    throw new Error('Hybrid half-life must be finite and positive');
+  }
+  return params.semanticWeight * semantic
+    + params.recencyWeight * Math.pow(0.5, ageHours / params.halfLifeHours);
+}
 
 // Proposed method: semantic score fused with a time-decay recency weight (spec §九).
 export class HybridStrategy implements MemoryStrategy {
@@ -29,8 +35,7 @@ export class HybridStrategy implements MemoryStrategy {
       .map((c) => {
         const sem = cosineSimilarity(qv, c.embedding as number[]);
         const ageHours = (now - c.createdAt.getTime()) / 3.6e6;
-        const recency = Math.pow(0.5, ageHours / HALF_LIFE_HOURS);
-        return { id: c.id, kind: c.kind, text: c.text, score: SEMANTIC_WEIGHT * sem + RECENCY_WEIGHT * recency };
+        return { id: c.id, kind: c.kind, text: c.text, score: hybridScore(sem, ageHours) };
       })
       .sort((a, b) => b.score - a.score)
       .slice(0, q.k);

@@ -8,8 +8,15 @@ import { STAGE_VALUE } from '@/server/scenario/trigger';
 export const DISMISS_COOLDOWN_DAYS = 3;
 export const COMPLETION_COOLDOWN_DAYS = 7;
 
-// Scoring weights (per spec — sum to 1.0 before repetition penalty).
+// Cooldowns are eligibility filters, not a penalty in this weighted sum.
 export const WEIGHTS = { weakness: 0.55, evidence: 0.20, cefr: 0.15, profile: 0.10 } as const;
+export type RecommendationWeights = Record<keyof typeof WEIGHTS, number>;
+
+export function weightedRecommendationScore(components: RecommendationWeights, weights: RecommendationWeights = WEIGHTS): number {
+  const composite = weights.weakness * components.weakness + weights.evidence * components.evidence
+    + weights.cefr * components.cefr + weights.profile * components.profile;
+  return Number(composite.toFixed(4));
+}
 
 export type RecommendationSource = 'learner_model' | 'novelty';
 
@@ -154,7 +161,7 @@ function evidenceScore(model: SkillState[], targetSkills: string[]): number {
   if (targetSkills.length === 0) return 0;
   const targeted = model.filter((s) => targetSkills.includes(s.skillCode));
   if (targeted.length === 0) return 0;
-  // Cap at 5 evidence per skill — beyond that, more data doesn't raise confidence.
+  // Cap the evidence count at five observations per target skill.
   const avg = targeted.reduce((sum, s) => sum + Math.min(1, s.evidenceN / 5), 0) / targeted.length;
   return avg;
 }
@@ -196,6 +203,22 @@ function profileFitScore(template: ScenarioTemplate, profile: UserProfile | null
     }
   }
   return Math.min(1, hits / 3);
+}
+
+export function recommendationComponents(
+  model: SkillState[], template: ScenarioTemplate, targetSkills: string[],
+  userCefr: string | null, profile: UserProfile | null,
+): { components: RecommendationWeights; drivers: SkillState[] } {
+  const weakness = weaknessScore(model, targetSkills);
+  return {
+    components: {
+      weakness: weakness.score,
+      evidence: evidenceScore(model, targetSkills),
+      cefr: cefrFitScore(template.difficulty, userCefr),
+      profile: profileFitScore(template, profile),
+    },
+    drivers: weakness.drivers,
+  };
 }
 
 // ---------- Filters ----------
@@ -310,19 +333,11 @@ export async function recommendScenarios(deps: RecommendDeps): Promise<Recommend
   if (candidates.length === 0) return [];
 
   const scored = candidates.map((c) => {
-    const { score: wScore, drivers } = weaknessScore(model.skills, c.targetSkills);
-    const eScore = evidenceScore(model.skills, c.targetSkills);
-    const cScore = cefrFitScore(c.template.difficulty, userCefr);
-    const pScore = profileFitScore(c.template, profile);
-    const composite =
-      WEIGHTS.weakness * wScore +
-      WEIGHTS.evidence * eScore +
-      WEIGHTS.cefr * cScore +
-      WEIGHTS.profile * pScore;
+    const { components, drivers } = recommendationComponents(model.skills, c.template, c.targetSkills, userCefr, profile);
     const source: RecommendationSource = drivers.length > 0 ? 'learner_model' : 'novelty';
     return {
       candidate: c,
-      score: Number(composite.toFixed(4)),
+      score: weightedRecommendationScore(components),
       source,
       drivers,
     };
