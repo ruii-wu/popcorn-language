@@ -61,10 +61,15 @@ interface CompletionCommit {
 
 export async function* runScenarioEnd(deps: EndDeps): AsyncGenerator<SseEvent> {
   const { prisma, ollama, session } = deps;
+  const visible = await prisma.scenarioSession.findFirst({
+    where: { id: session.id, userId: session.userId, hiddenAt: null, status: { in: ['active', 'completed'] } },
+    select: { id: true },
+  });
+  if (!visible) throw new Error('Scenario is no longer available for completion');
   const targetSkills = parseTargetSkills(session.template.targetSkills);
 
   const history = await prisma.message.findMany({
-    where: { scenarioSessionId: session.id, role: { in: ['user', 'npc-roleplay'] } },
+    where: { scenarioSessionId: session.id, hiddenAt: null, retractedAt: null, role: { in: ['user', 'npc-roleplay'] } },
     orderBy: { createdAt: 'asc' },
   });
   const transcript = history.map((m) => `${m.userId ? 'User' : 'NPC'}: ${m.text}`).join('\n');
@@ -95,7 +100,7 @@ export async function* runScenarioEnd(deps: EndDeps): AsyncGenerator<SseEvent> {
   // A completed session can re-enter this function to compensate optional work
   // such as a failed Memory card. Never ask the model to evaluate it again.
   const existing = await prisma.scenarioSession.findFirst({
-    where: { id: session.id, userId: session.userId, status: 'completed' },
+    where: { id: session.id, userId: session.userId, status: 'completed', hiddenAt: null },
     include: { summary: true },
   });
   let completion: CompletionCommit | null = existing?.summary
@@ -133,7 +138,7 @@ export async function* runScenarioEnd(deps: EndDeps): AsyncGenerator<SseEvent> {
     const grade = normalizeGrade(summary.grade);
     completion = await prisma.$transaction(async (tx): Promise<CompletionCommit | null> => {
       const claim = await tx.scenarioSession.updateMany({
-        where: { id: session.id, userId: session.userId, status: 'active' },
+        where: { id: session.id, userId: session.userId, status: 'active', hiddenAt: null },
         data: { status: 'completed', endedAt: new Date() },
       });
       if (claim.count === 0) return null;
@@ -239,7 +244,7 @@ export async function* runScenarioEnd(deps: EndDeps): AsyncGenerator<SseEvent> {
 
     if (!completion) {
       const persisted = await prisma.scenarioSession.findFirst({
-        where: { id: session.id, userId: session.userId, status: 'completed' },
+        where: { id: session.id, userId: session.userId, status: 'completed', hiddenAt: null },
         include: { summary: true },
       });
       if (!persisted?.summary) {

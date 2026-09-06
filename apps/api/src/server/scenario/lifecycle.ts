@@ -18,7 +18,7 @@ export interface DeclinedScenario {
 }
 
 async function ownedSession(prisma: PrismaClient, userId: string, sessionId: string) {
-  const s = await prisma.scenarioSession.findFirst({ where: { id: sessionId, userId } });
+  const s = await prisma.scenarioSession.findFirst({ where: { id: sessionId, userId, hiddenAt: null } });
   if (!s) throw new ScenarioError('NOT_FOUND', 'Scenario session not found');
   return s;
 }
@@ -30,16 +30,19 @@ function assertTransition(from: string, to: string) {
 export async function declineScenario(deps: LifecycleDeps): Promise<DeclinedScenario> {
   const s = await ownedSession(deps.prisma, deps.userId, deps.sessionId);
   assertTransition(s.status, 'declined');
-  await deps.prisma.scenarioSession.update({
-    where: { id: s.id },
-    data: { status: 'declined', declineReason: deps.reason ?? null, endedAt: new Date() },
-  });
-  await deps.prisma.relationship.updateMany({
-    where: { userId: deps.userId, npcId: s.npcId },
-    data: { declineCount: { increment: 1 } },
-  });
-  await deps.prisma.activityEvent.create({
-    data: { userId: deps.userId, type: 'scenario_declined', payload: JSON.stringify({ sessionId: s.id }) },
+  await deps.prisma.$transaction(async (tx) => {
+    const claim = await tx.scenarioSession.updateMany({
+      where: { id: s.id, userId: deps.userId, hiddenAt: null, status: s.status },
+      data: { status: 'declined', declineReason: deps.reason ?? null, endedAt: new Date() },
+    });
+    if (claim.count === 0) throw new ScenarioError('CONFLICT', 'Scenario has changed');
+    await tx.relationship.updateMany({
+      where: { userId: deps.userId, npcId: s.npcId },
+      data: { declineCount: { increment: 1 } },
+    });
+    await tx.activityEvent.create({
+      data: { userId: deps.userId, type: 'scenario_declined', payload: JSON.stringify({ sessionId: s.id }) },
+    });
   });
 
   let deferredText: string | null = null;
@@ -91,17 +94,20 @@ export async function declineScenario(deps: LifecycleDeps): Promise<DeclinedScen
 export async function pauseScenario(deps: LifecycleDeps): Promise<void> {
   const s = await ownedSession(deps.prisma, deps.userId, deps.sessionId);
   assertTransition(s.status, 'paused');
-  await deps.prisma.scenarioSession.update({ where: { id: s.id }, data: { status: 'paused' } });
+  const claim = await deps.prisma.scenarioSession.updateMany({ where: { id: s.id, userId: deps.userId, hiddenAt: null, status: s.status }, data: { status: 'paused' } });
+  if (claim.count === 0) throw new ScenarioError('CONFLICT', 'Scenario has changed');
 }
 
 export async function resumeScenario(deps: LifecycleDeps): Promise<void> {
   const s = await ownedSession(deps.prisma, deps.userId, deps.sessionId);
   assertTransition(s.status, 'active');
-  await deps.prisma.scenarioSession.update({ where: { id: s.id }, data: { status: 'active' } });
+  const claim = await deps.prisma.scenarioSession.updateMany({ where: { id: s.id, userId: deps.userId, hiddenAt: null, status: s.status }, data: { status: 'active' } });
+  if (claim.count === 0) throw new ScenarioError('CONFLICT', 'Scenario has changed');
 }
 
 export async function abortScenario(deps: LifecycleDeps): Promise<void> {
   const s = await ownedSession(deps.prisma, deps.userId, deps.sessionId);
   assertTransition(s.status, 'aborted');
-  await deps.prisma.scenarioSession.update({ where: { id: s.id }, data: { status: 'aborted', endedAt: new Date() } });
+  const claim = await deps.prisma.scenarioSession.updateMany({ where: { id: s.id, userId: deps.userId, hiddenAt: null, status: s.status }, data: { status: 'aborted', endedAt: new Date() } });
+  if (claim.count === 0) throw new ScenarioError('CONFLICT', 'Scenario has changed');
 }

@@ -32,11 +32,11 @@ export async function acceptScenario(deps: AcceptDeps): Promise<AcceptResult> {
   const { prisma, ollama, userId, sessionId } = deps;
 
   const session = await prisma.scenarioSession.findFirst({
-    where: { id: sessionId, userId },
+    where: { id: sessionId, userId, hiddenAt: null },
     include: { template: true, npc: true },
   });
   if (!session) throw new ScenarioError('NOT_FOUND', 'Scenario session not found');
-  if (!canTransition(session.status, 'active')) {
+  if (!['invited', 'accepted'].includes(session.status) || !canTransition(session.status, 'active')) {
     throw new ScenarioError('CONFLICT', `cannot accept a session in status "${session.status}"`);
   }
 
@@ -69,25 +69,29 @@ export async function acceptScenario(deps: AcceptDeps): Promise<AcceptResult> {
   turn.isFinalTurn = false;
   turn.suggestedChoicesNext = sanitizeScenarioChoices(turn.suggestedChoicesNext, [], 3);
 
-  const npcMsg = await prisma.message.create({
-    data: {
-      threadId: session.threadId, userId: null, role: 'npc-roleplay', text: turn.npcReply,
-      scenarioSessionId: session.id, meta: JSON.stringify({ roleplayCharacter: roleName }),
-    },
-  });
-  await prisma.scenarioTurn.create({
-    data: {
-      sessionId: session.id, turnIndex: 0, npcMessageId: npcMsg.id,
-      stateBefore: '{}', stateAfter: JSON.stringify(state),
-      nextChoices: JSON.stringify(turn.suggestedChoicesNext),
-    },
-  });
-  await prisma.scenarioSession.update({
-    where: { id: session.id },
-    data: { status: 'active', startedAt: new Date(), state: JSON.stringify(state) },
-  });
-  await prisma.activityEvent.create({
-    data: { userId, type: 'scenario_accepted', payload: JSON.stringify({ sessionId: session.id, templateId: session.templateId }) },
+  const npcMsg = await prisma.$transaction(async (tx) => {
+    const claim = await tx.scenarioSession.updateMany({
+      where: { id: session.id, userId, hiddenAt: null, status: session.status, state: session.state },
+      data: { status: 'active', startedAt: new Date(), endedAt: null, state: JSON.stringify(state) },
+    });
+    if (claim.count === 0) throw new ScenarioError('CONFLICT', 'Scenario changed while preparing the opening');
+    const opening = await tx.message.create({
+      data: {
+        threadId: session.threadId, userId: null, role: 'npc-roleplay', text: turn.npcReply,
+        scenarioSessionId: session.id, meta: JSON.stringify({ roleplayCharacter: roleName }),
+      },
+    });
+    await tx.scenarioTurn.create({
+      data: {
+        sessionId: session.id, turnIndex: 0, npcMessageId: opening.id,
+        stateBefore: '{}', stateAfter: JSON.stringify(state),
+        nextChoices: JSON.stringify(turn.suggestedChoicesNext),
+      },
+    });
+    await tx.activityEvent.create({
+      data: { userId, type: 'scenario_accepted', payload: JSON.stringify({ sessionId: session.id, templateId: session.templateId }) },
+    });
+    return opening;
   });
 
   const fresh = await prisma.scenarioSession.findUniqueOrThrow({

@@ -4,6 +4,7 @@ import {
   isCasualComposerDisabled,
   messageDayKey,
   messageDayLabel,
+  prependTimeline,
 } from './chatState';
 
 describe('isCasualComposerDisabled', () => {
@@ -48,4 +49,10 @@ describe('message day formatting', () => {
     expect(messageDayLabel(new Date(2026, 7, 26, 9), now)).toBe('Aug 26');
     expect(messageDayKey(new Date(2026, 7, 26, 9))).toBe(messageDayKey(new Date(2026, 7, 26, 22)));
   });
+});
+
+it('prepends older timeline pages without duplicates or replacing current edits', () => {
+  const current = [{ id: 'b', text: 'edited' }, { id: 'c', text: 'latest' }];
+  expect(prependTimeline([{ id: 'scenario:a', text: 'review' }, { id: 'b', text: 'old' }], current))
+    .toEqual([{ id: 'scenario:a', text: 'review' }, ...current]);
 });

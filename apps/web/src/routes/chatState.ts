@@ -5,6 +5,15 @@ export interface CasualComposerState {
   decliningScenario: boolean;
 }
 
+export function prependTimeline<T extends { id?: string }>(older: T[], current: T[]): T[] {
+  const seen = new Set(current.map((item) => item.id).filter(Boolean));
+  return older.filter((item) => {
+    if (!item.id || seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  }).concat(current);
+}
+
 export function isCasualComposerDisabled(state: CasualComposerState): boolean {
   return state.sending
     || !!state.recallingId

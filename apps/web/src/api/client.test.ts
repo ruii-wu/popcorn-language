@@ -3,9 +3,51 @@ import { api, parseFrame } from './client';
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('parseFrame', () => {
+  it('reports a mid-stream disconnect after typing has started', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(new ReadableStream({
+      start(c) { c.enqueue(new TextEncoder().encode('event: typing_start\ndata: {}\n\n')); },
+      pull(c) { c.error(new Error('connection lost')); },
+    }))));
+    const events: string[] = [];
+    await api.streamFreetype('s1', 'hello', (event) => events.push(event.type));
+    expect(events).toEqual(['typing_start', 'error', 'done']);
+  });
+
+  it('treats EOF without a terminal event as an interrupted response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('event: typing_start\ndata: {}\n\n')));
+    const events: string[] = [];
+    await api.streamChoose('s1', 'a', (event) => events.push(event.type));
+    expect(events).toEqual(['typing_start', 'error', 'done']);
+  });
+
+  it('does not report an error after an intentional mid-stream abort', async () => {
+    const abort = new AbortController();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(new ReadableStream({
+      start(c) { c.enqueue(new TextEncoder().encode('event: typing_start\ndata: {}\n\n')); },
+      pull(c) { abort.abort(); c.error(new Error('aborted')); },
+    }))));
+    const events: string[] = [];
+    await api.streamMessage('lily', 'hello', (event) => events.push(event.type), abort.signal);
+    expect(events).not.toContain('error');
+  });
+
+  it('stops processing frames after done', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('event: done\ndata: {}\n\nevent: token\ndata: {"delta":"late"}\n\n')));
+    const events: string[] = [];
+    await api.streamMessage('lily', 'hello', (event) => events.push(event.type));
+    expect(events).toEqual(['done']);
+  });
+
+  it('passes a timeline cursor including scenario ids', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ messages: [], hasMore: false })));
+    vi.stubGlobal('fetch', fetchMock);
+    await api.thread('lily', 50, 'scenario:older');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/threads/lily/messages?limit=50&before=scenario%3Aolder');
+  });
   it('parses an event line + JSON data line', () => {
     expect(parseFrame('event: token\ndata: {"text":"hi"}')).toEqual({
       type: 'token',

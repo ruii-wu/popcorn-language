@@ -86,25 +86,40 @@ async function streamPost<E extends { type: string; data: unknown } = { type: st
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buf = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += decoder.decode(value, { stream: true });
-    let idx;
-    while ((idx = buf.indexOf('\n\n')) >= 0) {
-      const frame = buf.slice(0, idx);
-      buf = buf.slice(idx + 2);
-      if (frame.trim()) {
-        const event = parseFrame(frame) as E;
-        onEvent(event);
-        if (event.type === 'error') {
-          await reader.cancel();
-          return;
+  let terminal = false;
+  const emitFrame = (frame: string) => {
+    const event = parseFrame(frame) as E;
+    terminal = event.type === 'error' || event.type === 'done';
+    onEvent(event);
+  };
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf('\n\n')) >= 0) {
+        const frame = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        if (frame.trim()) {
+          if (signal?.aborted) return;
+          emitFrame(frame);
+          if (terminal) return;
         }
       }
     }
+    buf += decoder.decode();
+    if (buf.trim() && !signal?.aborted) emitFrame(buf);
+    if (!terminal && !signal?.aborted) throw new Error('Response ended before completion');
+  } catch (error) {
+    if (!signal?.aborted && !terminal) {
+      onEvent({ type: 'error', data: { code: 'STREAM_INTERRUPTED', message: String(error) } } as E);
+      onEvent({ type: 'done', data: {} } as E);
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
   }
-  if (buf.trim()) onEvent(parseFrame(buf) as E);
 }
 
 export function parseFrame(frame: string): { type: string; data: unknown } {
@@ -132,8 +147,9 @@ export const api = {
   logout: () => apiPost('/api/auth/logout', {}),
   // chat
   npcs: (): Promise<NpcListItem[]> => apiGet<NpcListItem[]>('/api/npcs'),
-  thread: (npcId: string, limit?: number): Promise<ThreadResponse> =>
-    apiGet<ThreadResponse>('/api/threads/' + npcId + '/messages?limit=' + (limit || 50)),
+  thread: (npcId: string, limit?: number, before?: string): Promise<ThreadResponse> =>
+    apiGet<ThreadResponse>('/api/threads/' + encodeURIComponent(npcId) + '/messages?limit=' + (limit || 50)
+      + (before ? '&before=' + encodeURIComponent(before) : '')),
   recallMessage: (npcId: string, messageId: string): Promise<OkResponse> =>
     req<OkResponse>('DELETE', '/api/threads/' + npcId + '/messages/' + messageId),
   restoreRecalledMessage: (npcId: string, messageId: string): Promise<OkResponse> =>

@@ -84,6 +84,7 @@ export function useScenarioSession(npcId: string | null) {
   const sessionsSeqRef = useRef(0);
   const resumeSeqRef = useRef(0);
   const memoryRetrySessionsRef = useRef(new Set<string>());
+  const turnSeqRef = useRef(0);
   liveSidRef.current = session ? session.id : null;
 
   function invalidateResume() {
@@ -123,6 +124,7 @@ export function useScenarioSession(npcId: string | null) {
     setCompletionFailed(false); setRetryingCompletion(false);
     setReviewingSessionId(null); setReviewErrorSessionId(null); setDeclinedReply(null);
     declineSeqRef.current += 1;
+    turnSeqRef.current += 1;
     resumeSeqRef.current += 1;
     if (!npcId) return;
     refreshSessions();
@@ -130,9 +132,44 @@ export function useScenarioSession(npcId: string | null) {
   }, [npcId]);
 
   // Shared SSE handler for choose/freetype turns.
-  function turnHandler(sid: string) {
+  async function recoverTurn(sid: string, requestId: number) {
+    setNpcTyping(false);
+    setChoices([]);
+    setChoiceDisabled(true);
+    try {
+      const detail = await api.session(sid);
+      if (liveSidRef.current !== sid || turnSeqRef.current !== requestId) return;
+      setMessages(transcriptToMessages(detail.transcript || []));
+      setTranscript(detail.transcript || []);
+      setSummary(detail.summary);
+      setHudState(detail.state as HudState);
+      const pending = needsCompletionRetry(detail.state, detail.summary);
+      setCompletionFailed(pending);
+      if (detail.session.status === 'completed') {
+        setSession((prev) => prev ? { ...prev, status: 'completed', grade: detail.session.grade } : prev);
+      } else if (detail.session.status === 'active') {
+        setChoices(pending ? [] : (detail.choices || []));
+        setMessages((prev) => prev.concat({ from: 'system', text: 'Connection interrupted. Saved progress has been restored.' }));
+      } else {
+        await refreshSessions();
+        if (liveSidRef.current !== sid || turnSeqRef.current !== requestId) return;
+      }
+      setChoiceDisabled(pending);
+    } catch (error) {
+      if (liveSidRef.current !== sid || turnSeqRef.current !== requestId) return;
+      if ((error as { status?: number }).status === 404) {
+        clearForRecall();
+        void refreshSessions();
+      } else {
+        setChoiceDisabled(false);
+        setMessages((prev) => prev.concat({ from: 'system', text: 'Connection error. Please reconnect and resume the scenario to reload saved progress.' }));
+      }
+    }
+  }
+
+  function turnHandler(sid: string, requestId = turnSeqRef.current) {
     return (event: ScenarioStreamEvent) => {
-      if (liveSidRef.current !== sid) return; // stale: user switched NPC / ended
+      if (liveSidRef.current !== sid || requestId !== turnSeqRef.current) return;
       if (event.type === 'typing_start') setNpcTyping(true);
       else if (event.type === 'typing_end') setNpcTyping(false);
       else if (event.type === 'message_complete') {
@@ -158,8 +195,7 @@ export function useScenarioSession(npcId: string | null) {
         if (event.data.code === 'END_FAILED') {
           setChoices([]); setChoiceDisabled(true); setCompletionFailed(true);
         } else {
-          setChoiceDisabled(false);
-          setMessages((prev) => prev.concat({ from: 'system', text: 'Connection error — please try again.' }));
+          void recoverTurn(sid, requestId);
         }
       }
     };
@@ -314,6 +350,7 @@ export function useScenarioSession(npcId: string | null) {
   }
 
   function clearForRecall() {
+    turnSeqRef.current += 1;
     invalidateResume();
     setSession(null); setResumable(null); setMessages([]); setChoices([]); setHudState(null); setSummary(null);
     setTranscript([]); setNpcTyping(false); setEnding(false); setReviewingSessionId(null);
@@ -383,7 +420,8 @@ export function useScenarioSession(npcId: string | null) {
     setChoiceDisabled(true);
     setChoices([]);
     setMessages((prev) => prev.concat({ from: 'user', text: choice.text, time: nowTime() }));
-    api.streamChoose(sid, choice.id, turnHandler(sid), choiceToTurnPayload(choice));
+    const requestId = ++turnSeqRef.current;
+    void api.streamChoose(sid, choice.id, turnHandler(sid, requestId), choiceToTurnPayload(choice));
   }
 
   function freetype(text: string) {
@@ -392,7 +430,8 @@ export function useScenarioSession(npcId: string | null) {
     setChoiceDisabled(true);
     setChoices([]); // typing freely supersedes the stale choice cards
     setMessages((prev) => prev.concat({ from: 'user', text, time: nowTime() }));
-    api.streamFreetype(sid, text, turnHandler(sid));
+    const requestId = ++turnSeqRef.current;
+    void api.streamFreetype(sid, text, turnHandler(sid, requestId));
   }
 
   const status: ScenarioStatus = session ? session.status : null;

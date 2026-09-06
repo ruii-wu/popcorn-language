@@ -1,7 +1,7 @@
 // Popcorn Language — Web Main App
 // 3-pane layout: Conversations rail + Chat + Right context panel
 
-import { Fragment, useState, useEffect, useRef } from 'react';
+import { Fragment, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import type { ThreadMessage, NpcDetail, MemoryItem, ScenarioChoice } from '@popcorn/shared';
@@ -19,6 +19,7 @@ import {
   isCasualComposerDisabled,
   messageDayKey,
   messageDayLabel,
+  prependTimeline,
 } from './chatState';
 import {
   ScenChatHeader,
@@ -386,6 +387,9 @@ export default function App() {
   const [npcs, setNpcs] = useState<any[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [historyError, setHistoryError] = useState(false);
   const [typing, setTyping] = useState(false);
   const [streaming, setStreaming] = useState('');   // live NPC token buffer
   const [sending, setSending] = useState(false);
@@ -399,6 +403,10 @@ export default function App() {
   const activeIdRef = useRef<string | null>(activeId);
   const chatStreamSeqRef = useRef(0);
   const chatAbortRef = useRef<AbortController | null>(null);
+  const historySeqRef = useRef(0);
+  const olderPendingRef = useRef(false);
+  const prependScrollRef = useRef<{ height: number; top: number } | null>(null);
+  const skipAutoScrollRef = useRef(false);
   const scen = useScenarioSession(activeId);
   const casualComposerDisabled = isCasualComposerDisabled({
     sending,
@@ -438,13 +446,22 @@ export default function App() {
   useEffect(() => {
     if (!activeId) return;
     let cancelled = false;
+    const historySeq = ++historySeqRef.current;
+    olderPendingRef.current = false;
+    prependScrollRef.current = null;
+    setHasMore(false); setLoadingOlder(false); setHistoryError(false);
     chatAbortRef.current = null;
     chatStreamSeqRef.current += 1;
     setStreaming(''); setTyping(false); setSending(false); setMessages([]); setDetail(null); setMemories([]);
     setRecallingId(null);
     setComposerDraft('');
     api.thread(activeId)
-      .then((r) => { if (!cancelled) setMessages((r.messages || []).map(mapMsg)); })
+      .then((r) => {
+        if (!cancelled && historySeq === historySeqRef.current) {
+          setMessages((r.messages || []).map(mapMsg));
+          setHasMore(r.hasMore);
+        }
+      })
       .catch(() => { if (!cancelled) setMessages([]); });
     api.npcDetail(activeId)
       .then((r) => { if (!cancelled) setDetail(r); })
@@ -454,12 +471,26 @@ export default function App() {
       .catch(() => { if (!cancelled) setMemories([]); });
     return () => {
       cancelled = true;
+      historySeqRef.current += 1;
       chatAbortRef.current = null;
       chatStreamSeqRef.current += 1;
     };
   }, [activeId]);
 
+  useLayoutEffect(() => {
+    if (prependScrollRef.current && scrollRef.current) {
+      const { height, top } = prependScrollRef.current;
+      scrollRef.current.scrollTop = top + scrollRef.current.scrollHeight - height;
+      prependScrollRef.current = null;
+      skipAutoScrollRef.current = true;
+    }
+  }, [messages]);
+
   useEffect(() => {
+    if (skipAutoScrollRef.current) {
+      skipAutoScrollRef.current = false;
+      return;
+    }
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, streaming, typing, scen.npcTyping, scen.declinedReply]);
 
@@ -544,10 +575,44 @@ export default function App() {
     setSending(false);
   }
 
+  function invalidateHistory() {
+    historySeqRef.current += 1;
+    olderPendingRef.current = false;
+    prependScrollRef.current = null;
+    setLoadingOlder(false); setHistoryError(false);
+  }
+
+  async function loadOlder() {
+    const before = messages[0]?.id;
+    if (!activeId || !before || !hasMore || olderPendingRef.current || recallingId) return;
+    const npcId = activeId;
+    const requestId = historySeqRef.current;
+    olderPendingRef.current = true;
+    setLoadingOlder(true); setHistoryError(false);
+    try {
+      const page = await api.thread(npcId, 50, before);
+      if (activeIdRef.current !== npcId || historySeqRef.current !== requestId) return;
+      if (scrollRef.current) {
+        prependScrollRef.current = { height: scrollRef.current.scrollHeight, top: scrollRef.current.scrollTop };
+      }
+      setMessages((current) => prependTimeline(page.messages.map(mapMsg), current));
+      setExpanded(-1);
+      setHasMore(page.hasMore && page.messages.length > 0 && page.messages[0].id !== before);
+    } catch {
+      if (historySeqRef.current === requestId) setHistoryError(true);
+    } finally {
+      if (historySeqRef.current === requestId) {
+        olderPendingRef.current = false;
+        setLoadingOlder(false);
+      }
+    }
+  }
+
   async function recallMessage(messageId: string) {
     if (!activeId || recallingId) return;
     const npcId = activeId;
     stopChatStream();
+    invalidateHistory();
     setRecallingId(messageId);
     try {
       await api.recallMessage(npcId, messageId);
@@ -571,12 +636,14 @@ export default function App() {
     if (!activeId || recallingId) return;
     const npcId = activeId;
     stopChatStream();
+    invalidateHistory();
     setRecallingId(messageId);
     try {
       await api.restoreRecalledMessage(npcId, messageId);
       const thread = await api.thread(npcId);
       if (activeIdRef.current !== npcId) return;
       setMessages((thread.messages || []).map(mapMsg));
+      setHasMore(thread.hasMore);
       await scen.refreshSessions();
     } catch {
       // Keep the rolled-back view when restoration fails.
@@ -592,12 +659,17 @@ export default function App() {
 
   function continueFromScenario() {
     const npcId = activeId;
+    invalidateHistory();
+    const requestId = historySeqRef.current;
     scen.continueChatting();
     setComposerFocusSignal((value) => value + 1);
     if (!npcId) return;
     api.thread(npcId)
       .then((thread) => {
-        if (activeIdRef.current === npcId) setMessages((thread.messages || []).map(mapMsg));
+        if (activeIdRef.current === npcId && historySeqRef.current === requestId) {
+          setMessages((thread.messages || []).map(mapMsg));
+          setHasMore(thread.hasMore);
+        }
       })
       .catch(() => {});
   }
@@ -644,6 +716,15 @@ export default function App() {
               </>
             ) : (
               <>
+                {hasMore && (
+                  <div className="flex flex-col items-center gap-1 py-3">
+                    <button type="button" onClick={loadOlder} disabled={loadingOlder || !!recallingId}
+                            className="text-sm px-3 py-1 disabled:opacity-50" style={{ color: 'var(--ink-2)' }}>
+                      {loadingOlder ? 'Loading earlier messages...' : 'Load earlier messages'}
+                    </button>
+                    {historyError && <span role="alert" className="text-xs">Could not load earlier messages. Please try again.</span>}
+                  </div>
+                )}
                 {messages.map((m, i) => (
                   <Fragment key={m.id || i}>
                     {m.createdAt && (i === 0 || !messages[i - 1]?.createdAt

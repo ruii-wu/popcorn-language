@@ -45,7 +45,7 @@ export async function* runScenarioTurn(deps: TurnDeps): AsyncGenerator<SseEvent>
   const { prisma, ollama, userId, sessionId } = deps;
 
   const session = await prisma.scenarioSession.findFirst({
-    where: { id: sessionId, userId },
+    where: { id: sessionId, userId, hiddenAt: null },
     include: { template: true, npc: true },
   });
   if (!session) {
@@ -70,20 +70,13 @@ export async function* runScenarioTurn(deps: TurnDeps): AsyncGenerator<SseEvent>
   const mustConclude = state.turnIndex + 1 >= hardTurnLimit(session.template);
   const userText = deps.text ?? deps.choiceId ?? '';
 
-  const userMsg = await prisma.message.create({
-    data: {
-      threadId: session.threadId, userId, role: 'user', text: userText,
-      scenarioSessionId: session.id, meta: JSON.stringify({ choiceId: deps.choiceId, tone: deps.tone }),
-    },
-  });
-  yield { event: 'user_message_saved', data: { messageId: userMsg.id, createdAt: userMsg.createdAt } };
   yield { event: 'typing_start', data: { npcId: session.npcId } };
 
   const { roleName } = resolveRole(session.npc, session.template);
   const [user, history, priorTurns] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId } }),
     prisma.message.findMany({
-      where: { scenarioSessionId: session.id, role: { in: ['user', 'npc-roleplay'] } },
+      where: { scenarioSessionId: session.id, hiddenAt: null, retractedAt: null, role: { in: ['user', 'npc-roleplay'] } },
       orderBy: { createdAt: 'asc' },
     }),
     prisma.scenarioTurn.findMany({
@@ -98,7 +91,8 @@ export async function* runScenarioTurn(deps: TurnDeps): AsyncGenerator<SseEvent>
     instructions: session.template.systemPrompt,
     userLanguage: user?.language ?? 'zh-CN',
     state,
-    history: history.map((m) => ({ role: m.role, text: m.text, userId: m.userId })),
+    history: [...history.map((m) => ({ role: m.role, text: m.text, userId: m.userId })),
+      { role: 'user', text: userText, userId }],
     previousChoiceTexts,
     mustConclude,
   });
@@ -119,23 +113,47 @@ export async function* runScenarioTurn(deps: TurnDeps): AsyncGenerator<SseEvent>
     ...applyDelta(state, turn.stateDelta),
     completionPending: isFinal,
   };
-  const npcMsg = await prisma.message.create({
-    data: {
-      threadId: session.threadId, userId: null, role: 'npc-roleplay', text: turn.npcReply,
-      scenarioSessionId: session.id, meta: JSON.stringify({ roleplayCharacter: roleName }),
-    },
+  // Generation runs outside the transaction. Only the request whose input state
+  // is still current may commit; a losing request leaves no transcript fragments.
+  const committed = await prisma.$transaction(async (tx) => {
+    const claim = await tx.scenarioSession.updateMany({
+      where: { id: session.id, userId, hiddenAt: null, status: 'active', state: session.state },
+      data: { state: JSON.stringify(stateAfter) },
+    });
+    if (claim.count === 0) return null;
+    const userMsg = await tx.message.create({
+      data: {
+        threadId: session.threadId, userId, role: 'user', text: userText,
+        scenarioSessionId: session.id, meta: JSON.stringify({ choiceId: deps.choiceId, tone: deps.tone }),
+      },
+    });
+    const npcMsg = await tx.message.create({
+      data: {
+        threadId: session.threadId, userId: null, role: 'npc-roleplay', text: turn.npcReply,
+        scenarioSessionId: session.id, meta: JSON.stringify({ roleplayCharacter: roleName }),
+      },
+    });
+    await tx.scenarioTurn.create({
+      data: {
+        sessionId: session.id, turnIndex: stateAfter.turnIndex,
+        userChoiceId: deps.choiceId, userChoiceTone: deps.tone,
+        userFreeText: deps.text && !deps.choiceId ? deps.text : null,
+        userMessageId: userMsg.id, npcMessageId: npcMsg.id,
+        stateBefore: JSON.stringify(state), stateAfter: JSON.stringify(stateAfter),
+        nextChoices: JSON.stringify(turn.suggestedChoicesNext),
+      },
+    });
+    return { userMsg, npcMsg };
   });
-  await prisma.scenarioTurn.create({
-    data: {
-      sessionId: session.id, turnIndex: stateAfter.turnIndex,
-      userChoiceId: deps.choiceId, userChoiceTone: deps.tone,
-      userFreeText: deps.text && !deps.choiceId ? deps.text : null,
-      userMessageId: userMsg.id, npcMessageId: npcMsg.id,
-      stateBefore: JSON.stringify(state), stateAfter: JSON.stringify(stateAfter),
-      nextChoices: JSON.stringify(turn.suggestedChoicesNext),
-    },
-  });
-  await prisma.scenarioSession.update({ where: { id: session.id }, data: { state: JSON.stringify(stateAfter) } });
+
+  if (!committed) {
+    yield { event: 'typing_end', data: { npcId: session.npcId } };
+    yield { event: 'error', data: { code: 'CONFLICT', message: 'Scenario changed while generating this turn. Reload the saved session.' } };
+    yield { event: 'done', data: {} };
+    return;
+  }
+  const { userMsg, npcMsg } = committed;
+  yield { event: 'user_message_saved', data: { messageId: userMsg.id, createdAt: userMsg.createdAt } };
 
   yield { event: 'typing_end', data: { npcId: session.npcId } };
   yield { event: 'message_complete', data: { messageId: npcMsg.id, fullText: turn.npcReply } };

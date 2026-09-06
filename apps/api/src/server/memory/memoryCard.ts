@@ -30,19 +30,26 @@ export async function generateMemoryCard(deps: MemoryCardDeps): Promise<Memory |
       ],
       MemoryCardSchema,
     );
-    return await deps.prisma.memory.upsert({
-      where: { sourceKey },
-      create: {
-        userId: deps.userId,
-        title: card.title,
-        body: card.body,
-        npcId: deps.npcId,
-        sourceType: 'scenario',
-        sourceRef: deps.sessionId,
-        sourceKey,
-      },
-      // The first successfully persisted card remains authoritative across retries.
-      update: {},
+    return await deps.prisma.$transaction(async (tx) => {
+      const session = await tx.scenarioSession.findFirst({
+        where: { id: deps.sessionId, userId: deps.userId, hiddenAt: null, status: 'completed' },
+        select: { id: true },
+      });
+      if (!session) return null;
+      return tx.memory.upsert({
+        where: { sourceKey },
+        create: {
+          userId: deps.userId,
+          title: card.title,
+          body: card.body,
+          npcId: deps.npcId,
+          sourceType: 'scenario',
+          sourceRef: deps.sessionId,
+          sourceKey,
+        },
+        // The first successfully persisted card remains authoritative across retries.
+        update: {},
+      });
     });
   } catch (e) {
     console.error('[memory] generateMemoryCard failed', e);

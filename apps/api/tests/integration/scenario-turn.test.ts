@@ -54,7 +54,8 @@ describe('runScenarioTurn (non-final)', () => {
     }
 
     const names = events.map((e) => e.event);
-    expect(names[0]).toBe('user_message_saved');
+    expect(names[0]).toBe('typing_start');
+    expect(names.indexOf('user_message_saved')).toBeLessThan(names.indexOf('message_complete'));
     expect(names).toContain('message_complete');
     const stateUpdate = events.find((e) => e.event === 'state_update')!.data as { impression: number; turnsLeft: number };
     expect(stateUpdate.impression).toBe(7);

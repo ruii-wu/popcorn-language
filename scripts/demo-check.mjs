@@ -4,8 +4,11 @@ import dotenv from 'dotenv';
 
 dotenv.config({ path: 'apps/api/.env', quiet: true });
 
-const webUrl = process.env.DEMO_WEB_URL ?? 'http://localhost:5173';
 const apiUrl = process.env.DEMO_API_URL ?? 'http://localhost:3100';
+const configuredWebUrl = process.env.DEMO_WEB_URL;
+const webUrls = configuredWebUrl
+  ? [configuredWebUrl]
+  : [...new Set(['http://localhost:5173', apiUrl])];
 const ollamaUrl = process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434';
 const chatModel = process.env.OLLAMA_CHAT_MODEL ?? 'qwen3.5:9b';
 const embedModel = process.env.OLLAMA_EMBED_MODEL ?? 'nomic-embed-text';
@@ -37,12 +40,22 @@ const requiredNode = readFileSync(new URL('../.nvmrc', import.meta.url), 'utf8')
 if (process.versions.node === requiredNode) pass('Node.js', process.version);
 else fail('Node.js', `${process.version}; run "nvm use" in the repository (v${requiredNode} required)`);
 
-try {
-  const response = await fetch(webUrl, { signal: AbortSignal.timeout(4000) });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  pass('Web', webUrl);
-} catch (error) {
-  fail('Web', `${webUrl} is unavailable (${error.message})`);
+const webErrors = [];
+for (const url of webUrls) {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(4000) });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.includes('text/html')) throw new Error(`expected HTML, received ${contentType || 'unknown content type'}`);
+    const mode = url === apiUrl ? 'single-port demo' : 'development server';
+    pass('Web', `${url} (${mode})`);
+    break;
+  } catch (error) {
+    webErrors.push(`${url} (${error.message})`);
+  }
+}
+if (!checks.some((check) => check.name === 'Web' && check.level === 'PASS')) {
+  fail('Web', `no web entrypoint is available: ${webErrors.join('; ')}`);
 }
 
 try {
